@@ -1,3 +1,4 @@
+import 'package:hr_app_demo/core/widgets/empty_state_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -17,6 +18,7 @@ class LeaveRequestsTab extends StatelessWidget {
     return BlocBuilder<LeaveCubit, LeaveState>(
       builder: (context, state) {
         if (state is! LeaveLoaded) return const AppLoader();
+        if (state.requests.isEmpty) return const EmptyStateWidget(icon: Icons.inbox, message: 'no_data_found');
         return ListView.builder(
           padding: EdgeInsets.all(16.w),
           itemCount: state.requests.length,

@@ -1,8 +1,8 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'payroll_state.dart';
 import '../../domain/repositories/payroll_repository.dart';
 
-class PayrollCubit extends Cubit<PayrollState> {
+class PayrollCubit extends SafeCubit<PayrollState> {
   final PayrollRepository _repository;
 
   PayrollCubit(this._repository) : super(PayrollInitial());

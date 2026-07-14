@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import '../../domain/entities/system_config_entities.dart';
 import '../../domain/repositories/system_config_repository.dart';
 import '../../../leave/domain/entities/leave_enums.dart';
@@ -32,7 +32,7 @@ class SystemConfigError extends SystemConfigState {
   SystemConfigError(this.message);
 }
 
-class SystemConfigCubit extends Cubit<SystemConfigState> {
+class SystemConfigCubit extends SafeCubit<SystemConfigState> {
   final SystemConfigRepository _repository;
   final AppraisalRepository _appraisalRepository;
 

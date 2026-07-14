@@ -1,3 +1,4 @@
+import 'package:hr_app_demo/core/widgets/empty_state_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -16,6 +17,7 @@ class AttendanceHistoryTab extends StatelessWidget {
     return BlocBuilder<AttendanceCubit, AttendanceState>(
       builder: (context, state) {
         if (state is! AttendanceLoaded) return const AppLoader();
+        if (state.history.isEmpty) return const EmptyStateWidget(icon: Icons.inbox, message: 'no_data_found');
         return ListView.builder(
           padding: EdgeInsets.all(16.w),
           itemCount: state.history.length,

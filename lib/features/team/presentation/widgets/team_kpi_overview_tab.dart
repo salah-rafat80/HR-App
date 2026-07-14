@@ -1,3 +1,4 @@
+import 'package:hr_app_demo/core/widgets/empty_state_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -43,7 +44,8 @@ class TeamKpiOverviewTab extends StatelessWidget {
         child: Text('No team members found.', style: TextStyle(color: AppColors.textSecondary, fontSize: 16.sp)),
       );
     }
-    return ListView.builder(
+    if (members.isEmpty) return const EmptyStateWidget(icon: Icons.inbox, message: 'no_data_found');
+        return ListView.builder(
       padding: EdgeInsets.all(16.w),
       itemCount: members.length,
       itemBuilder: (context, index) {

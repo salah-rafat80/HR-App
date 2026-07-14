@@ -1,11 +1,11 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'communication_state.dart';
 import '../../domain/entities/communication_entities.dart';
 import '../../domain/entities/it_request_entities.dart';
 import '../../domain/repositories/communication_repository.dart';
 import '../../domain/repositories/it_request_repository.dart';
 
-class CommunicationCubit extends Cubit<CommunicationState> {
+class CommunicationCubit extends SafeCubit<CommunicationState> {
   final CommunicationRepository _commRepo;
   final ItRequestRepository _itRepo;
 

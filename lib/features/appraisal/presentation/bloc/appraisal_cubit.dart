@@ -1,10 +1,10 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'appraisal_state.dart';
 import '../../domain/repositories/appraisal_repository.dart';
 import '../../../kpi/domain/repositories/kpi_repository.dart';
 import '../../domain/entities/appraisal_entities.dart';
 
-class AppraisalCubit extends Cubit<AppraisalState> {
+class AppraisalCubit extends SafeCubit<AppraisalState> {
   final AppraisalRepository _repository;
   final KpiRepository _kpiRepository;
 

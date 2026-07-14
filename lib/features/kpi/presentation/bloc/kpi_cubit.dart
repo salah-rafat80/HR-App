@@ -1,8 +1,8 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'kpi_state.dart';
 import '../../domain/repositories/kpi_repository.dart';
 
-class KpiCubit extends Cubit<KpiState> {
+class KpiCubit extends SafeCubit<KpiState> {
   final KpiRepository _repository;
 
   KpiCubit(this._repository) : super(KpiInitial());

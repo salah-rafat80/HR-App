@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'home_state.dart';
 import '../../domain/repositories/home_repository.dart';
@@ -10,7 +10,7 @@ import '../../../attendance/domain/entities/attendance_enums.dart';
 import '../../../kpi/domain/repositories/kpi_repository.dart';
 import '../../../training/domain/repositories/training_repository.dart';
 
-class HomeCubit extends Cubit<HomeState> {
+class HomeCubit extends SafeCubit<HomeState> {
   final HomeRepository _homeRepository;
   final AttendanceRepository _attendanceRepository;
   final LeaveRepository _leaveRepository;

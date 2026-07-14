@@ -5,6 +5,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_routes.dart';
 import '../bloc/executive_cubit.dart';
 
 class ExecutiveScreen extends StatelessWidget {
@@ -16,11 +18,14 @@ class ExecutiveScreen extends StatelessWidget {
       create: (_) => getIt<ExecutiveCubit>()..loadDashboard(),
       child: Scaffold(
         appBar: AppBar(
-          title: Text('executive_dashboard'.tr()),
+          automaticallyImplyLeading: false,
+          title: Text('executive_dashboard'.tr(), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
           actions: [
             IconButton(
-              icon: const Icon(Icons.person),
-              onPressed: () {},
+              icon: const Icon(Icons.logout, color: AppColors.error),
+              onPressed: () {
+                context.go(AppRoutes.login);
+              },
             ),
           ],
         ),
@@ -145,9 +150,11 @@ class ExecutiveScreen extends StatelessWidget {
         titlesData: FlTitlesData(
           bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (val, meta) {
             if (val.toInt() >= 0 && val.toInt() < data.length) {
+              final dept = data[val.toInt()].department;
+              final displayDept = dept.length > 3 ? dept.substring(0, 3) : dept;
               return Padding(
                 padding: const EdgeInsets.only(top: 8.0),
-                child: Text(data[val.toInt()].department.substring(0, 3), style: TextStyle(fontSize: 10.sp)),
+                child: Text(displayDept, style: TextStyle(fontSize: 10.sp)),
               );
             }
             return const Text('');

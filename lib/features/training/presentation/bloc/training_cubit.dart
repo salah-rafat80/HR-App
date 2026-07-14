@@ -1,8 +1,8 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'training_state.dart';
 import '../../domain/repositories/training_repository.dart';
 
-class TrainingCubit extends Cubit<TrainingState> {
+class TrainingCubit extends SafeCubit<TrainingState> {
   final TrainingRepository _repository;
 
   TrainingCubit(this._repository) : super(TrainingInitial());

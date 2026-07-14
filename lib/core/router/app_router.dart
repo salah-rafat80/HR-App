@@ -25,6 +25,15 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 class AppRouter {
+  static CustomTransitionPage _fadeTransition(Widget child) {
+    return CustomTransitionPage(
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+    );
+  }
+
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
@@ -32,17 +41,17 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.splash,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const SplashScreen()),
       ),
       GoRoute(
         path: AppRoutes.login,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const LoginScreen()),
       ),
       GoRoute(
         path: AppRoutes.roleSelection,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const RoleSelectionScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const RoleSelectionScreen()),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -53,74 +62,74 @@ class AppRouter {
           GoRoute(
             path: AppRoutes.home,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const HomeScreen(),
+            pageBuilder: (context, state) => _fadeTransition(const HomeScreen()),
           ),
           GoRoute(
             path: AppRoutes.attendance,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const AttendanceScreen(),
+            pageBuilder: (context, state) => _fadeTransition(const AttendanceScreen()),
           ),
           GoRoute(
             path: AppRoutes.leave,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const LeaveScreen(),
+            pageBuilder: (context, state) => _fadeTransition(const LeaveScreen()),
           ),
           GoRoute(
             path: AppRoutes.modules,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const ModulesScreen(),
+            pageBuilder: (context, state) => _fadeTransition(const ModulesScreen()),
           ),
           GoRoute(
             path: AppRoutes.profile,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const ProfileScreen(),
+            pageBuilder: (context, state) => _fadeTransition(const ProfileScreen()),
           ),
           GoRoute(
             path: AppRoutes.team,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const TeamScreen(),
+            pageBuilder: (context, state) => _fadeTransition(const TeamScreen()),
           ),
           GoRoute(
             path: AppRoutes.admin,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const AdminScreen(),
+            pageBuilder: (context, state) => _fadeTransition(const AdminScreen()),
           ),
         ],
       ),
       GoRoute(
         path: '/coming-soon',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ComingSoonScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const ComingSoonScreen()),
       ),
       GoRoute(
         path: AppRoutes.kpi,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const KpiScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const KpiScreen()),
       ),
       GoRoute(
         path: AppRoutes.appraisal,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AppraisalScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const AppraisalScreen()),
       ),
       GoRoute(
         path: AppRoutes.payroll,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const PayrollScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const PayrollScreen()),
       ),
       GoRoute(
         path: AppRoutes.training,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const TrainingScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const TrainingScreen()),
       ),
       GoRoute(
         path: AppRoutes.communication,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const CommunicationScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const CommunicationScreen()),
       ),
       GoRoute(
         path: AppRoutes.executive,
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ExecutiveScreen(),
+        pageBuilder: (context, state) => _fadeTransition(const ExecutiveScreen()),
       ),
     ],
   );
