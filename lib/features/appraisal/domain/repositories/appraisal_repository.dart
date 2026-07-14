@@ -9,4 +9,5 @@ abstract class AppraisalRepository {
   Future<AppraisalResult> getMyResults();
   Future<List<DevelopmentGoal>> getDevelopmentPlan();
   Future<List<CareerStep>> getCareerPath();
+  Future<void> startNewCycle(String label, DateTime dueDate);
 }

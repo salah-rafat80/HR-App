@@ -38,6 +38,18 @@ import '../../features/home/domain/repositories/home_repository.dart';
 import '../../features/home/presentation/bloc/home_cubit.dart';
 import '../../features/team/presentation/bloc/team_approvals_cubit.dart';
 import '../../features/team/presentation/bloc/team_kpi_cubit.dart';
+import '../../features/admin/data/datasources/fake_admin_payroll_datasource.dart';
+import '../../features/admin/domain/repositories/admin_payroll_repository.dart';
+import '../../features/admin/data/repositories/admin_payroll_repository_impl.dart';
+import '../../features/admin/presentation/bloc/admin_payroll_cubit.dart';
+import '../../features/admin/data/datasources/fake_recruitment_datasource.dart';
+import '../../features/admin/domain/repositories/recruitment_repository.dart';
+import '../../features/admin/data/repositories/recruitment_repository_impl.dart';
+import '../../features/admin/presentation/bloc/recruitment_cubit.dart';
+import '../../features/admin/data/datasources/fake_system_config_datasource.dart';
+import '../../features/admin/domain/repositories/system_config_repository.dart';
+import '../../features/admin/data/repositories/system_config_repository_impl.dart';
+import '../../features/admin/presentation/bloc/system_config_cubit.dart';
 import '../bloc/session_cubit.dart';
 
 final getIt = GetIt.instance;
@@ -91,4 +103,17 @@ Future<void> initDI() async {
   getIt.registerFactory(() => CommunicationCubit(getIt<CommunicationRepository>(), getIt<ItRequestRepository>()));
   getIt.registerFactory(() => TeamApprovalsCubit(getIt<LeaveRepository>()));
   getIt.registerFactory(() => TeamKpiCubit(getIt<KpiRepository>()));
+
+  // Phase 10: HR Admin
+  getIt.registerLazySingleton(() => FakeAdminPayrollDataSource());
+  getIt.registerLazySingleton<AdminPayrollRepository>(() => AdminPayrollRepositoryImpl(getIt<FakeAdminPayrollDataSource>()));
+  getIt.registerFactory(() => AdminPayrollCubit(getIt<AdminPayrollRepository>()));
+
+  getIt.registerLazySingleton(() => FakeRecruitmentDataSource());
+  getIt.registerLazySingleton<RecruitmentRepository>(() => RecruitmentRepositoryImpl(getIt<FakeRecruitmentDataSource>()));
+  getIt.registerFactory(() => RecruitmentCubit(getIt<RecruitmentRepository>()));
+
+  getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
+  getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>()));
+  getIt.registerFactory(() => SystemConfigCubit(getIt<SystemConfigRepository>(), getIt<AppraisalRepository>()));
 }

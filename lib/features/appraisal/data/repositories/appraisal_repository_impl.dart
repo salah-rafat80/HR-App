@@ -30,4 +30,7 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
 
   @override
   Future<void> submitSelfAppraisal(List<SelfAppraisalQuestion> answers) => _dataSource.submitSelfAppraisal(answers);
+
+  @override
+  Future<void> startNewCycle(String label, DateTime dueDate) => _dataSource.startNewCycle(label, dueDate);
 }

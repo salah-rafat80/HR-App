@@ -177,5 +177,9 @@
   "profile": "الملف الشخصي",
   "logout": "تسجيل الخروج",
   "leave_management": "إدارة الإجازات",
-  "appraisal_module": "التقييم"
+  "appraisal_module": "التقييم",
+  "admin_panel": "لوحة الإدارة",
+  "payroll_tab": "الرواتب",
+  "system_config": "إعدادات النظام",
+  "recruitment": "التوظيف"
 }

@@ -89,4 +89,13 @@ class FakeAppraisalDataSource {
     await Future.delayed(const Duration(milliseconds: 200));
     return _careerPath;
   }
+
+  Future<void> startNewCycle(String label, DateTime dueDate) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    _currentCycle = AppraisalCycle(
+      cycleLabel: label,
+      status: AppraisalStatus.inProgress,
+      dueDate: dueDate,
+    );
+  }
 }
