@@ -1,0 +1,94 @@
+import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../features/attendance/data/datasources/fake_attendance_datasource.dart';
+import '../../features/attendance/data/repositories/attendance_repository_impl.dart';
+import '../../features/attendance/domain/repositories/attendance_repository.dart';
+import '../../features/attendance/presentation/bloc/attendance_cubit.dart';
+import '../../features/leave/data/datasources/fake_leave_datasource.dart';
+import '../../features/leave/data/repositories/leave_repository_impl.dart';
+import '../../features/leave/domain/repositories/leave_repository.dart';
+import '../../features/leave/presentation/bloc/leave_cubit.dart';
+import '../../features/kpi/data/datasources/fake_kpi_datasource.dart';
+import '../../features/kpi/data/repositories/kpi_repository_impl.dart';
+import '../../features/kpi/domain/repositories/kpi_repository.dart';
+import '../../features/kpi/presentation/bloc/kpi_cubit.dart';
+import '../../features/appraisal/data/datasources/fake_appraisal_datasource.dart';
+import '../../features/appraisal/data/repositories/appraisal_repository_impl.dart';
+import '../../features/appraisal/domain/repositories/appraisal_repository.dart';
+import '../../features/appraisal/presentation/bloc/appraisal_cubit.dart';
+import '../../features/payroll/data/datasources/fake_payroll_datasource.dart';
+import '../../features/payroll/data/repositories/payroll_repository_impl.dart';
+import '../../features/payroll/domain/repositories/payroll_repository.dart';
+import '../../features/payroll/presentation/bloc/payroll_cubit.dart';
+import '../../features/training/data/datasources/fake_training_datasource.dart';
+import '../../features/training/data/repositories/training_repository_impl.dart';
+import '../../features/training/domain/repositories/training_repository.dart';
+import '../../features/training/presentation/bloc/training_cubit.dart';
+import '../../features/communication/data/datasources/fake_communication_datasource.dart';
+import '../../features/communication/data/datasources/fake_it_request_datasource.dart';
+import '../../features/communication/data/repositories/communication_repository_impl.dart';
+import '../../features/communication/data/repositories/it_request_repository_impl.dart';
+import '../../features/communication/domain/repositories/communication_repository.dart';
+import '../../features/communication/domain/repositories/it_request_repository.dart';
+import '../../features/communication/presentation/bloc/communication_cubit.dart';
+import '../../features/home/data/datasources/fake_home_datasource.dart';
+import '../../features/home/data/repositories/home_repository_impl.dart';
+import '../../features/home/domain/repositories/home_repository.dart';
+import '../../features/home/presentation/bloc/home_cubit.dart';
+import '../../features/team/presentation/bloc/team_approvals_cubit.dart';
+import '../../features/team/presentation/bloc/team_kpi_cubit.dart';
+import '../bloc/session_cubit.dart';
+
+final getIt = GetIt.instance;
+
+Future<void> initDI() async {
+  // Core
+  final sharedPreferences = await SharedPreferences.getInstance();
+  getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+  getIt.registerLazySingleton(() => SessionCubit());
+
+  // Data Sources (Singletons for state sync)
+  getIt.registerLazySingleton(() => FakeAttendanceDataSource());
+  getIt.registerLazySingleton(() => FakeHomeDataSource());
+  getIt.registerLazySingleton(() => FakeLeaveDataSource());
+  getIt.registerLazySingleton(() => FakeKpiDataSource());
+  getIt.registerLazySingleton(() => FakeAppraisalDataSource());
+  getIt.registerLazySingleton(() => FakePayrollDataSource());
+  getIt.registerLazySingleton(() => FakeTrainingDataSource());
+  getIt.registerLazySingleton(() => FakeCommunicationDataSource());
+  getIt.registerLazySingleton(() => FakeItRequestDataSource());
+
+  // Repositories
+  getIt.registerLazySingleton<AttendanceRepository>(
+      () => AttendanceRepositoryImpl(getIt<FakeAttendanceDataSource>()));
+  getIt.registerLazySingleton<HomeRepository>(
+      () => HomeRepositoryImpl(getIt<FakeHomeDataSource>()));
+  getIt.registerLazySingleton<LeaveRepository>(
+      () => LeaveRepositoryImpl(getIt<FakeLeaveDataSource>()));
+  getIt.registerLazySingleton<KpiRepository>(
+      () => KpiRepositoryImpl(getIt<FakeKpiDataSource>()));
+  getIt.registerLazySingleton<AppraisalRepository>(
+      () => AppraisalRepositoryImpl(getIt<FakeAppraisalDataSource>()));
+  getIt.registerLazySingleton<PayrollRepository>(
+      () => PayrollRepositoryImpl(getIt<FakePayrollDataSource>()));
+  getIt.registerLazySingleton<TrainingRepository>(
+      () => TrainingRepositoryImpl(getIt<FakeTrainingDataSource>()));
+  getIt.registerLazySingleton<CommunicationRepository>(
+      () => CommunicationRepositoryImpl(getIt<FakeCommunicationDataSource>()));
+  getIt.registerLazySingleton<ItRequestRepository>(
+      () => ItRequestRepositoryImpl(getIt<FakeItRequestDataSource>()));
+
+  // Cubits
+  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<LeaveRepository>()));
+  getIt.registerFactory(() => HomeCubit(
+      getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
+  getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>()));
+  getIt.registerFactory(() => KpiCubit(getIt<KpiRepository>()));
+  getIt.registerFactory(() => AppraisalCubit(getIt<AppraisalRepository>(), getIt<KpiRepository>()));
+  getIt.registerFactory(() => PayrollCubit(getIt<PayrollRepository>()));
+  getIt.registerFactory(() => TrainingCubit(getIt<TrainingRepository>()));
+  getIt.registerFactory(() => CommunicationCubit(getIt<CommunicationRepository>(), getIt<ItRequestRepository>()));
+  getIt.registerFactory(() => TeamApprovalsCubit(getIt<LeaveRepository>()));
+  getIt.registerFactory(() => TeamKpiCubit(getIt<KpiRepository>()));
+}
