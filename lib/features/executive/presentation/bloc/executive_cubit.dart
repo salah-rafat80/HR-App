@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import '../../domain/entities/executive_entities.dart';
 import '../../domain/repositories/executive_repository.dart';
 import '../../../admin/domain/entities/recruitment_entities.dart';
@@ -32,7 +32,7 @@ class ExecutiveError extends ExecutiveState {
   ExecutiveError(this.message);
 }
 
-class ExecutiveCubit extends Cubit<ExecutiveState> {
+class ExecutiveCubit extends SafeCubit<ExecutiveState> {
   final ExecutiveRepository _repository;
 
   ExecutiveCubit(this._repository) : super(ExecutiveInitial());

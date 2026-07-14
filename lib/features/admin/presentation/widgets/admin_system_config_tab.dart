@@ -123,12 +123,12 @@ class AdminSystemConfigTab extends StatelessWidget {
     );
   }
 
-  void _editLeaveDays(BuildContext context, dynamic leaveTypeConfig) {
+  void _editLeaveDays(BuildContext context, LeaveTypeConfig leaveTypeConfig) {
     final ctrl = TextEditingController(text: leaveTypeConfig.defaultDaysPerYear.toString());
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Edit ${leaveTypeConfig.type.name} Days'),
+        title: Text('Edit ${leaveTypeConfig.type.name.toUpperCase()} Days'),
         content: TextField(controller: ctrl, keyboardType: TextInputType.number),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),

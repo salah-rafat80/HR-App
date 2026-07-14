@@ -1,11 +1,11 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'package:uuid/uuid.dart';
 import 'leave_state.dart';
 import '../../domain/repositories/leave_repository.dart';
 import '../../domain/entities/leave_request.dart';
 import '../../domain/entities/leave_enums.dart';
 
-class LeaveCubit extends Cubit<LeaveState> {
+class LeaveCubit extends SafeCubit<LeaveState> {
   final LeaveRepository _repository;
 
   LeaveCubit(this._repository) : super(LeaveInitial());

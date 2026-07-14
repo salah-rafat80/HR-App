@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import '../../domain/entities/recruitment_entities.dart';
 import '../../domain/repositories/recruitment_repository.dart';
 
@@ -16,7 +16,7 @@ class RecruitmentError extends RecruitmentState {
   RecruitmentError(this.message);
 }
 
-class RecruitmentCubit extends Cubit<RecruitmentState> {
+class RecruitmentCubit extends SafeCubit<RecruitmentState> {
   final RecruitmentRepository _repository;
 
   RecruitmentCubit(this._repository) : super(RecruitmentInitial());

@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import '../../domain/entities/payroll_run.dart';
 import '../../domain/repositories/admin_payroll_repository.dart';
 
@@ -15,7 +15,7 @@ class AdminPayrollError extends AdminPayrollState {
   AdminPayrollError(this.message);
 }
 
-class AdminPayrollCubit extends Cubit<AdminPayrollState> {
+class AdminPayrollCubit extends SafeCubit<AdminPayrollState> {
   final AdminPayrollRepository _repository;
 
   AdminPayrollCubit(this._repository) : super(AdminPayrollInitial());

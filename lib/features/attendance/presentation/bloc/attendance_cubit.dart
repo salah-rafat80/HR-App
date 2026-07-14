@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'attendance_state.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../../domain/entities/attendance_enums.dart';
@@ -6,7 +6,7 @@ import '../../../leave/domain/repositories/leave_repository.dart';
 import '../../../leave/domain/entities/leave_enums.dart';
 import 'package:easy_localization/easy_localization.dart';
 
-class AttendanceCubit extends Cubit<AttendanceState> {
+class AttendanceCubit extends SafeCubit<AttendanceState> {
   final AttendanceRepository _repository;
   final LeaveRepository _leaveRepository;
 

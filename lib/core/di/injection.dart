@@ -55,9 +55,14 @@ import '../../features/executive/domain/repositories/executive_repository.dart';
 import '../../features/executive/data/repositories/executive_repository_impl.dart';
 import '../../features/executive/presentation/bloc/executive_cubit.dart';
 import '../bloc/session_cubit.dart';
+import '../utils/crash_reporter.dart';
+
 final getIt = GetIt.instance;
 
 Future<void> initDI() async {
+  // Utils
+  getIt.registerLazySingleton<CrashReporter>(() => ConsoleCrashReporter());
+
   // Core
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);

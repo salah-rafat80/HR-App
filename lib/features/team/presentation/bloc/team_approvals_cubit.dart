@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import '../../../../core/enums/role_enums.dart';
 import '../../../leave/domain/entities/leave_request.dart';
 import '../../../leave/domain/repositories/leave_repository.dart';
@@ -16,7 +16,7 @@ class TeamApprovalsError extends TeamApprovalsState {
   TeamApprovalsError(this.message);
 }
 
-class TeamApprovalsCubit extends Cubit<TeamApprovalsState> {
+class TeamApprovalsCubit extends SafeCubit<TeamApprovalsState> {
   final LeaveRepository _leaveRepository;
 
   TeamApprovalsCubit(this._leaveRepository) : super(TeamApprovalsInitial());

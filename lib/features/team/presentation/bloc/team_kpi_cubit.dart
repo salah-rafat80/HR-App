@@ -1,4 +1,4 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import '../../../../core/enums/role_enums.dart';
 import '../../domain/entities/team_member.dart';
 import '../../../kpi/domain/repositories/kpi_repository.dart';
@@ -17,7 +17,7 @@ class TeamKpiError extends TeamKpiState {
   TeamKpiError(this.message);
 }
 
-class TeamKpiCubit extends Cubit<TeamKpiState> {
+class TeamKpiCubit extends SafeCubit<TeamKpiState> {
   final KpiRepository _kpiRepository;
 
   TeamKpiCubit(this._kpiRepository) : super(TeamKpiInitial());
