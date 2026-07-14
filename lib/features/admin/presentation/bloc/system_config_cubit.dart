@@ -4,6 +4,7 @@ import '../../domain/repositories/system_config_repository.dart';
 import '../../../leave/domain/entities/leave_enums.dart';
 
 import '../../../appraisal/domain/repositories/appraisal_repository.dart';
+import '../../../../core/enums/role_enums.dart';
 
 abstract class SystemConfigState {}
 
@@ -13,7 +14,18 @@ class SystemConfigLoaded extends SystemConfigState {
   final List<LeaveTypeConfig> leaveTypes;
   final List<Holiday> holidays;
   final List<DepartmentConfig> departments;
-  SystemConfigLoaded(this.leaveTypes, this.holidays, this.departments);
+  final List<RolePermission> rolePermissions;
+  final CompanySettings? companySettings;
+  final List<IntegrationToggle> integrations;
+
+  SystemConfigLoaded({
+    required this.leaveTypes,
+    required this.holidays,
+    required this.departments,
+    this.rolePermissions = const [],
+    this.companySettings,
+    this.integrations = const [],
+  });
 }
 class SystemConfigError extends SystemConfigState {
   final String message;
@@ -32,7 +44,19 @@ class SystemConfigCubit extends Cubit<SystemConfigState> {
       final leaveTypes = await _repository.getLeaveTypeConfigs();
       final holidays = await _repository.getHolidays();
       final depts = await _repository.getDepartments();
-      emit(SystemConfigLoaded(leaveTypes, holidays, depts));
+      
+      final perms = await _repository.getRolePermissions();
+      final settings = await _repository.getCompanySettings();
+      final ints = await _repository.getIntegrations();
+
+      emit(SystemConfigLoaded(
+        leaveTypes: leaveTypes,
+        holidays: holidays,
+        departments: depts,
+        rolePermissions: perms,
+        companySettings: settings,
+        integrations: ints,
+      ));
     } catch (e) {
       emit(SystemConfigError(e.toString()));
     }
@@ -69,6 +93,33 @@ class SystemConfigCubit extends Cubit<SystemConfigState> {
     try {
       await _appraisalRepository.startNewCycle(label, dueDate);
       // Success, just stay loaded
+    } catch (e) {
+      emit(SystemConfigError(e.toString()));
+    }
+  }
+
+  Future<void> toggleRolePermission(UserRole role, String featureKey) async {
+    try {
+      await _repository.toggleRolePermission(role, featureKey);
+      fetchData();
+    } catch (e) {
+      emit(SystemConfigError(e.toString()));
+    }
+  }
+
+  Future<void> updateCompanySettings(CompanySettings draft) async {
+    try {
+      await _repository.updateCompanySettings(draft);
+      fetchData();
+    } catch (e) {
+      emit(SystemConfigError(e.toString()));
+    }
+  }
+
+  Future<void> toggleIntegration(String name) async {
+    try {
+      await _repository.toggleIntegration(name);
+      fetchData();
     } catch (e) {
       emit(SystemConfigError(e.toString()));
     }

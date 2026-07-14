@@ -86,7 +86,11 @@ class RoleSelectionScreen extends StatelessWidget {
 
   void _selectRole(BuildContext context, UserRole role) {
     getIt<SessionCubit>().setRole(role);
-    context.go(AppRoutes.home);
+    if (role == UserRole.cLevel) {
+      context.go(AppRoutes.executive);
+    } else {
+      context.go(AppRoutes.home);
+    }
   }
 }
 

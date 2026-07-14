@@ -23,6 +23,15 @@ This is a comprehensive UI-only simulated demo for a modern HR management applic
 9. **Communication Hub:** Announcements, HR chat (with auto-reply), interactive polls, employee handbook.
 10. **IT Requests:** Helpdesk ticketing system with status tracking.
 
+## Supported Roles (Simulated Demo)
+This application simulates a fully integrated multi-role environment where data changes in one role affect what is seen by another role.
+1. **Employee:** Standard access to personal attendance, leave, KPIs, appraisal, and payslips.
+2. **Team Lead:** Extended access to "Team" tab for localized team approvals and team KPI tracking.
+3. **Manager:** Higher-level "Team" tab access with departmental scope and multi-stage leave/appraisal approvals.
+4. **HR Admin:** Replaces "Team" tab with an "Admin" tab. Includes company-wide Approvals/KPIs, Payroll Runs, Recruitment Pipeline, and basic System Config.
+5. **Super Admin:** Full "Admin" tab access including advanced System Config (Roles & Permissions, Company Settings, Integrations).
+6. **C-Level Executive:** Separate standalone "Executive Dashboard" shell displaying company-wide summary cards, trend charts, and read-only aggregate data from recruitment and payroll.
+
 ## Running the App
 Make sure your emulator/device is connected.
 ```bash
