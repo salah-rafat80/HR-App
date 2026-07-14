@@ -50,8 +50,11 @@ import '../../features/admin/data/datasources/fake_system_config_datasource.dart
 import '../../features/admin/domain/repositories/system_config_repository.dart';
 import '../../features/admin/data/repositories/system_config_repository_impl.dart';
 import '../../features/admin/presentation/bloc/system_config_cubit.dart';
+import '../../features/executive/data/datasources/fake_executive_datasource.dart';
+import '../../features/executive/domain/repositories/executive_repository.dart';
+import '../../features/executive/data/repositories/executive_repository_impl.dart';
+import '../../features/executive/presentation/bloc/executive_cubit.dart';
 import '../bloc/session_cubit.dart';
-
 final getIt = GetIt.instance;
 
 Future<void> initDI() async {
@@ -116,4 +119,13 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
   getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>()));
   getIt.registerFactory(() => SystemConfigCubit(getIt<SystemConfigRepository>(), getIt<AppraisalRepository>()));
+
+  // Phase 11: Executive
+  getIt.registerLazySingleton(() => FakeExecutiveDataSource());
+  getIt.registerLazySingleton<ExecutiveRepository>(() => ExecutiveRepositoryImpl(
+        getIt<FakeExecutiveDataSource>(),
+        getIt<RecruitmentRepository>(),
+        getIt<AdminPayrollRepository>(),
+      ));
+  getIt.registerFactory(() => ExecutiveCubit(getIt<ExecutiveRepository>()));
 }

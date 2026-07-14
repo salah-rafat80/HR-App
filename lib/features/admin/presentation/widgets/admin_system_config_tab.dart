@@ -4,6 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../bloc/system_config_cubit.dart';
+import '../../../../core/bloc/session_cubit.dart';
+import '../../../../core/enums/role_enums.dart';
+import '../../domain/entities/system_config_entities.dart';
 
 class AdminSystemConfigTab extends StatelessWidget {
   const AdminSystemConfigTab({super.key});
@@ -17,11 +20,46 @@ class AdminSystemConfigTab extends StatelessWidget {
           if (state is SystemConfigLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is SystemConfigLoaded) {
+            final isSuperAdmin = getIt<SessionCubit>().state == UserRole.superAdmin;
+            
             return SingleChildScrollView(
               padding: EdgeInsets.all(16.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (isSuperAdmin) ...[
+                    _buildSectionHeader('Roles & Permissions'),
+                    ...state.rolePermissions.map((p) => SwitchListTile(
+                          title: Text('${p.role.name.toUpperCase()} - ${p.featureKey}'),
+                          value: p.allowed,
+                          onChanged: (_) => context.read<SystemConfigCubit>().toggleRolePermission(p.role, p.featureKey),
+                        )),
+                    const Divider(),
+                    SizedBox(height: 16.h),
+
+                    _buildSectionHeader('Company Settings'),
+                    if (state.companySettings != null)
+                      ListTile(
+                        title: Text(state.companySettings!.companyName),
+                        subtitle: Text('${state.companySettings!.timezoneLabel} • ${state.companySettings!.workWeekDays.join(", ")}'),
+                        trailing: ElevatedButton(
+                          onPressed: () => _editCompanySettings(context, state.companySettings!),
+                          child: const Text('Edit'),
+                        ),
+                      ),
+                    const Divider(),
+                    SizedBox(height: 16.h),
+
+                    _buildSectionHeader('Integrations'),
+                    ...state.integrations.map((i) => SwitchListTile(
+                          title: Text(i.name),
+                          value: i.enabled,
+                          onChanged: (_) => context.read<SystemConfigCubit>().toggleIntegration(i.name),
+                        )),
+                    const Divider(),
+                    SizedBox(height: 16.h),
+                  ],
+
                   _buildSectionHeader('Leave Types & Allowances'),
                   ...state.leaveTypes.map((l) => ListTile(
                         title: Text(l.type.name.toUpperCase()),
@@ -171,6 +209,31 @@ class AdminSystemConfigTab extends StatelessWidget {
               }
             },
             child: const Text('Start'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editCompanySettings(BuildContext context, CompanySettings current) {
+    final nameCtrl = TextEditingController(text: current.companyName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Company Settings'),
+        content: TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Company Name')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (nameCtrl.text.isNotEmpty) {
+                final updated = current.copyWith(companyName: nameCtrl.text);
+                context.read<SystemConfigCubit>().updateCompanySettings(updated);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings Saved')));
+              }
+            },
+            child: const Text('Save'),
           ),
         ],
       ),
