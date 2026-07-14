@@ -17,7 +17,9 @@ class TeamKpiOverviewTab extends StatelessWidget {
     return BlocProvider(
       create: (context) {
         final role = getIt<SessionCubit>().state;
-        final scope = role == UserRole.manager ? ApprovalScope.department : ApprovalScope.team;
+        ApprovalScope scope = ApprovalScope.team;
+        if (role == UserRole.manager) scope = ApprovalScope.department;
+        if (role == UserRole.hrAdmin || role == UserRole.superAdmin) scope = ApprovalScope.all;
         return getIt<TeamKpiCubit>()..fetchTeamKpis(scope);
       },
       child: BlocBuilder<TeamKpiCubit, TeamKpiState>(
@@ -122,7 +124,9 @@ class TeamKpiOverviewTab extends StatelessWidget {
     final titleCtrl = TextEditingController();
     final targetCtrl = TextEditingController();
     final role = getIt<SessionCubit>().state;
-    final scope = role == UserRole.manager ? ApprovalScope.department : ApprovalScope.team;
+    ApprovalScope scope = ApprovalScope.team;
+    if (role == UserRole.manager) scope = ApprovalScope.department;
+    if (role == UserRole.hrAdmin || role == UserRole.superAdmin) scope = ApprovalScope.all;
 
     showDialog(
       context: parentContext,

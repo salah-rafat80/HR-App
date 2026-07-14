@@ -177,5 +177,9 @@
   "profile": "Profile",
   "logout": "Logout",
   "leave_management": "Leave Mgmt",
-  "appraisal_module": "Appraisal"
+  "appraisal_module": "Appraisal",
+  "admin_panel": "Admin Panel",
+  "payroll_tab": "Payroll",
+  "system_config": "System Config",
+  "recruitment": "Recruitment"
 }

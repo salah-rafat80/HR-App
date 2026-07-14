@@ -7,6 +7,7 @@ import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/auth/presentation/pages/role_selection_screen.dart';
 import '../../features/home/presentation/pages/main_shell.dart';
 import '../../features/team/presentation/pages/team_screen.dart';
+import '../../features/admin/presentation/pages/admin_screen.dart';
 import '../../features/home/presentation/pages/home_screen.dart';
 import '../../features/attendance/presentation/pages/attendance_screen.dart';
 import '../../features/leave/presentation/pages/leave_screen.dart';
@@ -77,6 +78,11 @@ class AppRouter {
             path: AppRoutes.team,
             parentNavigatorKey: _shellNavigatorKey,
             builder: (context, state) => const TeamScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.admin,
+            parentNavigatorKey: _shellNavigatorKey,
+            builder: (context, state) => const AdminScreen(),
           ),
         ],
       ),

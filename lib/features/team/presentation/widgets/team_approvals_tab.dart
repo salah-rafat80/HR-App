@@ -16,7 +16,9 @@ class TeamApprovalsTab extends StatelessWidget {
     return BlocProvider(
       create: (context) {
         final role = getIt<SessionCubit>().state;
-        final scope = role == UserRole.manager ? ApprovalScope.department : ApprovalScope.team;
+        ApprovalScope scope = ApprovalScope.team;
+        if (role == UserRole.manager) scope = ApprovalScope.department;
+        if (role == UserRole.hrAdmin || role == UserRole.superAdmin) scope = ApprovalScope.all;
         return getIt<TeamApprovalsCubit>()..fetchPendingApprovals(scope);
       },
       child: BlocBuilder<TeamApprovalsCubit, TeamApprovalsState>(
@@ -82,13 +84,17 @@ class TeamApprovalsTab extends StatelessWidget {
 
   void _handleApprove(BuildContext context, String id) {
     final role = getIt<SessionCubit>().state;
-    final scope = role == UserRole.manager ? ApprovalScope.department : ApprovalScope.team;
+    ApprovalScope scope = ApprovalScope.team;
+    if (role == UserRole.manager) scope = ApprovalScope.department;
+    if (role == UserRole.hrAdmin || role == UserRole.superAdmin) scope = ApprovalScope.all;
     context.read<TeamApprovalsCubit>().approveRequest(id, scope);
   }
 
   void _handleReject(BuildContext context, String id) {
     final role = getIt<SessionCubit>().state;
-    final scope = role == UserRole.manager ? ApprovalScope.department : ApprovalScope.team;
+    ApprovalScope scope = ApprovalScope.team;
+    if (role == UserRole.manager) scope = ApprovalScope.department;
+    if (role == UserRole.hrAdmin || role == UserRole.superAdmin) scope = ApprovalScope.all;
     context.read<TeamApprovalsCubit>().rejectRequest(id, scope);
   }
 }

@@ -17,4 +17,5 @@ class AppRoutes {
   static const String communication = '/communication';
   static const String roleSelection = '/role-selection';
   static const String team = '/team';
+  static const String admin = '/admin';
 }
