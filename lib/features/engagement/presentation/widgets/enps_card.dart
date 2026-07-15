@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/engagement_entities.dart';
 import '../bloc/engagement_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class EnpsCard extends StatelessWidget {
   final EnpsPrompt enps;
@@ -12,7 +13,7 @@ class EnpsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppCard(
       child: Padding(
         padding: EdgeInsets.all(16.w),
         child: Column(
@@ -23,7 +24,7 @@ class EnpsCard extends StatelessWidget {
             Text(enps.questionText),
             SizedBox(height: 16.h),
             enps.answer != null
-                ? const Center(child: Text('Thank you for your score!', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)))
+                ? Center(child: Text('Thank you for your score!', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)))
                 : Wrap(
                     spacing: 4.w,
                     runSpacing: 4.h,
@@ -39,7 +40,7 @@ class EnpsCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           alignment: Alignment.center,
-                          child: Text('$index', style: const TextStyle(color: AppColors.primary)),
+                          child: Text('$index', style: TextStyle(color: AppColors.primary)),
                         ),
                       );
                     }),

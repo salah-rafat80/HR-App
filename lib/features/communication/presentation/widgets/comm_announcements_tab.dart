@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/communication_cubit.dart';
 import '../bloc/communication_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class CommAnnouncementsTab extends StatelessWidget {
@@ -27,7 +28,7 @@ class CommAnnouncementsTab extends StatelessWidget {
           itemCount: state.announcements.length,
           itemBuilder: (context, index) {
             final a = state.announcements[index];
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 12.h),
               child: Padding(
                 padding: EdgeInsets.all(16.w),

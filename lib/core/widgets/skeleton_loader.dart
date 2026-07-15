@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_colors.dart';
+import 'app_card.dart';
 
 class SkeletonListLoader extends StatelessWidget {
   final int itemCount;
@@ -16,7 +17,7 @@ class SkeletonListLoader extends StatelessWidget {
         padding: EdgeInsets.all(16.w),
         itemCount: itemCount,
         itemBuilder: (context, index) {
-          return Card(
+          return AppCard(
             margin: EdgeInsets.only(bottom: 12.h),
             child: Container(
               height: 100.h,

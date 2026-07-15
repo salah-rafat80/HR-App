@@ -64,7 +64,7 @@ class HomeGreetingHeader extends StatelessWidget {
             top: 8,
             child: Container(
               padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
               constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
               child: Text(
                 '$pendingTrainings',
@@ -92,7 +92,7 @@ class HomeGreetingHeader extends StatelessWidget {
                 SizedBox(height: 16.h),
                 if (pendingTrainings > 0)
                   ListTile(
-                    leading: const Icon(Icons.warning, color: AppColors.warning),
+                    leading: Icon(Icons.warning, color: AppColors.warning),
                     title: Text('home_mandatory_training_notif'.tr(namedArgs: {'count': '$pendingTrainings'})),
                   )
                 else

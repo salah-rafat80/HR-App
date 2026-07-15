@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/attendance_cubit.dart';
 import '../bloc/attendance_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class AttendanceHistoryTab extends StatelessWidget {
@@ -24,7 +25,7 @@ class AttendanceHistoryTab extends StatelessWidget {
           itemBuilder: (context, index) {
             final record = state.history[index];
             final df = DateFormat('EEE, dd MMM yyyy', context.locale.languageCode);
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 8.h),
               child: ListTile(
                 title: Text(df.format(record.date), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),

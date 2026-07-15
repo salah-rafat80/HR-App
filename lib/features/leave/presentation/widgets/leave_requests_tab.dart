@@ -8,6 +8,8 @@ import '../bloc/leave_cubit.dart';
 import '../bloc/leave_state.dart';
 import 'leave_request_detail_modal.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/pulsing_pending_chip.dart';
 
 
 class LeaveRequestsTab extends StatelessWidget {
@@ -25,7 +27,7 @@ class LeaveRequestsTab extends StatelessWidget {
           itemBuilder: (context, index) {
             final req = state.requests[index];
             final df = DateFormat('dd MMM yyyy', context.locale.languageCode);
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 8.h),
               child: ListTile(
                 onTap: () => showModalBottomSheet(
@@ -35,10 +37,12 @@ class LeaveRequestsTab extends StatelessWidget {
                 ),
                 title: Text(req.type.name.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
                 subtitle: Text('${df.format(req.startDate)} - ${df.format(req.endDate)}', style: TextStyle(fontSize: 12.sp)),
-                trailing: Chip(
-                  label: Text(req.overallStatus.name.tr(), style: TextStyle(fontSize: 10.sp, color: Colors.white)),
-                  backgroundColor: _statusColor(req.overallStatus),
-                ),
+                trailing: req.overallStatus == LeaveStatus.pending
+                  ? PulsingPendingChip(label: req.overallStatus.name.tr())
+                  : Chip(
+                      label: Text(req.overallStatus.name.tr(), style: TextStyle(fontSize: 10.sp, color: Colors.white)),
+                      backgroundColor: _statusColor(req.overallStatus),
+                    ),
               ),
             );
           },

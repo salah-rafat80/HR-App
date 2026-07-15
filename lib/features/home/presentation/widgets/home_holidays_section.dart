@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/home_entities.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class HomeHolidaysSection extends StatelessWidget {
   final List<Holiday> holidays;
@@ -20,9 +21,9 @@ class HomeHolidaysSection extends StatelessWidget {
         children: [
           Text('upcoming_holidays'.tr(), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
           SizedBox(height: 8.h),
-          ...holidays.map((h) => Card(
+          ...holidays.map((h) => AppCard(
             child: ListTile(
-              leading: const Icon(Icons.beach_access, color: AppColors.accent),
+              leading: Icon(Icons.beach_access, color: AppColors.accent),
               title: Text(h.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
               trailing: Text(df.format(h.date), style: TextStyle(fontSize: 12.sp, color: AppColors.textPrimary)),
             ),

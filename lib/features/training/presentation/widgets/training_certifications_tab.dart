@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/training_cubit.dart';
 import '../bloc/training_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class TrainingCertificationsTab extends StatelessWidget {
@@ -27,12 +28,12 @@ class TrainingCertificationsTab extends StatelessWidget {
           itemCount: state.certifications.length,
           itemBuilder: (context, index) {
             final cert = state.certifications[index];
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 12.h),
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: AppColors.success.withValues(alpha: 0.1),
-                  child: const Icon(Icons.verified, color: AppColors.success),
+                  child: Icon(Icons.verified, color: AppColors.success),
                 ),
                 title: Text(cert.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
                 subtitle: Text('earned_on'.tr(namedArgs: {'date': df.format(cert.dateEarned)}), style: TextStyle(fontSize: 12.sp)),

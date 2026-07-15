@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/training_cubit.dart';
 import '../bloc/training_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class TrainingEnrollmentsTab extends StatelessWidget {
@@ -24,7 +25,7 @@ class TrainingEnrollmentsTab extends StatelessWidget {
           itemCount: state.myEnrollments.length,
           itemBuilder: (context, index) {
             final course = state.myEnrollments[index];
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 12.h),
               child: Padding(
                 padding: EdgeInsets.all(16.w),

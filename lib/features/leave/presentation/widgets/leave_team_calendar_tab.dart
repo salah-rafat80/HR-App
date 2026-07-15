@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../bloc/leave_cubit.dart';
 import '../bloc/leave_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class LeaveTeamCalendarTab extends StatelessWidget {
@@ -21,7 +22,7 @@ class LeaveTeamCalendarTab extends StatelessWidget {
           itemBuilder: (context, index) {
             final entry = state.teamCalendar[index];
             final df = DateFormat('dd MMM', context.locale.languageCode);
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 8.h),
               child: ListTile(
                 leading: const CircleAvatar(child: Icon(Icons.person)),

@@ -8,6 +8,7 @@ import '../bloc/kpi_cubit.dart';
 import '../bloc/kpi_state.dart';
 import 'kpi_detail_modal.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class KpiListTab extends StatelessWidget {
@@ -41,7 +42,7 @@ class _KpiCard extends StatelessWidget {
     final progress = kpi.progressPercent;
     final color = progress < 0.5 ? AppColors.error : (progress < 0.8 ? AppColors.warning : AppColors.success);
     
-    return Card(
+    return AppCard(
       margin: EdgeInsets.only(bottom: 12.h),
       child: InkWell(
         onTap: () => showModalBottomSheet(

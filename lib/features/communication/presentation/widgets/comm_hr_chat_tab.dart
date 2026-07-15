@@ -67,7 +67,7 @@ class _CommHrChatTabState extends State<CommHrChatTab> {
                   ),
                   SizedBox(width: 8.w),
                   IconButton(
-                    icon: state.isSendingMessage ? const SizedBox(width: 24, height: 24, child: AppLoader()) : const Icon(Icons.send, color: AppColors.primary),
+                    icon: state.isSendingMessage ? const SizedBox(width: 24, height: 24, child: AppLoader()) : Icon(Icons.send, color: AppColors.primary),
                     onPressed: state.isSendingMessage ? null : () {
                       if (_controller.text.trim().isNotEmpty) {
                         context.read<CommunicationCubit>().sendChatMessage(_controller.text.trim());

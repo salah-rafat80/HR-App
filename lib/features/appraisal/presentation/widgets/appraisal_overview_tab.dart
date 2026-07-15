@@ -7,6 +7,7 @@ import '../bloc/appraisal_cubit.dart';
 import '../bloc/appraisal_state.dart';
 import 'self_appraisal_modal.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class AppraisalOverviewTab extends StatelessWidget {
@@ -23,7 +24,7 @@ class AppraisalOverviewTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Card(
+              AppCard(
                 child: Padding(
                   padding: EdgeInsets.all(16.w),
                   child: Column(

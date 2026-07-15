@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/engagement_entities.dart';
 import '../bloc/engagement_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class RewardsCard extends StatelessWidget {
   final List<RewardItem> rewards;
@@ -13,7 +14,7 @@ class RewardsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppCard(
       child: Padding(
         padding: EdgeInsets.all(16.w),
         child: Column(
@@ -38,7 +39,7 @@ class RewardsCard extends StatelessWidget {
               final canAfford = myPoints >= reward.pointsCost;
               return ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.card_giftcard, color: AppColors.primary),
+                leading: Icon(Icons.card_giftcard, color: AppColors.primary),
                 title: Text(reward.name),
                 subtitle: Text('${reward.pointsCost} points'),
                 trailing: ElevatedButton(

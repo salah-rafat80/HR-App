@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../bloc/recruitment_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class AdminOnboardingTab extends StatelessWidget {
   const AdminOnboardingTab({super.key});
@@ -31,7 +32,7 @@ class AdminOnboardingTab extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, RecruitmentLoaded state) {
     if (state.onboardingRecords.isEmpty) {
-      return const Center(
+      return Center(
         child: Text('No onboarding cases at the moment.',
             style: TextStyle(color: AppColors.textSecondary)),
       );
@@ -42,7 +43,7 @@ class AdminOnboardingTab extends StatelessWidget {
       itemCount: state.onboardingRecords.length,
       itemBuilder: (context, index) {
         final record = state.onboardingRecords[index];
-        return Card(
+        return AppCard(
           margin: EdgeInsets.only(bottom: 12.h),
           child: ExpansionTile(
             title: Text(record.hireName,

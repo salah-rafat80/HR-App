@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/communication_cubit.dart';
 import '../bloc/communication_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class CommHandbookTab extends StatelessWidget {
@@ -22,7 +23,7 @@ class CommHandbookTab extends StatelessWidget {
           itemCount: state.handbook.length,
           itemBuilder: (context, index) {
             final section = state.handbook[index];
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 12.h),
               child: ExpansionTile(
                 title: Text(section.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),

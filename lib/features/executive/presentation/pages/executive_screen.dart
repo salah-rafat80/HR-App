@@ -8,6 +8,8 @@ import '../../../../core/di/injection.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../bloc/executive_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/animated_glow_card.dart';
 
 class ExecutiveScreen extends StatelessWidget {
   const ExecutiveScreen({super.key});
@@ -22,7 +24,7 @@ class ExecutiveScreen extends StatelessWidget {
           title: Text('executive_dashboard'.tr(), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
           actions: [
             IconButton(
-              icon: const Icon(Icons.logout, color: AppColors.error),
+              icon: Icon(Icons.logout, color: AppColors.error),
               onPressed: () {
                 context.go(AppRoutes.login);
               },
@@ -82,24 +84,24 @@ class ExecutiveScreen extends StatelessWidget {
   }
 
   Widget _buildStatCard(String title, String value) {
-    return Container(
-      width: 100.w,
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(8.r)),
-      child: Column(
-        children: [
-          Text(title, style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)),
-          SizedBox(height: 8.h),
-          Text(value, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.primary)),
-        ],
+    return AnimatedGlowCard(
+      color: AppColors.primary,
+      child: SizedBox(
+        width: 100.w,
+        child: Column(
+          children: [
+            Text(title, style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)),
+            SizedBox(height: 8.h),
+            Text(value, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.primary)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildChartCard(String title, Widget chart) {
-    return Container(
+    return AppCard(
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -140,6 +142,8 @@ class ExecutiveScreen extends StatelessWidget {
           ),
         ],
       ),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeInOut,
     );
   }
 
@@ -179,13 +183,14 @@ class ExecutiveScreen extends StatelessWidget {
           );
         }).toList(),
       ),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeInOut,
     );
   }
 
   Widget _buildKpiHeatmap(ExecutiveLoaded state) {
-    return Container(
+    return AppCard(
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -210,9 +215,8 @@ class ExecutiveScreen extends StatelessWidget {
   }
 
   Widget _buildRecruitmentCard(ExecutiveLoaded state) {
-    return Container(
+    return AppCard(
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -232,9 +236,8 @@ class ExecutiveScreen extends StatelessWidget {
   }
 
   Widget _buildPayrollCard(ExecutiveLoaded state) {
-    return Container(
+    return AppCard(
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

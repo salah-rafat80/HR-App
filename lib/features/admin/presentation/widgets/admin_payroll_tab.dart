@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/di/injection.dart';
 import '../../domain/entities/payroll_run.dart';
 import '../bloc/admin_payroll_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class AdminPayrollTab extends StatelessWidget {
   const AdminPayrollTab({super.key});
@@ -47,7 +48,7 @@ class AdminPayrollTab extends StatelessWidget {
             itemCount: runs.length,
             itemBuilder: (context, index) {
               final run = runs[index];
-              return Card(
+              return AppCard(
                 margin: EdgeInsets.only(bottom: 12.h),
                 child: ListTile(
                   title: Text(run.periodLabel, style: const TextStyle(fontWeight: FontWeight.bold)),

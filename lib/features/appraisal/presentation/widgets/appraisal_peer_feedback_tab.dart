@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/appraisal_cubit.dart';
 import '../bloc/appraisal_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class AppraisalPeerFeedbackTab extends StatelessWidget {
@@ -23,7 +24,7 @@ class AppraisalPeerFeedbackTab extends StatelessWidget {
           itemCount: state.peers.length,
           itemBuilder: (context, index) {
             final peer = state.peers[index];
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 8.h),
               child: ListTile(
                 leading: CircleAvatar(child: Text(peer.colleague.avatarInitial)),

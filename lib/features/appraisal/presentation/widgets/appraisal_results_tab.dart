@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/appraisal_cubit.dart';
 import '../bloc/appraisal_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class AppraisalResultsTab extends StatelessWidget {
@@ -22,7 +23,7 @@ class AppraisalResultsTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Card(
+              AppCard(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 child: Padding(
                   padding: EdgeInsets.all(16.w),

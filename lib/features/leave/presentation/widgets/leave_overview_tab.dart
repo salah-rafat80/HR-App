@@ -7,6 +7,7 @@ import '../bloc/leave_cubit.dart';
 import '../bloc/leave_state.dart';
 import 'leave_apply_modal.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class LeaveOverviewTab extends StatelessWidget {
@@ -53,7 +54,7 @@ class _BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final left = total - used;
     final progress = total > 0 ? (used / total) : 0.0;
-    return Card(
+    return AppCard(
       margin: EdgeInsets.only(bottom: 12.h),
       child: Padding(
         padding: EdgeInsets.all(16.w),
