@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/di/injection.dart';
@@ -37,7 +38,7 @@ class AdminPayrollTab extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _showCreateDialog(context),
-              icon: const Icon(Icons.add),
+              icon: const Icon(AppIcons.approve),
               label: const Text('Create Payroll Run'),
             ),
           ),

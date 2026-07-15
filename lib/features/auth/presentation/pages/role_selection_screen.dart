@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/bloc/session_cubit.dart';
@@ -22,7 +23,7 @@ class RoleSelectionScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: 40.h),
-              Icon(Icons.admin_panel_settings, size: 64.w, color: AppColors.primary),
+              Icon(AppIcons.admin, size: 64.w, color: AppColors.primary),
               SizedBox(height: 16.h),
               Text(
                 '🎭 Preview as:',
@@ -41,37 +42,37 @@ class RoleSelectionScreen extends StatelessWidget {
                   children: [
                     _RoleCard(
                       title: 'Employee',
-                      icon: Icons.person,
+                      icon: AppIcons.profile,
                       role: UserRole.employee,
                       onTap: () => _selectRole(context, UserRole.employee),
                     ),
                     _RoleCard(
                       title: 'Team Lead',
-                      icon: Icons.group,
+                      icon: AppIcons.team,
                       role: UserRole.teamLead,
                       onTap: () => _selectRole(context, UserRole.teamLead),
                     ),
                     _RoleCard(
                       title: 'Manager',
-                      icon: Icons.manage_accounts,
+                      icon: AppIcons.admin,
                       role: UserRole.manager,
                       onTap: () => _selectRole(context, UserRole.manager),
                     ),
                     _RoleCard(
                       title: 'HR Admin',
-                      icon: Icons.work,
+                      icon: AppIcons.profile,
                       role: UserRole.hrAdmin,
                       onTap: () => _selectRole(context, UserRole.hrAdmin),
                     ),
                     _RoleCard(
                       title: 'Super Admin',
-                      icon: Icons.security,
+                      icon: AppIcons.admin,
                       role: UserRole.superAdmin,
                       onTap: () => _selectRole(context, UserRole.superAdmin),
                     ),
                     _RoleCard(
                       title: 'C-Level Executive',
-                      icon: Icons.insights,
+                      icon: AppIcons.kpi,
                       role: UserRole.cLevel,
                       onTap: () => _selectRole(context, UserRole.cLevel),
                     ),
@@ -120,7 +121,7 @@ class _RoleCard extends StatelessWidget {
           child: Icon(icon, color: AppColors.primary),
         ),
         title: Text(title, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600)),
-        trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
+        trailing: Icon(AppIcons.back, color: AppColors.textSecondary),
       ),
     );
   }

@@ -4,8 +4,9 @@ import '../theme/app_colors.dart';
 
 class NavItem {
   final IconData icon;
+  final IconData activeIcon;
   final String label;
-  NavItem(this.icon, this.label);
+  NavItem(this.icon, this.activeIcon, this.label);
 }
 
 class FloatingNavBar extends StatelessWidget {
@@ -58,7 +59,7 @@ class FloatingNavBar extends StatelessWidget {
                             scale: isSelected ? 1.1 : 1.0,
                             duration: const Duration(milliseconds: 300),
                             child: Icon(
-                              items[index].icon,
+                              isSelected ? items[index].activeIcon : items[index].icon,
                               color: isSelected ? AppColors.accent : AppColors.textSecondary,
                               size: 24.w,
                             ),

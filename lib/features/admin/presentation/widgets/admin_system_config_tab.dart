@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -72,7 +73,7 @@ class AdminSystemConfigTab extends StatelessWidget {
                   _buildSectionHeader('Holiday Calendar'),
                   ElevatedButton.icon(
                     onPressed: () => _addHoliday(context),
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(AppIcons.approve),
                     label: const Text('Add Holiday'),
                   ),
                   ...state.holidays.map((h) => ListTile(
@@ -85,7 +86,7 @@ class AdminSystemConfigTab extends StatelessWidget {
                   _buildSectionHeader('Departments'),
                   ElevatedButton.icon(
                     onPressed: () => _addDepartment(context),
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(AppIcons.approve),
                     label: const Text('Add Department'),
                   ),
                   ...state.departments.map((d) => ListTile(
@@ -101,7 +102,7 @@ class AdminSystemConfigTab extends StatelessWidget {
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                       onPressed: () => _startAppraisalCycle(context),
-                      icon: const Icon(Icons.flag),
+                      icon: const Icon(AppIcons.modules),
                       label: const Text('Start New Appraisal Cycle'),
                     ),
                   ),

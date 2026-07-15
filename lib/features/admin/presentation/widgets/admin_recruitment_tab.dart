@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -38,7 +39,7 @@ class AdminRecruitmentTab extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () => _showPostJobDialog(context),
-              icon: const Icon(Icons.add),
+              icon: const Icon(AppIcons.approve),
               label: const Text('Post New Job'),
             ),
           ),
@@ -74,7 +75,7 @@ class AdminRecruitmentTab extends StatelessWidget {
         children: [
           if (candidate.stage == CandidateStage.offer)
             IconButton(
-              icon: Icon(Icons.document_scanner, color: AppColors.primary),
+              icon: Icon(AppIcons.modules, color: AppColors.primary),
               onPressed: () {
                 context.read<RecruitmentCubit>().generateOffer(candidate.id);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer Generated Successfully!')));

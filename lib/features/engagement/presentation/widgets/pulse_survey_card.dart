@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -36,7 +37,7 @@ class PulseSurveyCard extends StatelessWidget {
                     children: List.generate(5, (index) {
                       final rating = index + 1;
                       return IconButton(
-                        icon: Icon(Icons.star_border, color: AppColors.primary, size: 30.sp),
+                        icon: Icon(AppIcons.modules, color: AppColors.primary, size: 30.sp),
                         onPressed: () {
                           context.read<EngagementCubit>().submitPulseAnswer(rating);
                         },

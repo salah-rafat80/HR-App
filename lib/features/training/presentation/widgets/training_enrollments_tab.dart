@@ -1,4 +1,5 @@
 import 'package:hr_app_demo/core/widgets/empty_state_widget.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -19,7 +20,7 @@ class TrainingEnrollmentsTab extends StatelessWidget {
         if (state is! TrainingLoaded) return const AppLoader();
         if (state.myEnrollments.isEmpty) return const Center(child: Text('No enrollments yet'));
 
-        if (state.myEnrollments.isEmpty) return const EmptyStateWidget(icon: Icons.inbox, message: 'no_data_found');
+        if (state.myEnrollments.isEmpty) return const EmptyStateWidget(icon: AppIcons.modules, message: 'no_data_found');
         return ListView.builder(
           padding: EdgeInsets.all(16.w),
           itemCount: state.myEnrollments.length,

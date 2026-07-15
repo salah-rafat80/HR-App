@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/bloc/session_cubit.dart';
@@ -20,13 +21,13 @@ class MainShell extends StatelessWidget {
     final showAdminTab = role == UserRole.hrAdmin || role == UserRole.superAdmin;
     
     final items = [
-      NavItem(Icons.home, 'home_title'.tr()),
-      NavItem(Icons.access_time, 'attendance_title'.tr()),
-      NavItem(Icons.calendar_month, 'leave_title'.tr()),
-      NavItem(Icons.grid_view, 'modules'.tr()),
-      if (showTeamTab) NavItem(Icons.group, 'Team'),
-      if (showAdminTab) NavItem(Icons.admin_panel_settings, 'Admin'),
-      NavItem(Icons.person, 'profile'.tr()),
+      NavItem(AppIcons.home, AppIcons.homeActive, 'home_title'.tr()),
+      NavItem(AppIcons.attendance, AppIcons.attendanceActive, 'attendance_title'.tr()),
+      NavItem(AppIcons.leave, AppIcons.leaveActive, 'leave_title'.tr()),
+      NavItem(AppIcons.modules, AppIcons.modulesActive, 'modules'.tr()),
+      if (showTeamTab) NavItem(AppIcons.team, AppIcons.teamActive, 'Team'),
+      if (showAdminTab) NavItem(AppIcons.admin, AppIcons.adminActive, 'Admin'),
+      NavItem(AppIcons.profile, AppIcons.profileActive, 'profile'.tr()),
     ];
 
     return BlocBuilder<ThemeCubit, ThemeMode>(

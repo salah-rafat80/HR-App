@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -32,7 +33,7 @@ class AppraisalCareerPathTab extends StatelessWidget {
                     CircleAvatar(
                       radius: 12.w,
                       backgroundColor: isCompleted ? AppColors.success : (isCurrent ? AppColors.primary : AppColors.background),
-                      child: isCompleted ? Icon(Icons.check, size: 16.w, color: Colors.white) : null,
+                      child: isCompleted ? Icon(AppIcons.approve, size: 16.w, color: Colors.white) : null,
                     ),
                     if (index < state.careerPath.length - 1)
                       Container(width: 2, height: 40.h, color: isCompleted ? AppColors.success : AppColors.background),

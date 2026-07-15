@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -51,7 +52,7 @@ class _KpiDetailModalState extends State<KpiDetailModal> {
               SizedBox(height: 16.h),
               TextButton.icon(
                 onPressed: () => context.read<KpiCubit>().attachEvidence(kpi.id),
-                icon: const Icon(Icons.attach_file),
+                icon: const Icon(AppIcons.modules),
                 label: Text(kpi.hasEvidence ? 'evidence_attached'.tr() : 'attach_evidence'.tr()),
               ),
               SizedBox(height: 24.h),

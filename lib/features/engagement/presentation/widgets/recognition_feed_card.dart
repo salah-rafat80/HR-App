@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -25,7 +26,7 @@ class RecognitionFeedCard extends StatelessWidget {
                 const Text('Recognition Feed', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 TextButton.icon(
                   onPressed: () => _showGiveRecognitionDialog(context),
-                  icon: const Icon(Icons.stars),
+                  icon: const Icon(AppIcons.modules),
                   label: const Text('Give'),
                 ),
               ],
@@ -37,7 +38,7 @@ class RecognitionFeedCard extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: Icon(Icons.workspace_premium, color: AppColors.primary),
+                child: Icon(AppIcons.modules, color: AppColors.primary),
               ),
               title: Text('${badge.fromName} recognized ${badge.toName}'),
               subtitle: Text('Badge: ${badge.badgeType}\n"${badge.message}"'),

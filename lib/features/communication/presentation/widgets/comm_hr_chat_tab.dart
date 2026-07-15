@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -67,7 +68,7 @@ class _CommHrChatTabState extends State<CommHrChatTab> {
                   ),
                   SizedBox(width: 8.w),
                   IconButton(
-                    icon: state.isSendingMessage ? const SizedBox(width: 24, height: 24, child: AppLoader()) : Icon(Icons.send, color: AppColors.primary),
+                    icon: state.isSendingMessage ? const SizedBox(width: 24, height: 24, child: AppLoader()) : Icon(AppIcons.communication, color: AppColors.primary),
                     onPressed: state.isSendingMessage ? null : () {
                       if (_controller.text.trim().isNotEmpty) {
                         context.read<CommunicationCubit>().sendChatMessage(_controller.text.trim());

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/di/injection.dart';
@@ -20,7 +21,8 @@ class AppraisalScreen extends StatelessWidget {
       child: DefaultTabController(
         length: 5,
         child: Scaffold(
-          appBar: AppBar(
+          extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(
             title: Text('appraisal_title'.tr()),
             bottom: TabBar(
               isScrollable: true,

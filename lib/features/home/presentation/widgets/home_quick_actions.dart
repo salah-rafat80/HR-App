@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -15,10 +16,10 @@ class HomeQuickActions extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _ActionIcon(icon: Icons.access_time, label: 'clock_in'.tr(), onTap: () => context.go(AppRoutes.attendance)),
-          _ActionIcon(icon: Icons.event_note, label: 'apply_leave'.tr(), onTap: () => context.go(AppRoutes.leave)),
-          _ActionIcon(icon: Icons.analytics, label: 'my_kpis'.tr(), onTap: () => context.push(AppRoutes.kpi)),
-          _ActionIcon(icon: Icons.track_changes, label: 'my_goals'.tr(), onTap: () => context.push(AppRoutes.appraisal)),
+          _ActionIcon(icon: AppIcons.attendance, label: 'clock_in'.tr(), onTap: () => context.go(AppRoutes.attendance)),
+          _ActionIcon(icon: AppIcons.leave, label: 'apply_leave'.tr(), onTap: () => context.go(AppRoutes.leave)),
+          _ActionIcon(icon: AppIcons.kpi, label: 'my_kpis'.tr(), onTap: () => context.push(AppRoutes.kpi)),
+          _ActionIcon(icon: AppIcons.appraisal, label: 'my_goals'.tr(), onTap: () => context.push(AppRoutes.appraisal)),
         ],
       ),
     );

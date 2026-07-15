@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -21,7 +23,8 @@ class PayrollScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => getIt<PayrollCubit>()..loadData(),
       child: Scaffold(
-        appBar: AppBar(title: Text('payroll_title'.tr())),
+        extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(title: Text('payroll_title'.tr())),
         body: BlocConsumer<PayrollCubit, PayrollState>(
           listener: (context, state) {
             if (state is PayrollLoaded && state.downloadTaxSuccess) {
@@ -78,7 +81,7 @@ class PayrollScreen extends StatelessWidget {
                 SizedBox(height: 16.h),
                 ElevatedButton.icon(
                   onPressed: state.isDownloadingTax ? null : () => context.read<PayrollCubit>().downloadTaxCertificate(),
-                  icon: state.isDownloadingTax ? const SizedBox(width: 16, height: 16, child: AppLoader(size: 24)) : const Icon(Icons.download),
+                  icon: state.isDownloadingTax ? const SizedBox(width: 16, height: 16, child: AppLoader(size: 24)) : const Icon(AppIcons.payroll),
                   label: Text(state.isDownloadingTax ? 'downloading'.tr() : 'download_tax_cert'.tr()),
                 ),
                 SizedBox(height: 24.h),
@@ -89,7 +92,7 @@ class PayrollScreen extends StatelessWidget {
                   child: ListTile(
                     title: Text(p.monthLabel, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
                     subtitle: Text(currencyFormat.format(p.netPay), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: const Icon(AppIcons.back),
                     onTap: () => showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,

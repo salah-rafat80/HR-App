@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -25,7 +26,7 @@ class LeaveTeamCalendarTab extends StatelessWidget {
             return AppCard(
               margin: EdgeInsets.only(bottom: 8.h),
               child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person)),
+                leading: const CircleAvatar(child: Icon(AppIcons.profile)),
                 title: Text(entry.colleagueName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
                 subtitle: Text('${df.format(entry.startDate)} - ${df.format(entry.endDate)}', style: TextStyle(fontSize: 12.sp)),
               ),

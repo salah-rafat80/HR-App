@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../theme/app_colors.dart';
@@ -22,7 +23,7 @@ class ErrorStateWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64.w, color: AppColors.error),
+            Icon(AppIcons.modules, size: 64.w, color: AppColors.error),
             SizedBox(height: 16.h),
             Text(
               message,
@@ -32,7 +33,7 @@ class ErrorStateWidget extends StatelessWidget {
             SizedBox(height: 24.h),
             ElevatedButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(AppIcons.modules),
               label: Text('retry'.tr()),
             ),
           ],

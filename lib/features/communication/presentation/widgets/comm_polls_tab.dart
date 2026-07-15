@@ -1,4 +1,5 @@
 import 'package:hr_app_demo/core/widgets/empty_state_widget.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -20,7 +21,7 @@ class CommPollsTab extends StatelessWidget {
         if (state is! CommunicationLoaded) return const AppLoader();
         if (state.polls.isEmpty) return const Center(child: Text('No polls available'));
 
-        if (state.polls.isEmpty) return const EmptyStateWidget(icon: Icons.inbox, message: 'no_data_found');
+        if (state.polls.isEmpty) return const EmptyStateWidget(icon: AppIcons.modules, message: 'no_data_found');
         return ListView.builder(
           padding: EdgeInsets.all(16.w),
           itemCount: state.polls.length,

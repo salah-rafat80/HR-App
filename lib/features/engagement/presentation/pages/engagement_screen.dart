@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/di/injection.dart';
@@ -16,10 +18,11 @@ class EngagementScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => getIt<EngagementCubit>()..fetchData(),
       child: Scaffold(
-        appBar: AppBar(
+        extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(
           title: const Text('Engagement'),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(AppIcons.back),
             onPressed: () => Navigator.pop(context),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/bloc/session_cubit.dart';
 import '../../../../core/enums/role_enums.dart';
@@ -19,7 +20,8 @@ class TeamScreen extends StatelessWidget {
     return DefaultTabController(
       length: tabCount,
       child: Scaffold(
-        appBar: AppBar(
+        extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(
           automaticallyImplyLeading: false,
           title: const Text('My Team'),
           bottom: TabBar(

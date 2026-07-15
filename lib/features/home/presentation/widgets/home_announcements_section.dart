@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -43,7 +44,7 @@ class _AnnouncementCard extends StatelessWidget {
     return AppCard(
       margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
-        leading: Icon(Icons.campaign, color: AppColors.secondary, size: 32.w),
+        leading: Icon(AppIcons.communication, color: AppColors.secondary, size: 32.w),
         title: Text(announcement.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
         subtitle: Text(announcement.content, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.sp)),
         trailing: Text(df.format(announcement.date), style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary)),

@@ -1,4 +1,5 @@
 import 'package:hr_app_demo/core/widgets/empty_state_widget.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -45,7 +46,7 @@ class TeamKpiOverviewTab extends StatelessWidget {
         child: Text('No team members found.', style: TextStyle(color: AppColors.textSecondary, fontSize: 16.sp)),
       );
     }
-    if (members.isEmpty) return const EmptyStateWidget(icon: Icons.inbox, message: 'no_data_found');
+    if (members.isEmpty) return const EmptyStateWidget(icon: AppIcons.modules, message: 'no_data_found');
         return ListView.builder(
       padding: EdgeInsets.all(16.w),
       itemCount: members.length,
@@ -86,7 +87,7 @@ class TeamKpiOverviewTab extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     onPressed: () => _showAssignKpiDialog(context, member),
-                    icon: const Icon(Icons.add_task),
+                    icon: const Icon(AppIcons.approve),
                     label: const Text('Assign KPI'),
                   ),
                 ),

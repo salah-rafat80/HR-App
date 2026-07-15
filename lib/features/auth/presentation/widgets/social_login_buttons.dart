@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -15,9 +16,9 @@ class SocialLoginButtons extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _SocialButton(icon: Icons.g_mobiledata, color: Colors.red),
+            _SocialButton(icon: AppIcons.modules, color: Colors.red),
             SizedBox(width: 16.w),
-            _SocialButton(icon: Icons.window, color: Colors.blue),
+            _SocialButton(icon: AppIcons.modules, color: Colors.blue),
           ],
         ),
       ],

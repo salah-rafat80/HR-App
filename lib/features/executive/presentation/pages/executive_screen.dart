@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -19,12 +21,13 @@ class ExecutiveScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => getIt<ExecutiveCubit>()..loadDashboard(),
       child: Scaffold(
-        appBar: AppBar(
+        extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(
           automaticallyImplyLeading: false,
           title: Text('executive_dashboard'.tr(), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
           actions: [
             IconButton(
-              icon: Icon(Icons.logout, color: AppColors.error),
+              icon: Icon(AppIcons.back, color: AppColors.error),
               onPressed: () {
                 context.go(AppRoutes.login);
               },

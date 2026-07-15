@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class SuccessOverlay {
@@ -73,7 +74,7 @@ class _SuccessAnimationWidgetState extends State<_SuccessAnimationWidget> with S
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle, color: Colors.greenAccent, size: 48.w),
+                      Icon(AppIcons.approve, color: Colors.greenAccent, size: 48.w),
                       SizedBox(height: 12.h),
                       Text(
                         widget.message,

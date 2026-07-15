@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../team/presentation/widgets/team_approvals_tab.dart';
@@ -17,7 +18,8 @@ class AdminScreen extends StatelessWidget {
     return DefaultTabController(
       length: 7,
       child: Scaffold(
-        appBar: AppBar(
+        extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(
           automaticallyImplyLeading: false,
           title: Text('admin_panel'.tr()),
           bottom: TabBar(

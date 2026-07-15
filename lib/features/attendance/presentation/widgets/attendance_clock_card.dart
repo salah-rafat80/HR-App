@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -26,7 +27,7 @@ class AttendanceClockCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.location_on, color: AppColors.success),
+                    Icon(AppIcons.modules, color: AppColors.success),
                     SizedBox(width: 8.w),
                     Text('inside_geofence'.tr(), style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
                   ],

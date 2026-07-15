@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -41,7 +42,7 @@ class HomeGreetingHeader extends StatelessWidget {
               CircleAvatar(
                 radius: 24.w,
                 backgroundColor: AppColors.primary,
-                child: const Icon(Icons.person, color: Colors.white),
+                child: const Icon(AppIcons.profile, color: Colors.white),
               ),
             ],
           ),
@@ -55,7 +56,7 @@ class HomeGreetingHeader extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         IconButton(
-          icon: const Icon(Icons.notifications),
+          icon: const Icon(AppIcons.notifications),
           onPressed: () => _showNotifications(context),
         ),
         if (pendingTrainings > 0)
@@ -92,7 +93,7 @@ class HomeGreetingHeader extends StatelessWidget {
                 SizedBox(height: 16.h),
                 if (pendingTrainings > 0)
                   ListTile(
-                    leading: Icon(Icons.warning, color: AppColors.warning),
+                    leading: Icon(AppIcons.admin, color: AppColors.warning),
                     title: Text('home_mandatory_training_notif'.tr(namedArgs: {'count': '$pendingTrainings'})),
                   )
                 else

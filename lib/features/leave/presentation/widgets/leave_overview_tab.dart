@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -29,7 +30,7 @@ class LeaveOverviewTab extends StatelessWidget {
                   isScrollControlled: true, 
                   builder: (_) => BlocProvider.value(value: context.read<LeaveCubit>(), child: const LeaveApplyModal())
                 ),
-                icon: const Icon(Icons.add),
+                icon: const Icon(AppIcons.approve),
                 label: Text('apply_leave'.tr(), style: TextStyle(fontSize: 16.sp)),
               ),
               SizedBox(height: 24.h),

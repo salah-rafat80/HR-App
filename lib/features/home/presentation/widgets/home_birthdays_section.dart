@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../domain/entities/home_entities.dart';
@@ -29,7 +30,7 @@ class HomeBirthdaysSection extends StatelessWidget {
                   padding: EdgeInsets.only(right: 12.w),
                   child: Column(
                     children: [
-                      const CircleAvatar(radius: 24, child: Icon(Icons.cake)),
+                      const CircleAvatar(radius: 24, child: Icon(AppIcons.engagement)),
                       SizedBox(height: 4.h),
                       Text(b.name, style: TextStyle(fontSize: 12.sp)),
                     ],

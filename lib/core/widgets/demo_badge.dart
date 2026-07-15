@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_colors.dart';
 
@@ -19,7 +20,7 @@ class DemoBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.science, size: 14.w, color: Colors.white),
+          Icon(AppIcons.modules, size: 14.w, color: Colors.white),
           SizedBox(width: 4.w),
           Text(
             'DEMO',

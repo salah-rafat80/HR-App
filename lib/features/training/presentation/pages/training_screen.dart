@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -20,7 +22,8 @@ class TrainingScreen extends StatelessWidget {
       child: DefaultTabController(
         length: 3,
         child: Scaffold(
-          appBar: AppBar(
+          extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(
             title: Text('training_title'.tr()),
             bottom: TabBar(
               labelColor: AppColors.primary,
@@ -62,7 +65,7 @@ class TrainingScreen extends StatelessWidget {
             color: AppColors.warning.withValues(alpha: 0.1),
             child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                Icon(AppIcons.admin, color: AppColors.warning),
                 SizedBox(width: 8.w),
                 Expanded(
                   child: Text(

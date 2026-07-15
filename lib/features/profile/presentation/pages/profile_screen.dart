@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -16,14 +18,15 @@ class ProfileScreen extends StatelessWidget {
     return BlocBuilder<ThemeCubit, ThemeMode>(
       builder: (context, themeMode) {
         return Scaffold(
-          appBar: AppBar(automaticallyImplyLeading: false, title: Text('profile'.tr())),
+          extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(automaticallyImplyLeading: false, title: Text('profile'.tr())),
           body: ListView(
             padding: EdgeInsets.all(16.w),
             children: [
               CircleAvatar(
                 radius: 50.w,
                 backgroundColor: AppColors.primary,
-                child: const Icon(Icons.person, color: Colors.white, size: 50),
+                child: const Icon(AppIcons.profile, color: Colors.white, size: 50),
               ),
               SizedBox(height: 16.h),
               Text(
@@ -38,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               SizedBox(height: 32.h),
               ListTile(
-                leading: const Icon(Icons.language),
+                leading: const Icon(AppIcons.communication),
                 title: const Text('اللغة / Language'),
                 trailing: DropdownButton<String>(
                   value: context.locale.languageCode,
@@ -53,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.dark_mode),
+                leading: const Icon(AppIcons.admin),
                 title: const Text('Dark Mode'),
                 trailing: Switch(
                   value: themeMode == ThemeMode.dark,
@@ -64,7 +67,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               const Divider(),
               ListTile(
-                leading: Icon(Icons.logout, color: AppColors.error),
+                leading: Icon(AppIcons.back, color: AppColors.error),
                 title: Text('logout'.tr(), style: TextStyle(color: AppColors.error)),
                 onTap: () {
                   context.go(AppRoutes.login);

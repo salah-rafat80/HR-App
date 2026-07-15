@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -39,7 +40,7 @@ class RewardsCard extends StatelessWidget {
               final canAfford = myPoints >= reward.pointsCost;
               return ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.card_giftcard, color: AppColors.primary),
+                leading: Icon(AppIcons.modules, color: AppColors.primary),
                 title: Text(reward.name),
                 subtitle: Text('${reward.pointsCost} points'),
                 trailing: ElevatedButton(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
@@ -20,7 +21,7 @@ class GlobalFallbackWidget extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: AppColors.error, size: 64.w),
+              Icon(AppIcons.modules, color: AppColors.error, size: 64.w),
               AppSpacing.verticalLg,
               Text(
                 'Oops! Something went wrong.',
@@ -42,7 +43,7 @@ class GlobalFallbackWidget extends StatelessWidget {
                       context.go('/');
                     }
                   },
-                  icon: const Icon(Icons.home),
+                  icon: const Icon(AppIcons.home),
                   label: const Text('Go to Home'),
                 ),
               ),

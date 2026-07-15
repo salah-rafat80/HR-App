@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -14,10 +16,11 @@ class OrgChartScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => getIt<OrgChartCubit>()..fetchData(),
       child: Scaffold(
-        appBar: AppBar(
+        extendBodyBehindAppBar: true,
+        appBar: AppCustomBar(
           title: const Text('Organization Chart'),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(AppIcons.back),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -51,7 +54,7 @@ class OrgChartScreen extends StatelessWidget {
         child: ListTile(
           leading: CircleAvatar(
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: Icon(Icons.person, color: AppColors.primary),
+            child: Icon(AppIcons.profile, color: AppColors.primary),
           ),
           title: Text(node.employeeName, style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text('${node.title} • ${node.department}'),
@@ -67,7 +70,7 @@ class OrgChartScreen extends StatelessWidget {
           initiallyExpanded: depth < 2,
           leading: CircleAvatar(
             backgroundColor: AppColors.primary,
-            child: const Icon(Icons.person, color: Colors.white),
+            child: const Icon(AppIcons.profile, color: Colors.white),
           ),
           title: Text(node.employeeName, style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text('${node.title} • ${node.department}'),
