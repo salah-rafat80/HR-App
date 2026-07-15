@@ -33,7 +33,6 @@ class MainShell extends StatelessWidget {
       builder: (context, theme) {
         return Scaffold(
           body: child,
-          extendBody: true,
           bottomNavigationBar: SafeArea(
             child: FloatingNavBar(
               items: items,
