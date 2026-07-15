@@ -46,3 +46,63 @@ class JobRequisition extends Equatable {
   @override
   List<Object?> get props => [id, title, department, status, openings];
 }
+
+class OnboardingTask extends Equatable {
+  final String id;
+  final String title;
+  final bool completed;
+
+  const OnboardingTask({
+    required this.id,
+    required this.title,
+    required this.completed,
+  });
+
+  OnboardingTask copyWith({bool? completed}) {
+    return OnboardingTask(
+      id: id,
+      title: title,
+      completed: completed ?? this.completed,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, title, completed];
+}
+
+class NewHireOnboarding extends Equatable {
+  final String id;
+  final String hireName;
+  final String startDate;
+  final List<OnboardingTask> tasks;
+
+  const NewHireOnboarding({
+    required this.id,
+    required this.hireName,
+    required this.startDate,
+    required this.tasks,
+  });
+
+  double get completionPercent {
+    if (tasks.isEmpty) return 1.0;
+    final completedCount = tasks.where((t) => t.completed).length;
+    return completedCount / tasks.length;
+  }
+
+  NewHireOnboarding copyWith({
+    String? id,
+    String? hireName,
+    String? startDate,
+    List<OnboardingTask>? tasks,
+  }) {
+    return NewHireOnboarding(
+      id: id ?? this.id,
+      hireName: hireName ?? this.hireName,
+      startDate: startDate ?? this.startDate,
+      tasks: tasks ?? this.tasks,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, hireName, startDate, tasks];
+}

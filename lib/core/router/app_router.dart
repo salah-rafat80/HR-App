@@ -20,6 +20,8 @@ import '../../features/appraisal/presentation/pages/appraisal_screen.dart';
 import '../../features/payroll/presentation/pages/payroll_screen.dart';
 import '../../features/training/presentation/pages/training_screen.dart';
 import '../../features/communication/presentation/pages/communication_screen.dart';
+import '../../features/engagement/presentation/pages/engagement_screen.dart';
+import '../../features/org_chart/presentation/pages/org_chart_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -130,6 +132,16 @@ class AppRouter {
         path: AppRoutes.executive,
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const ExecutiveScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.engagement,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadeTransition(const EngagementScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.orgChart,
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _fadeTransition(const OrgChartScreen()),
       ),
     ],
   );

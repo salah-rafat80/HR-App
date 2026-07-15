@@ -6,6 +6,8 @@ import '../../../team/presentation/widgets/team_kpi_overview_tab.dart';
 import '../widgets/admin_recruitment_tab.dart';
 import '../widgets/admin_payroll_tab.dart';
 import '../widgets/admin_system_config_tab.dart';
+import '../widgets/admin_onboarding_tab.dart';
+import '../widgets/admin_offboarding_tab.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -13,7 +15,7 @@ class AdminScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 7,
       child: Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -27,6 +29,8 @@ class AdminScreen extends StatelessWidget {
               const Tab(text: 'Approvals'),
               const Tab(text: 'KPI Overview'),
               Tab(text: 'recruitment'.tr()),
+              const Tab(text: 'Onboarding'),
+              const Tab(text: 'Offboarding'),
               Tab(text: 'payroll_tab'.tr()),
               Tab(text: 'system_config'.tr()),
             ],
@@ -37,6 +41,8 @@ class AdminScreen extends StatelessWidget {
             TeamApprovalsTab(),
             TeamKpiOverviewTab(),
             AdminRecruitmentTab(),
+            AdminOnboardingTab(),
+            AdminOffboardingTab(),
             AdminPayrollTab(),
             AdminSystemConfigTab(),
           ],

@@ -19,4 +19,6 @@ class AppRoutes {
   static const String team = '/team';
   static const String admin = '/admin';
   static const String executive = '/executive';
+  static const String engagement = '/engagement';
+  static const String orgChart = '/org-chart';
 }

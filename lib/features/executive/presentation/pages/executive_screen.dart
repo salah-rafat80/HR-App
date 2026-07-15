@@ -76,6 +76,7 @@ class ExecutiveScreen extends StatelessWidget {
         _buildStatCard('On Leave', '${(state.summary.onLeavePercent * 100).toInt()}%'),
         _buildStatCard('Turnover', '${(state.summary.turnoverPercent * 100).toInt()}%'),
         _buildStatCard('Avg KPI', '${(state.summary.avgKpiScorePercent * 100).toInt()}%'),
+        _buildStatCard('Engagement', '${(state.summary.engagementScorePercent * 100).toInt()}%'),
       ],
     );
   }

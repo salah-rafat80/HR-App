@@ -9,7 +9,8 @@ class RecruitmentLoading extends RecruitmentState {}
 class RecruitmentLoaded extends RecruitmentState {
   final List<JobRequisition> jobs;
   final Map<String, List<Candidate>> candidatesMap;
-  RecruitmentLoaded(this.jobs, this.candidatesMap);
+  final List<NewHireOnboarding> onboardingRecords;
+  RecruitmentLoaded(this.jobs, this.candidatesMap, this.onboardingRecords);
 }
 class RecruitmentError extends RecruitmentState {
   final String message;
@@ -30,7 +31,8 @@ class RecruitmentCubit extends SafeCubit<RecruitmentState> {
         final c = await _repository.getCandidates(job.id);
         candidatesMap[job.id] = c;
       }
-      emit(RecruitmentLoaded(jobs, candidatesMap));
+      final onboardingRecords = await _repository.getOnboardingRecords();
+      emit(RecruitmentLoaded(jobs, candidatesMap, onboardingRecords));
     } catch (e) {
       emit(RecruitmentError(e.toString()));
     }
@@ -58,6 +60,15 @@ class RecruitmentCubit extends SafeCubit<RecruitmentState> {
     try {
       await _repository.generateOffer(candidateId);
       // Optional: re-fetch or just show toast in UI
+    } catch (e) {
+      emit(RecruitmentError(e.toString()));
+    }
+  }
+
+  Future<void> toggleOnboardingTask(String recordId, String taskId) async {
+    try {
+      await _repository.toggleOnboardingTask(recordId, taskId);
+      fetchData();
     } catch (e) {
       emit(RecruitmentError(e.toString()));
     }
