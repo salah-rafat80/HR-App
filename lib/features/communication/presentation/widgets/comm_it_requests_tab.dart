@@ -8,6 +8,8 @@ import '../bloc/communication_cubit.dart';
 import '../bloc/communication_state.dart';
 import 'new_it_request_modal.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/pulsing_pending_chip.dart';
 
 
 class CommItRequestsTab extends StatelessWidget {
@@ -43,7 +45,7 @@ class CommItRequestsTab extends StatelessWidget {
                 itemCount: state.itRequests.length,
                 itemBuilder: (context, index) {
                   final req = state.itRequests[index];
-                  return Card(
+                  return AppCard(
                     margin: EdgeInsets.only(bottom: 12.h),
                     child: ListTile(
                       title: Text(req.id, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
@@ -69,6 +71,10 @@ class CommItRequestsTab extends StatelessWidget {
   }
 
   Widget _buildStatusChip(ItRequestStatus status) {
+    if (status == ItRequestStatus.open) {
+      return PulsingPendingChip(label: 'status_open'.tr());
+    }
+
     String label;
     Color color;
     switch (status) {

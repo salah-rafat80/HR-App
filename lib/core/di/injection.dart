@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../theme/theme_cubit.dart';
 
 import '../../features/attendance/data/datasources/fake_attendance_datasource.dart';
 import '../../features/attendance/data/repositories/attendance_repository_impl.dart';
@@ -79,6 +80,7 @@ Future<void> initDI() async {
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
   getIt.registerLazySingleton(() => SessionCubit());
+  getIt.registerLazySingleton(() => ThemeCubit());
 
   // Data Sources (Singletons for state sync)
   getIt.registerLazySingleton(() => FakeAttendanceDataSource());

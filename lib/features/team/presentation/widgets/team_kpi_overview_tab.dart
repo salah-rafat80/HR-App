@@ -9,6 +9,7 @@ import '../../../../core/di/injection.dart';
 import '../../domain/entities/team_member.dart';
 import '../../../kpi/domain/entities/kpi_entities.dart';
 import '../bloc/team_kpi_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class TeamKpiOverviewTab extends StatelessWidget {
   const TeamKpiOverviewTab({super.key});
@@ -50,7 +51,7 @@ class TeamKpiOverviewTab extends StatelessWidget {
       itemCount: members.length,
       itemBuilder: (context, index) {
         final member = members[index];
-        return Card(
+        return AppCard(
           margin: EdgeInsets.only(bottom: 12.h),
           child: Padding(
             padding: EdgeInsets.all(16.w),

@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/theme/theme_cubit.dart';
 import 'app.dart';
 import 'core/di/injection.dart';
 import 'core/utils/crash_reporter.dart';
 import 'core/widgets/global_fallback_widget.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   runZonedGuarded(() async {
@@ -15,6 +18,9 @@ void main() async {
     
     // Initialize Dependency Injection
     await initDI();
+    
+    // Disable Google Fonts runtime fetching to prevent crashes when offline
+    GoogleFonts.config.allowRuntimeFetching = false;
 
     // Set custom error widget
     ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -35,8 +41,10 @@ void main() async {
         supportedLocales: const [Locale('ar'), Locale('en')],
         path: 'assets/translations',
         fallbackLocale: const Locale('ar'),
-        startLocale: const Locale('ar'),
-        child: const App(),
+        child: BlocProvider.value(
+          value: getIt<ThemeCubit>(),
+          child: const App(),
+        ),
       ),
     );
   }, (error, stackTrace) {

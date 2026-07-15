@@ -62,7 +62,7 @@ class TrainingScreen extends StatelessWidget {
             color: AppColors.warning.withValues(alpha: 0.1),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                Icon(Icons.warning_amber_rounded, color: AppColors.warning),
                 SizedBox(width: 8.w),
                 Expanded(
                   child: Text(

@@ -8,6 +8,7 @@ import '../bloc/payroll_cubit.dart';
 import '../bloc/payroll_state.dart';
 import '../widgets/payslip_detail_modal.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class PayrollScreen extends StatelessWidget {
@@ -39,7 +40,7 @@ class PayrollScreen extends StatelessWidget {
                     decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.success)),
                     child: Text('bonus_notice'.tr(namedArgs: {'message': state.bonusNotice!.message, 'amount': currencyFormat.format(state.bonusNotice!.amount)}), style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
                   ),
-                Card(
+                AppCard(
                   child: Padding(
                     padding: EdgeInsets.all(16.w),
                     child: Column(
@@ -83,7 +84,7 @@ class PayrollScreen extends StatelessWidget {
                 SizedBox(height: 24.h),
                 Text('payslips'.tr(), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
                 SizedBox(height: 8.h),
-                ...state.payslips.map((p) => Card(
+                ...state.payslips.map((p) => AppCard(
                   margin: EdgeInsets.only(bottom: 8.h),
                   child: ListTile(
                     title: Text(p.monthLabel, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),

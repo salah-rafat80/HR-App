@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/bloc/session_cubit.dart';
 import '../../../../core/enums/role_enums.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/theme/theme_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/widgets/floating_nav_bar.dart';
 
 class MainShell extends StatelessWidget {
   final Widget child;
@@ -18,27 +20,29 @@ class MainShell extends StatelessWidget {
     final showAdminTab = role == UserRole.hrAdmin || role == UserRole.superAdmin;
     
     final items = [
-      BottomNavigationBarItem(icon: const Icon(Icons.home), label: 'home_title'.tr()),
-      BottomNavigationBarItem(icon: const Icon(Icons.access_time), label: 'attendance_title'.tr()),
-      BottomNavigationBarItem(icon: const Icon(Icons.calendar_month), label: 'leave_title'.tr()),
-      BottomNavigationBarItem(icon: const Icon(Icons.grid_view), label: 'modules'.tr()),
-      if (showTeamTab) BottomNavigationBarItem(icon: const Icon(Icons.group), label: 'Team'),
-      if (showAdminTab) BottomNavigationBarItem(icon: const Icon(Icons.admin_panel_settings), label: 'Admin'),
-      BottomNavigationBarItem(icon: const Icon(Icons.person), label: 'profile'.tr()),
+      NavItem(Icons.home, 'home_title'.tr()),
+      NavItem(Icons.access_time, 'attendance_title'.tr()),
+      NavItem(Icons.calendar_month, 'leave_title'.tr()),
+      NavItem(Icons.grid_view, 'modules'.tr()),
+      if (showTeamTab) NavItem(Icons.group, 'Team'),
+      if (showAdminTab) NavItem(Icons.admin_panel_settings, 'Admin'),
+      NavItem(Icons.person, 'profile'.tr()),
     ];
 
-    return SafeArea(
-      child: Scaffold(
-        body: child,
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppColors.primary,
-          unselectedItemColor: AppColors.textSecondary,
-          currentIndex: _calculateSelectedIndex(context, showTeamTab, showAdminTab),
-          onTap: (index) => _onItemTapped(index, context, showTeamTab, showAdminTab),
-          items: items,
-        ),
-      ),
+    return BlocBuilder<ThemeCubit, ThemeMode>(
+      builder: (context, theme) {
+        return Scaffold(
+          body: child,
+          extendBody: true,
+          bottomNavigationBar: SafeArea(
+            child: FloatingNavBar(
+              items: items,
+              selectedIndex: _calculateSelectedIndex(context, showTeamTab, showAdminTab),
+              onItemSelected: (index) => _onItemTapped(index, context, showTeamTab, showAdminTab),
+            ),
+          ),
+        );
+      }
     );
   }
 

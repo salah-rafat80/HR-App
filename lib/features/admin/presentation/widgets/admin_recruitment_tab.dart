@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../domain/entities/recruitment_entities.dart';
 import '../bloc/recruitment_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class AdminRecruitmentTab extends StatelessWidget {
   const AdminRecruitmentTab({super.key});
@@ -49,7 +50,7 @@ class AdminRecruitmentTab extends StatelessWidget {
             itemBuilder: (context, index) {
               final job = state.jobs[index];
               final candidates = state.candidatesMap[job.id] ?? [];
-              return Card(
+              return AppCard(
                 margin: EdgeInsets.only(bottom: 12.h),
                 child: ExpansionTile(
                   title: Text(job.title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -73,7 +74,7 @@ class AdminRecruitmentTab extends StatelessWidget {
         children: [
           if (candidate.stage == CandidateStage.offer)
             IconButton(
-              icon: const Icon(Icons.document_scanner, color: AppColors.primary),
+              icon: Icon(Icons.document_scanner, color: AppColors.primary),
               onPressed: () {
                 context.read<RecruitmentCubit>().generateOffer(candidate.id);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer Generated Successfully!')));

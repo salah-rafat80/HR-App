@@ -8,6 +8,7 @@ import '../bloc/training_cubit.dart';
 import '../bloc/training_state.dart';
 import 'training_course_detail_modal.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class TrainingBrowseTab extends StatelessWidget {
@@ -25,7 +26,7 @@ class TrainingBrowseTab extends StatelessWidget {
           itemCount: state.availableCourses.length,
           itemBuilder: (context, index) {
             final course = state.availableCourses[index];
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 12.h),
               child: ListTile(
                 onTap: () => _showCourseDetail(context, course),

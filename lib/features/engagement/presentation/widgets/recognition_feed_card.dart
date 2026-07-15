@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/engagement_entities.dart';
 import '../bloc/engagement_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class RecognitionFeedCard extends StatelessWidget {
   final List<RecognitionBadge> feed;
@@ -12,7 +13,7 @@ class RecognitionFeedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppCard(
       child: Padding(
         padding: EdgeInsets.all(16.w),
         child: Column(
@@ -31,12 +32,12 @@ class RecognitionFeedCard extends StatelessWidget {
             ),
             SizedBox(height: 12.h),
             if (feed.isEmpty)
-              const Center(child: Text('No recognitions yet.', style: TextStyle(color: AppColors.textSecondary))),
+              Center(child: Text('No recognitions yet.', style: TextStyle(color: AppColors.textSecondary))),
             ...feed.map((badge) => ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: const Icon(Icons.workspace_premium, color: AppColors.primary),
+                child: Icon(Icons.workspace_premium, color: AppColors.primary),
               ),
               title: Text('${badge.fromName} recognized ${badge.toName}'),
               subtitle: Text('Badge: ${badge.badgeType}\n"${badge.message}"'),

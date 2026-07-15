@@ -6,6 +6,7 @@ import '../../../../core/enums/role_enums.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -109,10 +110,8 @@ class _RoleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppCard(
       margin: EdgeInsets.only(bottom: 16.h),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: ListTile(
         onTap: onTap,
         contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
@@ -121,7 +120,7 @@ class _RoleCard extends StatelessWidget {
           child: Icon(icon, color: AppColors.primary),
         ),
         title: Text(title, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600)),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+        trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
       ),
     );
   }

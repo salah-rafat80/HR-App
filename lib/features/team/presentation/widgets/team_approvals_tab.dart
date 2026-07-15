@@ -8,6 +8,8 @@ import '../../../../core/enums/role_enums.dart';
 import '../../../../core/di/injection.dart';
 import '../../../leave/domain/entities/leave_request.dart';
 import '../bloc/team_approvals_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/pulsing_pending_chip.dart';
 
 class TeamApprovalsTab extends StatelessWidget {
   const TeamApprovalsTab({super.key});
@@ -49,14 +51,20 @@ class TeamApprovalsTab extends StatelessWidget {
       itemCount: requests.length,
       itemBuilder: (context, index) {
         final req = requests[index];
-        return Card(
+        return AppCard(
           margin: EdgeInsets.only(bottom: 12.h),
           child: Padding(
             padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(req.employeeName ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(req.employeeName ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
+                    const PulsingPendingChip(label: 'Pending'),
+                  ],
+                ),
                 SizedBox(height: 4.h),
                 Text('${req.type.name.toUpperCase()} Leave', style: TextStyle(color: AppColors.primary)),
                 SizedBox(height: 8.h),

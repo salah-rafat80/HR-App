@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../bloc/offboarding_cubit.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/pulsing_pending_chip.dart';
 
 class AdminOffboardingTab extends StatelessWidget {
   const AdminOffboardingTab({super.key});
@@ -45,7 +47,7 @@ class AdminOffboardingTab extends StatelessWidget {
         ),
         Expanded(
           child: state.cases.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text('No offboarding cases at the moment.',
                       style: TextStyle(color: AppColors.textSecondary)),
                 )
@@ -54,7 +56,7 @@ class AdminOffboardingTab extends StatelessWidget {
                   itemCount: state.cases.length,
                   itemBuilder: (context, index) {
                     final record = state.cases[index];
-                    return Card(
+                    return AppCard(
                       margin: EdgeInsets.only(bottom: 12.h),
                       child: ExpansionTile(
                         title: Text(record.employeeName,
@@ -67,19 +69,19 @@ class AdminOffboardingTab extends StatelessWidget {
                             SizedBox(height: 4.h),
                             Row(
                               children: [
-                                Chip(
-                                  label: Text(
-                                    record.status,
-                                    style: const TextStyle(
-                                        fontSize: 10, color: Colors.white),
-                                  ),
-                                  backgroundColor: record.status == 'completed'
-                                      ? Colors.green
-                                      : (record.status == 'inProgress'
-                                          ? Colors.orange
-                                          : Colors.grey),
-                                  visualDensity: VisualDensity.compact,
-                                ),
+                                record.status == 'inProgress'
+                                  ? PulsingPendingChip(label: 'inProgress')
+                                  : Chip(
+                                      label: Text(
+                                        record.status,
+                                        style: const TextStyle(
+                                            fontSize: 10, color: Colors.white),
+                                      ),
+                                      backgroundColor: record.status == 'completed'
+                                          ? Colors.green
+                                          : Colors.grey,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
                               ],
                             ),
                             SizedBox(height: 8.h),

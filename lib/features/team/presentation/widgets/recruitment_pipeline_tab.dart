@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class RecruitmentPipelineTab extends StatelessWidget {
   const RecruitmentPipelineTab({super.key});
@@ -19,7 +20,7 @@ class RecruitmentPipelineTab extends StatelessWidget {
       itemCount: positions.length,
       itemBuilder: (context, index) {
         final pos = positions[index];
-        return Card(
+        return AppCard(
           margin: EdgeInsets.only(bottom: 12.h),
           child: Padding(
             padding: EdgeInsets.all(16.w),

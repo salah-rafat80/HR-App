@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/communication_cubit.dart';
 import '../bloc/communication_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class CommPollsTab extends StatelessWidget {
@@ -27,7 +28,7 @@ class CommPollsTab extends StatelessWidget {
             final poll = state.polls[index];
             final totalVotes = poll.options.fold(0, (sum, o) => sum + o.voteCount);
 
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 16.h),
               child: Padding(
                 padding: EdgeInsets.all(16.w),

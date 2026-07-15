@@ -27,9 +27,11 @@ class OrgChartScreen extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             } else if (state is OrgChartLoaded) {
               if (state.rootNode == null) {
-                return const Center(child: Text('No organizational data found.', style: TextStyle(color: AppColors.textSecondary)));
+                return Center(child: Text('No organizational data found.', style: TextStyle(color: AppColors.textSecondary)));
               }
-              return _buildTreeView(state.rootNode!, state.childrenMap, 0);
+              return SingleChildScrollView(
+                child: _buildTreeView(state.rootNode!, state.childrenMap, 0),
+              );
             } else if (state is OrgChartError) {
               return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
             }
@@ -49,7 +51,7 @@ class OrgChartScreen extends StatelessWidget {
         child: ListTile(
           leading: CircleAvatar(
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: const Icon(Icons.person, color: AppColors.primary),
+            child: Icon(Icons.person, color: AppColors.primary),
           ),
           title: Text(node.employeeName, style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text('${node.title} • ${node.department}'),

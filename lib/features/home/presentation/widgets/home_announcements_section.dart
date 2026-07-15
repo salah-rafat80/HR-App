@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/home_entities.dart';
+import '../../../../core/widgets/app_card.dart';
 
 class HomeAnnouncementsSection extends StatelessWidget {
   final List<Announcement> announcements;
@@ -39,7 +40,7 @@ class _AnnouncementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('dd MMM', context.locale.languageCode);
-    return Card(
+    return AppCard(
       margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
         leading: Icon(Icons.campaign, color: AppColors.secondary, size: 32.w),

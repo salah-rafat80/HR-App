@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/attendance_cubit.dart';
 import '../bloc/attendance_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class AttendanceClockCard extends StatelessWidget {
@@ -17,7 +18,7 @@ class AttendanceClockCard extends StatelessWidget {
       builder: (context, state) {
         if (state is! AttendanceLoaded) return const AppLoader();
         final isClockedIn = state.todayStatus.clockInTime != null && state.todayStatus.clockOutTime == null;
-        return Card(
+        return AppCard(
           child: Padding(
             padding: EdgeInsets.all(16.w),
             child: Column(
@@ -25,7 +26,7 @@ class AttendanceClockCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.location_on, color: AppColors.success),
+                    Icon(Icons.location_on, color: AppColors.success),
                     SizedBox(width: 8.w),
                     Text('inside_geofence'.tr(), style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
                   ],

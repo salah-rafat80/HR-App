@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/appraisal_cubit.dart';
 import '../bloc/appraisal_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
+import '../../../../core/widgets/app_card.dart';
 
 
 class AppraisalDevPlanTab extends StatelessWidget {
@@ -20,7 +21,7 @@ class AppraisalDevPlanTab extends StatelessWidget {
           itemCount: state.devPlan.length,
           itemBuilder: (context, index) {
             final goal = state.devPlan[index];
-            return Card(
+            return AppCard(
               margin: EdgeInsets.only(bottom: 12.h),
               child: Padding(
                 padding: EdgeInsets.all(16.w),
