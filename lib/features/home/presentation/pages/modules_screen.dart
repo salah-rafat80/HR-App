@@ -25,7 +25,7 @@ class ModulesScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      
         appBar: AppCustomBar(automaticallyImplyLeading: false, title: Text('modules'.tr())),
       body: GridView.builder(
         padding: EdgeInsets.all(16.w),

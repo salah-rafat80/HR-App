@@ -21,7 +21,7 @@ class CommunicationScreen extends StatelessWidget {
       child: DefaultTabController(
         length: 5,
         child: Scaffold(
-          extendBodyBehindAppBar: true,
+          
         appBar: AppCustomBar(
             title: Text('communication_hub'.tr()),
             bottom: TabBar(

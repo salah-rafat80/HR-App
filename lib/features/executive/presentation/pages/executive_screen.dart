@@ -21,7 +21,7 @@ class ExecutiveScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => getIt<ExecutiveCubit>()..loadDashboard(),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        
         appBar: AppCustomBar(
           automaticallyImplyLeading: false,
           title: Text('executive_dashboard'.tr(), style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),

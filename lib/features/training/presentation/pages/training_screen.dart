@@ -22,7 +22,7 @@ class TrainingScreen extends StatelessWidget {
       child: DefaultTabController(
         length: 3,
         child: Scaffold(
-          extendBodyBehindAppBar: true,
+          
         appBar: AppCustomBar(
             title: Text('training_title'.tr()),
             bottom: TabBar(

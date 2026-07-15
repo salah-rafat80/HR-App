@@ -10,7 +10,7 @@ class ComingSoonScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      
         appBar: AppCustomBar(title: Text('coming_soon_title'.tr())),
       body: Center(
         child: Column(

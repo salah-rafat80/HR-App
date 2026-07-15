@@ -20,7 +20,7 @@ class TeamScreen extends StatelessWidget {
     return DefaultTabController(
       length: tabCount,
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        
         appBar: AppCustomBar(
           automaticallyImplyLeading: false,
           title: const Text('My Team'),

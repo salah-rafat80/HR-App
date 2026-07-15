@@ -18,7 +18,7 @@ class EngagementScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => getIt<EngagementCubit>()..fetchData(),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        
         appBar: AppCustomBar(
           title: const Text('Engagement'),
           leading: IconButton(

@@ -23,7 +23,7 @@ class LeaveRequestDetailScreen extends StatelessWidget {
         if (state is! LeaveLoaded) return const SizedBox.shrink();
         final currentReq = state.requests.firstWhere((r) => r.id == request.id, orElse: () => request);
         return Scaffold(
-          extendBodyBehindAppBar: true,
+          
         appBar: AppCustomBar(title: Text(currentReq.type.name.tr())),
           body: Padding(
             padding: EdgeInsets.all(AppSpacing.md),

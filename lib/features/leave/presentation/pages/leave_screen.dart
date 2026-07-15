@@ -19,7 +19,7 @@ class LeaveScreen extends StatelessWidget {
       child: DefaultTabController(
         length: 3,
         child: Scaffold(
-          extendBodyBehindAppBar: true,
+          
         appBar: AppCustomBar(
             automaticallyImplyLeading: false,
             title: Text('leave_overview'.tr()),

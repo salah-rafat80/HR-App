@@ -18,7 +18,7 @@ class KpiScreen extends StatelessWidget {
       child: DefaultTabController(
         length: 2,
         child: Scaffold(
-          extendBodyBehindAppBar: true,
+          
         appBar: AppCustomBar(
             title: Text('kpi_tracker'.tr()),
             bottom: TabBar(

@@ -23,7 +23,7 @@ class PayrollScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => getIt<PayrollCubit>()..loadData(),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        
         appBar: AppCustomBar(title: Text('payroll_title'.tr())),
         body: BlocConsumer<PayrollCubit, PayrollState>(
           listener: (context, state) {

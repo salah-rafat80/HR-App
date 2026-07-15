@@ -16,7 +16,7 @@ class OrgChartScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => getIt<OrgChartCubit>()..fetchData(),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        
         appBar: AppCustomBar(
           title: const Text('Organization Chart'),
           leading: IconButton(

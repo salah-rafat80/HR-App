@@ -18,7 +18,7 @@ class AdminScreen extends StatelessWidget {
     return DefaultTabController(
       length: 7,
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        
         appBar: AppCustomBar(
           automaticallyImplyLeading: false,
           title: Text('admin_panel'.tr()),

@@ -18,7 +18,7 @@ class ProfileScreen extends StatelessWidget {
     return BlocBuilder<ThemeCubit, ThemeMode>(
       builder: (context, themeMode) {
         return Scaffold(
-          extendBodyBehindAppBar: true,
+          
         appBar: AppCustomBar(automaticallyImplyLeading: false, title: Text('profile'.tr())),
           body: ListView(
             padding: EdgeInsets.all(16.w),
