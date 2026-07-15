@@ -49,13 +49,16 @@ class KpiHistoryTab extends StatelessWidget {
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
+                            interval: 1,
+                            reservedSize: 32,
                             getTitlesWidget: (value, meta) {
+                              if (value != value.toInt()) return const SizedBox.shrink();
                               final intValue = value.toInt();
                               if (intValue >= 0 && intValue < state.history.length) {
                                 final labelIndex = isRtl ? (state.history.length - 1 - intValue) : intValue;
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(state.history[labelIndex].quarterLabel, style: TextStyle(fontSize: 12.sp)),
+                                  child: Text(state.history[labelIndex].quarterLabel, style: TextStyle(fontSize: 10.sp)),
                                 );
                               }
                               return const SizedBox.shrink();

@@ -119,7 +119,8 @@ class ExecutiveScreen extends StatelessWidget {
       LineChartData(
         gridData: FlGridData(show: false),
         titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, getTitlesWidget: (val, meta) {
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, interval: 1, getTitlesWidget: (val, meta) {
+            if (val != val.toInt()) return const SizedBox.shrink();
             if (val.toInt() >= 0 && val.toInt() < data.length) {
               return Padding(padding: const EdgeInsets.only(top: 8.0), child: Text(data[val.toInt()].label, style: TextStyle(fontSize: 10.sp)));
             }
@@ -153,7 +154,8 @@ class ExecutiveScreen extends StatelessWidget {
       BarChartData(
         gridData: FlGridData(show: false),
         titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (val, meta) {
+          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, interval: 1, getTitlesWidget: (val, meta) {
+            if (val != val.toInt()) return const SizedBox.shrink();
             if (val.toInt() >= 0 && val.toInt() < data.length) {
               final dept = data[val.toInt()].department;
               final displayDept = dept.length > 3 ? dept.substring(0, 3) : dept;
