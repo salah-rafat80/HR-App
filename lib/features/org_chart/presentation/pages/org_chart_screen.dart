@@ -29,7 +29,9 @@ class OrgChartScreen extends StatelessWidget {
               if (state.rootNode == null) {
                 return Center(child: Text('No organizational data found.', style: TextStyle(color: AppColors.textSecondary)));
               }
-              return _buildTreeView(state.rootNode!, state.childrenMap, 0);
+              return SingleChildScrollView(
+                child: _buildTreeView(state.rootNode!, state.childrenMap, 0),
+              );
             } else if (state is OrgChartError) {
               return Center(child: Text(state.message, style: const TextStyle(color: Colors.red)));
             }

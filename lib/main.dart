@@ -7,6 +7,7 @@ import 'app.dart';
 import 'core/di/injection.dart';
 import 'core/utils/crash_reporter.dart';
 import 'core/widgets/global_fallback_widget.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   runZonedGuarded(() async {
@@ -17,6 +18,9 @@ void main() async {
     
     // Initialize Dependency Injection
     await initDI();
+    
+    // Disable Google Fonts runtime fetching to prevent crashes when offline
+    GoogleFonts.config.allowRuntimeFetching = false;
 
     // Set custom error widget
     ErrorWidget.builder = (FlutterErrorDetails details) {
