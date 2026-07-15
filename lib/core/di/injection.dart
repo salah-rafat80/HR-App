@@ -50,6 +50,18 @@ import '../../features/admin/data/datasources/fake_system_config_datasource.dart
 import '../../features/admin/domain/repositories/system_config_repository.dart';
 import '../../features/admin/data/repositories/system_config_repository_impl.dart';
 import '../../features/admin/presentation/bloc/system_config_cubit.dart';
+import '../../features/admin/data/datasources/fake_offboarding_datasource.dart';
+import '../../features/admin/domain/repositories/offboarding_repository.dart';
+import '../../features/admin/data/repositories/offboarding_repository_impl.dart';
+import '../../features/admin/presentation/bloc/offboarding_cubit.dart';
+import '../../features/engagement/data/datasources/fake_engagement_datasource.dart';
+import '../../features/engagement/domain/repositories/engagement_repository.dart';
+import '../../features/engagement/data/repositories/engagement_repository_impl.dart';
+import '../../features/engagement/presentation/bloc/engagement_cubit.dart';
+import '../../features/org_chart/data/datasources/fake_org_chart_datasource.dart';
+import '../../features/org_chart/domain/repositories/org_chart_repository.dart';
+import '../../features/org_chart/data/repositories/org_chart_repository_impl.dart';
+import '../../features/org_chart/presentation/bloc/org_chart_cubit.dart';
 import '../../features/executive/data/datasources/fake_executive_datasource.dart';
 import '../../features/executive/domain/repositories/executive_repository.dart';
 import '../../features/executive/data/repositories/executive_repository_impl.dart';
@@ -125,12 +137,27 @@ Future<void> initDI() async {
   getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>()));
   getIt.registerFactory(() => SystemConfigCubit(getIt<SystemConfigRepository>(), getIt<AppraisalRepository>()));
 
+  getIt.registerLazySingleton(() => FakeOffboardingDataSource());
+  getIt.registerLazySingleton<OffboardingRepository>(() => OffboardingRepositoryImpl(getIt<FakeOffboardingDataSource>()));
+  getIt.registerFactory(() => OffboardingCubit(getIt<OffboardingRepository>()));
+
   // Phase 11: Executive
   getIt.registerLazySingleton(() => FakeExecutiveDataSource());
   getIt.registerLazySingleton<ExecutiveRepository>(() => ExecutiveRepositoryImpl(
         getIt<FakeExecutiveDataSource>(),
         getIt<RecruitmentRepository>(),
         getIt<AdminPayrollRepository>(),
+        getIt<EngagementRepository>(),
       ));
   getIt.registerFactory(() => ExecutiveCubit(getIt<ExecutiveRepository>()));
+
+  // Phase 14: Engagement
+  getIt.registerLazySingleton(() => FakeEngagementDataSource());
+  getIt.registerLazySingleton<EngagementRepository>(() => EngagementRepositoryImpl(getIt<FakeEngagementDataSource>()));
+  getIt.registerFactory(() => EngagementCubit(getIt<EngagementRepository>()));
+
+  // Phase 14: Org Chart
+  getIt.registerLazySingleton(() => FakeOrgChartDataSource());
+  getIt.registerLazySingleton<OrgChartRepository>(() => OrgChartRepositoryImpl(getIt<FakeOrgChartDataSource>()));
+  getIt.registerFactory(() => OrgChartCubit(getIt<OrgChartRepository>()));
 }

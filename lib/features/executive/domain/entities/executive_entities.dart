@@ -6,6 +6,7 @@ class ExecutiveSummary extends Equatable {
   final double onLeavePercent;
   final double turnoverPercent;
   final double avgKpiScorePercent;
+  final double engagementScorePercent;
 
   const ExecutiveSummary({
     required this.totalEmployees,
@@ -13,10 +14,11 @@ class ExecutiveSummary extends Equatable {
     required this.onLeavePercent,
     required this.turnoverPercent,
     required this.avgKpiScorePercent,
+    required this.engagementScorePercent,
   });
 
   @override
-  List<Object?> get props => [totalEmployees, presentPercent, onLeavePercent, turnoverPercent, avgKpiScorePercent];
+  List<Object?> get props => [totalEmployees, presentPercent, onLeavePercent, turnoverPercent, avgKpiScorePercent, engagementScorePercent];
 }
 
 class TrendPoint extends Equatable {

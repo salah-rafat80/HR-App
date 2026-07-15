@@ -7,6 +7,7 @@ class FakeExecutiveDataSource {
     onLeavePercent: 0.07,
     turnoverPercent: 0.02,
     avgKpiScorePercent: 0.78,
+    engagementScorePercent: 0.76,
   );
 
   final List<TrendPoint> _attendanceTrend = [

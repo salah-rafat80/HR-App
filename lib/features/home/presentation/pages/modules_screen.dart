@@ -18,6 +18,8 @@ class ModulesScreen extends StatelessWidget {
       {'title': 'payroll_title', 'icon': Icons.account_balance_wallet, 'route': AppRoutes.payroll},
       {'title': 'training_title', 'icon': Icons.school, 'route': AppRoutes.training},
       {'title': 'communication_hub', 'icon': Icons.forum, 'route': AppRoutes.communication},
+      {'title': 'Engagement', 'icon': Icons.favorite, 'route': AppRoutes.engagement},
+      {'title': 'Org Chart', 'icon': Icons.account_tree, 'route': AppRoutes.orgChart},
     ];
 
     return Scaffold(

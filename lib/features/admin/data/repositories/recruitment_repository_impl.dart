@@ -21,4 +21,10 @@ class RecruitmentRepositoryImpl implements RecruitmentRepository {
 
   @override
   Future<void> postJob(JobRequisition draft) => _dataSource.postJob(draft);
+
+  @override
+  Future<List<NewHireOnboarding>> getOnboardingRecords() => _dataSource.getOnboardingRecords();
+
+  @override
+  Future<void> toggleOnboardingTask(String recordId, String taskId) => _dataSource.toggleOnboardingTask(recordId, taskId);
 }
