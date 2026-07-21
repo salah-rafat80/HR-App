@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_routes.dart';
@@ -14,14 +15,50 @@ import '../../features/offboarding/presentation/pages/offboarding_screen.dart';
 import '../../features/system_config/presentation/pages/system_config_screen.dart';
 import '../../features/appraisal/presentation/pages/appraisal_screen.dart';
 import '../../features/executive/presentation/pages/executive_screen.dart';
+import '../bloc/session_cubit.dart';
+import 'package:hr_core/core/enums/role_enums.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+
+String _firstRouteForRole(UserRole role) {
+  switch (role) {
+    case UserRole.teamLead:
+      return AppRoutes.approvals;
+    case UserRole.manager:
+      return AppRoutes.approvals;
+    case UserRole.hrAdmin:
+      return AppRoutes.approvals;
+    case UserRole.superAdmin:
+      return AppRoutes.executiveDashboard;
+    case UserRole.employee:
+            return AppRoutes.dashboard;
+          case UserRole.cLevel:
+            return AppRoutes.executiveDashboard;
+  }
+}
 
 class AppRouter {
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.login,
+    redirect: (context, state) {
+      final session = context.read<SessionCubit>();
+      final role = session.state;
+      final isLogin = state.matchedLocation == AppRoutes.login;
+
+      // If not logged in and trying to access protected route, redirect to login
+      if (role == null && !isLogin) {
+        return AppRoutes.login;
+      }
+
+      // If logged in and on login page, redirect to role-appropriate first section
+      if (role != null && isLogin) {
+        return _firstRouteForRole(role);
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: AppRoutes.login,
@@ -30,9 +67,7 @@ class AppRouter {
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
-        builder: (context, state, child) {
-          return DesktopShell(child: child);
-        },
+        builder: (context, state, child) => DesktopShell(child: child),
         routes: [
           GoRoute(
             path: AppRoutes.dashboard,

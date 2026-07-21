@@ -1,34 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hr_core/features/admin/domain/entities/recruitment_entities.dart';
+import 'package:hr_core/features/admin/domain/repositories/recruitment_repository.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
+import '../../../../core/bloc/web_cubits.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../bloc/recruitment_cubit.dart';
 
-class Candidate {
-  final String id;
-  final String name;
-  final String role;
-  final String time;
-  String status;
-
-  Candidate({required this.id, required this.name, required this.role, required this.time, required this.status});
-}
-
-class RecruitmentScreen extends StatefulWidget {
+class RecruitmentScreen extends StatelessWidget {
   const RecruitmentScreen({super.key});
 
   @override
-  State<RecruitmentScreen> createState() => _RecruitmentScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => RecruitmentCubit(getIt<RecruitmentRepository>()),
+      child: const _RecruitmentView(),
+    );
+  }
 }
 
-class _RecruitmentScreenState extends State<RecruitmentScreen> {
-  final List<Candidate> candidates = [
-    Candidate(id: '1', name: 'John Doe', role: 'Senior Flutter Dev', time: '2d ago', status: 'Applied'),
-    Candidate(id: '2', name: 'Sarah Smith', role: 'UI/UX Designer', time: '1d ago', status: 'Applied'),
-    Candidate(id: '3', name: 'Mike Johnson', role: 'Backend Engineer', time: '5d ago', status: 'Screening'),
-    Candidate(id: '4', name: 'Emma Davis', role: 'Product Manager', time: '1w ago', status: 'Interview'),
-    Candidate(id: '5', name: 'Ali Hassan', role: 'QA Engineer', time: '3d ago', status: 'Interview'),
-    Candidate(id: '6', name: 'Mona Zaki', role: 'Marketing Lead', time: '2w ago', status: 'Hired'),
-  ];
+class _RecruitmentView extends StatelessWidget {
+  const _RecruitmentView();
 
-  final List<String> columns = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'];
+  static const _columns = ['applied', 'screening', 'interview', 'offer', 'hired'];
+  static const _columnLabels = ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'];
 
   @override
   Widget build(BuildContext context) {
@@ -41,17 +37,14 @@ class _RecruitmentScreenState extends State<RecruitmentScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Recruitment Pipeline',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
+                const Text('Recruitment Pipeline', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => _showPostJobDialog(context),
                   icon: const Icon(Iconsax.add),
                   label: const Text('Post New Job'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -60,18 +53,51 @@ class _RecruitmentScreenState extends State<RecruitmentScreen> {
             ),
             const SizedBox(height: 24),
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: columns.map((col) {
-                    final colCandidates = candidates.where((c) => c.status == col).toList();
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: _buildKanbanColumn(context, col, colCandidates),
+              child: BlocBuilder<RecruitmentCubit, WebState<List<Candidate>>>(
+                builder: (context, state) {
+                  if (state is WebLoading || state is WebInitial) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (state is WebError<List<Candidate>>) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Iconsax.warning_2, size: 48, color: Colors.red),
+                          const SizedBox(height: 16),
+                          Text('Error: ${state.message}'),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(Iconsax.refresh),
+                            label: const Text('Retry'),
+                            onPressed: () => context.read<RecruitmentCubit>().load(),
+                          ),
+                        ],
+                      ),
                     );
-                  }).toList(),
-                ),
+                  }
+                  if (state is WebSuccess<List<Candidate>>) {
+                    final candidates = state.data;
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (int i = 0; i < _columns.length; i++)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 16),
+                              child: _KanbanColumn(
+                                stageKey: _columns[i],
+                                title: _columnLabels[i],
+                                candidates: candidates.where((c) => c.stage.name == _columns[i]).toList(),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
             ),
           ],
@@ -80,13 +106,60 @@ class _RecruitmentScreenState extends State<RecruitmentScreen> {
     );
   }
 
-  Widget _buildKanbanColumn(BuildContext context, String title, List<Candidate> colCandidates) {
+  void _showPostJobDialog(BuildContext context) {
+    final titleCtrl = TextEditingController();
+    String selectedDept = 'Engineering';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Post New Job'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Job Title')),
+            const SizedBox(height: 16),
+            StatefulBuilder(
+              builder: (ctx, setState) => DropdownButtonFormField<String>(
+                value: selectedDept,
+                decoration: const InputDecoration(labelText: 'Department'),
+                items: ['Engineering', 'Sales', 'HR', 'Finance', 'Marketing']
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                onChanged: (v) => setState(() => selectedDept = v!),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (titleCtrl.text.isNotEmpty) {
+                context.read<RecruitmentCubit>().postNewJob(titleCtrl.text, selectedDept);
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Post'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KanbanColumn extends StatelessWidget {
+  final String stageKey;
+  final String title;
+  final List<Candidate> candidates;
+
+  const _KanbanColumn({required this.stageKey, required this.title, required this.candidates});
+
+  @override
+  Widget build(BuildContext context) {
     return DragTarget<Candidate>(
-      onWillAcceptWithDetails: (details) => details.data.status != title,
+      onWillAcceptWithDetails: (details) => details.data.stage.name != stageKey,
       onAcceptWithDetails: (details) {
-        setState(() {
-          details.data.status = title;
-        });
+        final newStage = CandidateStage.values.firstWhere((s) => s.name == stageKey, orElse: () => details.data.stage);
+        context.read<RecruitmentCubit>().moveCandidate(details.data.id, newStage);
       },
       builder: (context, candidateData, rejectedData) {
         final isHovered = candidateData.isNotEmpty;
@@ -94,14 +167,10 @@ class _RecruitmentScreenState extends State<RecruitmentScreen> {
           duration: const Duration(milliseconds: 200),
           width: 300,
           decoration: BoxDecoration(
-            color: isHovered 
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05)
-                : Theme.of(context).colorScheme.surface,
+            color: isHovered ? AppColors.primary.withValues(alpha: 0.05) : Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isHovered 
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-                  : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              color: isHovered ? AppColors.primary.withValues(alpha: 0.5) : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
               width: isHovered ? 2 : 1,
             ),
           ),
@@ -113,50 +182,32 @@ class _RecruitmentScreenState extends State<RecruitmentScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text('${colCandidates.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text('${candidates.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
               ),
               const Divider(height: 1),
               Expanded(
-                child: colCandidates.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No candidates',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
-                        ),
-                      )
+                child: candidates.isEmpty
+                    ? Center(child: Text('No candidates', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5))))
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: colCandidates.length,
+                        itemCount: candidates.length,
                         itemBuilder: (context, index) {
-                          final c = colCandidates[index];
+                          final c = candidates[index];
                           return Draggable<Candidate>(
                             data: c,
-                            feedback: Material(
-                              elevation: 8,
-                              borderRadius: BorderRadius.circular(12),
-                              child: SizedBox(
-                                width: 268,
-                                child: _buildCandidateCard(c, isDragging: true),
-                              ),
-                            ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.3,
-                              child: _buildCandidateCard(c),
-                            ),
-                            child: _buildCandidateCard(c),
+                            feedback: Material(elevation: 8, borderRadius: BorderRadius.circular(12), child: SizedBox(width: 268, child: _CandidateCard(c, isDragging: true))),
+                            childWhenDragging: Opacity(opacity: 0.3, child: _CandidateCard(c)),
+                            child: _CandidateCard(c),
                           );
                         },
                       ),
@@ -167,36 +218,38 @@ class _RecruitmentScreenState extends State<RecruitmentScreen> {
       },
     );
   }
+}
 
-  Widget _buildCandidateCard(Candidate c, {bool isDragging = false}) {
+class _CandidateCard extends StatelessWidget {
+  final Candidate c;
+  final bool isDragging;
+
+  const _CandidateCard(this.c, {this.isDragging = false});
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isDragging ? 8 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
       shadowColor: Colors.black.withValues(alpha: 0.05),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              c.name,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
+            Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             const SizedBox(height: 4),
-            Text(c.role, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('Job: ${c.jobId}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    const Icon(Iconsax.clock, size: 12, color: Colors.grey),
+                    Icon(Iconsax.tag, size: 12, color: _stageColor(c.stage)),
                     const SizedBox(width: 4),
-                    Text(c.time, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                    Text(c.stage.name, style: TextStyle(color: _stageColor(c.stage), fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const Icon(Iconsax.more, size: 16, color: Colors.grey),
@@ -206,5 +259,16 @@ class _RecruitmentScreenState extends State<RecruitmentScreen> {
         ),
       ),
     );
+  }
+
+  Color _stageColor(CandidateStage stage) {
+    switch (stage) {
+      case CandidateStage.applied: return Colors.blue;
+      case CandidateStage.screening: return Colors.orange;
+      case CandidateStage.interview: return Colors.purple;
+      case CandidateStage.offer: return Colors.teal;
+      case CandidateStage.hired: return Colors.green;
+      case CandidateStage.rejected: return Colors.red;
+    }
   }
 }
