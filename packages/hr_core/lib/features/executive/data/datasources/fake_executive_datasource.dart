@@ -16,8 +16,8 @@ class FakeExecutiveDataSource {
     const TrendPoint(label: 'Wed', value: 0.89),
     const TrendPoint(label: 'Thu', value: 0.88),
     const TrendPoint(label: 'Fri', value: 0.87),
-    const TrendPoint(label: 'Sat', value: 0.10),
-    const TrendPoint(label: 'Sun', value: 0.91),
+    const TrendPoint(label: 'Sat', value: 0.91),
+    const TrendPoint(label: 'Sun', value: 0.90),
   ];
 
   final Map<String, double> _kpiHeatmap = {
