@@ -196,7 +196,7 @@ class _StartCycleFormState extends State<_StartCycleForm> {
           width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: _isSubmitting ? _doSubmit : null,
+            onPressed: _isSubmitting ? null : _doSubmit,
             child: _isSubmitting
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Text('Initialize Cycle'),
@@ -206,7 +206,7 @@ class _StartCycleFormState extends State<_StartCycleForm> {
     );
   }
 
-  void _doSubmit() {
+  Future<void> _doSubmit() async {
     if (_labelCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a cycle label')),
@@ -214,7 +214,8 @@ class _StartCycleFormState extends State<_StartCycleForm> {
       return;
     }
     setState(() => _isSubmitting = true);
-    context.read<AppraisalCubit>().startNewCycle(_labelCtrl.text, _dueDate);
+    await context.read<AppraisalCubit>().startNewCycle(_labelCtrl.text, _dueDate);
+    if (!mounted) return;
     setState(() => _isSubmitting = false);
     _labelCtrl.clear();
     ScaffoldMessenger.of(context).showSnackBar(
