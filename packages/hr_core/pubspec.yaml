@@ -1,4 +1,4 @@
-﻿name: hr_core
+name: hr_core
 description: Core domain and data layers for the HR application workspace.
 version: 1.0.0
 publish_to: 'none'
@@ -10,6 +10,8 @@ dependencies:
   equatable: ^2.1.0
   injectable: ^3.0.0
   get_it: ^9.2.1
+  dio: ^5.10.0
+  socket_io_client: ^3.1.6
 
 dev_dependencies:
   test: ^1.24.0

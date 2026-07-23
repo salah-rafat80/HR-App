@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/theme_cubit.dart';
 
 // Import Data Sources from hr_core
-import 'package:hr_core/features/leave/data/datasources/fake_leave_datasource.dart';
+import 'package:dio/dio.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:hr_core/features/leave/data/datasources/api_leave_repository_impl.dart';
 import 'package:hr_core/features/kpi/data/datasources/fake_kpi_datasource.dart';
 import 'package:hr_core/features/appraisal/data/datasources/fake_appraisal_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_admin_payroll_datasource.dart';
@@ -14,7 +16,6 @@ import 'package:hr_core/features/executive/data/datasources/fake_executive_datas
 import 'package:hr_core/features/engagement/data/datasources/fake_engagement_datasource.dart';
 
 // Import Repositories from hr_core
-import 'package:hr_core/features/leave/data/repositories/leave_repository_impl.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
 import 'package:hr_core/features/kpi/data/repositories/kpi_repository_impl.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
@@ -48,8 +49,31 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => SessionCubit());
   getIt.registerLazySingleton(() => ThemeCubit());
 
+  // API Client Setup
+  final String baseUrl = 'http://localhost:3000';
+  
+  final dio = Dio(BaseOptions(baseUrl: baseUrl));
+
+  dio.interceptors.add(InterceptorsWrapper(
+    onRequest: (options, handler) async {
+      final prefs = getIt<SharedPreferences>();
+      final token = prefs.getString('jwt_token');
+      if (token != null) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+      return handler.next(options);
+    },
+  ));
+
+  getIt.registerLazySingleton<Dio>(() => dio);
+
+  final socket = IO.io(baseUrl, IO.OptionBuilder()
+      .setTransports(['websocket'])
+      .disableAutoConnect()
+      .build());
+  getIt.registerLazySingleton<IO.Socket>(() => socket);
+
   // Data Sources (Singletons for state sync within web app)
-  getIt.registerLazySingleton(() => FakeLeaveDataSource());
   getIt.registerLazySingleton(() => FakeKpiDataSource());
   getIt.registerLazySingleton(() => FakeAppraisalDataSource());
   getIt.registerLazySingleton(() => FakeAdminPayrollDataSource());
@@ -60,7 +84,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => FakeEngagementDataSource());
 
   // Repositories
-  getIt.registerLazySingleton<LeaveRepository>(() => LeaveRepositoryImpl(getIt<FakeLeaveDataSource>()));
+  getIt.registerLazySingleton<LeaveRepository>(() => ApiLeaveRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<KpiRepository>(() => KpiRepositoryImpl(getIt<FakeKpiDataSource>()));
   getIt.registerLazySingleton<AppraisalRepository>(() => AppraisalRepositoryImpl(getIt<FakeAppraisalDataSource>()));
   getIt.registerLazySingleton<AdminPayrollRepository>(() => AdminPayrollRepositoryImpl(getIt<FakeAdminPayrollDataSource>()));
