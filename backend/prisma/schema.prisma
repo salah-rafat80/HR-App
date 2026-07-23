@@ -1,0 +1,151 @@
+datasource db {
+  provider = "postgresql"
+}
+
+enum LeaveType {
+  annual
+  sick
+  emergency
+  maternityPaternity
+  unpaid
+  study
+  hajj
+  bereavement
+}
+
+enum LeaveStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum ApprovalStepStatus {
+  pending
+  approved
+  rejected
+}
+
+enum HalfDayPeriod {
+  morning
+  afternoon
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+
+
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+  name     String
+  role     String
+  
+  leaveRequests LeaveRequest[]
+  leaveBalances LeaveBalance[]
+}
+
+
+
+model LeaveBalance {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  type      LeaveType
+  daysUsed  Int       @default(0)
+  daysTotal Int
+}
+
+model LeaveRequest {
+  id            String              @id @default(uuid())
+  userId        String
+  user          User                @relation(fields: [userId], references: [id])
+  type          LeaveType
+  startDate     DateTime
+  endDate       DateTime
+  isHalfDay     Boolean
+  halfDayPeriod HalfDayPeriod?
+  reason        String
+  hasAttachment Boolean             @default(false)
+  overallStatus LeaveStatus         @default(pending)
+  approvalSteps LeaveApprovalStep[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model LeaveApprovalStep {
+  id             String             @id @default(uuid())
+  requestId      String
+  request        LeaveRequest       @relation(fields: [requestId], references: [id])
+  stepName       String
+  status         ApprovalStepStatus
+  timestamp      DateTime
+}
+
+// ---------------------------------------------------------
+// STUBBED MODELS FOR OTHER MODULES (To be implemented later)
+// ---------------------------------------------------------
+
+model AttendanceRecord {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model Kpi {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model AppraisalResult {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model PayrollRun {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model TrainingCourse {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model JobRequisition {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model Candidate {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model OrgNode {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model NewHireOnboarding {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}
+
+model OffboardingCase {
+  id        String   @id @default(uuid())
+  // Add fields later
+  createdAt DateTime @default(now())
+}

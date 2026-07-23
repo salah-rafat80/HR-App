@@ -6,6 +6,10 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/bloc/session_cubit.dart';
 import '../../../../core/router/app_routes.dart';
+import 'package:dio/dio.dart';
+import '../../../../core/di/injection.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -173,9 +177,32 @@ class _RoleButtonState extends State<_RoleButton> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () {
-              context.read<SessionCubit>().setRole(widget.role);
-              context.go(AppRoutes.dashboard);
+            onTap: () async {
+              try {
+                String email = 'employee@demo.com';
+                if (widget.role == UserRole.manager) email = 'manager@demo.com';
+                if (widget.role == UserRole.hrAdmin || widget.role == UserRole.superAdmin) email = 'hr@demo.com';
+
+                final dio = getIt<Dio>();
+                final response = await dio.post('/auth/login', data: {
+                  'email': email,
+                  'password': 'password123',
+                });
+
+                final token = response.data['access_token'];
+                final prefs = getIt<SharedPreferences>();
+                await prefs.setString('jwt_token', token);
+                
+                final socket = getIt<IO.Socket>();
+                socket.connect();
+
+                if (!context.mounted) return;
+                context.read<SessionCubit>().setRole(widget.role);
+                context.go(AppRoutes.dashboard);
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed')));
+              }
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

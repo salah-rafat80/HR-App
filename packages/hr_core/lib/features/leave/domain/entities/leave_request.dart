@@ -22,6 +22,25 @@ class LeaveApprovalStep {
       timestamp: timestamp ?? this.timestamp,
     );
   }
+
+  factory LeaveApprovalStep.fromJson(Map<String, dynamic> json) {
+    return LeaveApprovalStep(
+      stepName: json['stepName'] as String,
+      status: LeaveStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => LeaveStatus.pending,
+      ),
+      timestamp: DateTime.parse(json['timestamp'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'stepName': stepName,
+      'status': status.name,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
 }
 
 class LeaveRequest {
@@ -71,5 +90,47 @@ class LeaveRequest {
       overallStatus: overallStatus ?? this.overallStatus,
       approvalSteps: approvalSteps ?? this.approvalSteps,
     );
+  }
+
+  factory LeaveRequest.fromJson(Map<String, dynamic> json) {
+    return LeaveRequest(
+      id: json['id'] as String,
+      employeeId: json['userId'] as String?,
+      employeeName: json['user']?['name'] as String?,
+      type: LeaveType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => LeaveType.annual,
+      ),
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: DateTime.parse(json['endDate'] as String),
+      isHalfDay: json['isHalfDay'] as bool? ?? false,
+      halfDayPeriod: json['halfDayPeriod'] as String?,
+      reason: json['reason'] as String? ?? '',
+      hasAttachment: json['hasAttachment'] as bool? ?? false,
+      overallStatus: LeaveStatus.values.firstWhere(
+        (e) => e.name == json['overallStatus'],
+        orElse: () => LeaveStatus.pending,
+      ),
+      approvalSteps: (json['approvalSteps'] as List<dynamic>?)
+              ?.map((e) => LeaveApprovalStep.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': employeeId,
+      'type': type.name,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'isHalfDay': isHalfDay,
+      'halfDayPeriod': halfDayPeriod,
+      'reason': reason,
+      'hasAttachment': hasAttachment,
+      'overallStatus': overallStatus.name,
+      'approvalSteps': approvalSteps.map((e) => e.toJson()).toList(),
+    };
   }
 }

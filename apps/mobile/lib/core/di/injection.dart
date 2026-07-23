@@ -6,9 +6,13 @@ import 'package:hr_core/features/attendance/data/datasources/fake_attendance_dat
 import 'package:hr_core/features/attendance/data/repositories/attendance_repository_impl.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
 import '../../features/attendance/presentation/bloc/attendance_cubit.dart';
-import 'package:hr_core/features/leave/data/datasources/fake_leave_datasource.dart';
-import 'package:hr_core/features/leave/data/repositories/leave_repository_impl.dart';
+import 'package:hr_core/features/leave/data/datasources/api_leave_repository_impl.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
+import '../../features/leave/presentation/bloc/leave_cubit.dart';
+import 'package:dio/dio.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../features/leave/presentation/bloc/leave_cubit.dart';
 import 'package:hr_core/features/kpi/data/datasources/fake_kpi_datasource.dart';
 import 'package:hr_core/features/kpi/data/repositories/kpi_repository_impl.dart';
@@ -60,10 +64,33 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => SessionCubit());
   getIt.registerLazySingleton(() => ThemeCubit());
 
+  // API Client Setup
+  final String baseUrl = kIsWeb ? 'http://localhost:3000' : (Platform.isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
+  
+  final dio = Dio(BaseOptions(baseUrl: baseUrl));
+  
+  dio.interceptors.add(InterceptorsWrapper(
+    onRequest: (options, handler) async {
+      final prefs = getIt<SharedPreferences>();
+      final token = prefs.getString('jwt_token');
+      if (token != null) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+      return handler.next(options);
+    },
+  ));
+
+  getIt.registerLazySingleton<Dio>(() => dio);
+
+  final socket = IO.io(baseUrl, IO.OptionBuilder()
+      .setTransports(['websocket']) // for Flutter or Web
+      .disableAutoConnect()
+      .build());
+  getIt.registerLazySingleton<IO.Socket>(() => socket);
+
   // Data Sources (Singletons for state sync)
   getIt.registerLazySingleton(() => FakeAttendanceDataSource());
   getIt.registerLazySingleton(() => FakeHomeDataSource());
-  getIt.registerLazySingleton(() => FakeLeaveDataSource());
   getIt.registerLazySingleton(() => FakeKpiDataSource());
   getIt.registerLazySingleton(() => FakeAppraisalDataSource());
   getIt.registerLazySingleton(() => FakePayrollDataSource());
@@ -77,7 +104,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton<HomeRepository>(
       () => HomeRepositoryImpl(getIt<FakeHomeDataSource>()));
   getIt.registerLazySingleton<LeaveRepository>(
-      () => LeaveRepositoryImpl(getIt<FakeLeaveDataSource>()));
+      () => ApiLeaveRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<KpiRepository>(
       () => KpiRepositoryImpl(getIt<FakeKpiDataSource>()));
   getIt.registerLazySingleton<AppraisalRepository>(
@@ -95,7 +122,7 @@ Future<void> initDI() async {
   getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<LeaveRepository>()));
   getIt.registerFactory(() => HomeCubit(
       getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
-  getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>()));
+  getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<IO.Socket>()));
   getIt.registerFactory(() => KpiCubit(getIt<KpiRepository>()));
   getIt.registerFactory(() => AppraisalCubit(getIt<AppraisalRepository>(), getIt<KpiRepository>()));
   getIt.registerFactory(() => PayrollCubit(getIt<PayrollRepository>()));

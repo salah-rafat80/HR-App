@@ -8,11 +8,27 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/bloc/web_cubits.dart';
 import '../../../../core/di/injection.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
   final LeaveRepository _repo;
+  final IO.Socket _socket;
 
-  ApprovalsCubit(this._repo) : super(() => _repo.getPendingApprovals(ApprovalScope.all));
+  ApprovalsCubit(this._repo, this._socket) : super(() => _repo.getPendingApprovals(ApprovalScope.all)) {
+    _socket.on('entity.updated', _onEntityUpdated);
+  }
+
+  void _onEntityUpdated(data) {
+    if (data['entity'] == 'LeaveRequest' && !isClosed) {
+      load();
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _socket.off('entity.updated', _onEntityUpdated);
+    return super.close();
+  }
 
   Future<void> approve(String id) async {
     await _repo.approveRequest(id);
@@ -31,7 +47,7 @@ class ApprovalsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ApprovalsCubit(getIt<LeaveRepository>()),
+      create: (_) => ApprovalsCubit(getIt<LeaveRepository>(), getIt<IO.Socket>()),
       child: const _ApprovalsView(),
     );
   }

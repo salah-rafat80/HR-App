@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/theme/theme_cubit.dart';
+import 'core/bloc/session_cubit.dart';
 import 'app.dart';
 import 'core/di/injection.dart';
 import 'core/utils/crash_reporter.dart';
@@ -20,7 +21,7 @@ void main() async {
     await initDI();
     
     // Disable Google Fonts runtime fetching to prevent crashes when offline
-    GoogleFonts.config.allowRuntimeFetching = false;
+    GoogleFonts.config.allowRuntimeFetching = true;
 
     // Set custom error widget
     ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -41,8 +42,11 @@ void main() async {
         supportedLocales: const [Locale('ar'), Locale('en')],
         path: 'assets/translations',
         fallbackLocale: const Locale('ar'),
-        child: BlocProvider.value(
-          value: getIt<ThemeCubit>(),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: getIt<ThemeCubit>()),
+            BlocProvider.value(value: getIt<SessionCubit>()),
+          ],
           child: const App(),
         ),
       ),
