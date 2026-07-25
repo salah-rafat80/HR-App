@@ -21,42 +21,57 @@ async function main() {
       email: 'hr@demo.com',
       password: commonPassword,
       name: 'HR Admin',
-      role: 'hrAdmin',
+      role: 'hr',
     },
   });
 
   const manager = await prisma.user.upsert({
     where: { email: 'manager@demo.com' },
-    update: {},
+    update: { managerId: null },
     create: {
       email: 'manager@demo.com',
       password: commonPassword,
       name: 'Manager User',
       role: 'manager',
+      managerId: null,
+    },
+  });
+
+  const teamLead = await prisma.user.upsert({
+    where: { email: 'teamlead@demo.com' },
+    update: { managerId: manager.id },
+    create: {
+      email: 'teamlead@demo.com',
+      password: commonPassword,
+      name: 'Team Lead',
+      role: 'team_lead',
+      managerId: manager.id,
     },
   });
 
   const employee1 = await prisma.user.upsert({
     where: { email: 'employee@demo.com' },
-    update: {},
+    update: { managerId: teamLead.id },
     create: {
       id: 'emp_1',
       email: 'employee@demo.com',
       password: commonPassword,
       name: 'Ahmed Salem',
       role: 'employee',
+      managerId: teamLead.id,
     },
   });
 
   const employee2 = await prisma.user.upsert({
     where: { email: 'emp2@demo.com' },
-    update: {},
+    update: { managerId: teamLead.id },
     create: {
       id: 'emp_2',
       email: 'emp2@demo.com',
       password: commonPassword,
       name: 'Mona Zaki',
       role: 'employee',
+      managerId: teamLead.id,
     },
   });
 
@@ -89,7 +104,7 @@ async function main() {
   // req_1: Approved Annual Leave (past)
   await prisma.leaveRequest.upsert({
     where: { id: 'req_1' },
-    update: {},
+    update: { currentStepOrder: 4 },
     create: {
       id: 'req_1',
       userId: employee1.id,
@@ -100,12 +115,12 @@ async function main() {
       reason: 'Family Vacation',
       hasAttachment: false,
       overallStatus: 'approved',
+      currentStepOrder: 4,
       approvalSteps: {
         create: [
-          { stepName: 'submitted', status: 'approved', timestamp: new Date(now.getTime() - 62 * 24 * 60 * 60 * 1000) },
-          { stepName: 'manager', status: 'approved', timestamp: new Date(now.getTime() - 61 * 24 * 60 * 60 * 1000) },
-          { stepName: 'hr', status: 'approved', timestamp: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000) },
-          { stepName: 'final_approval', status: 'approved', timestamp: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000) },
+          { stepName: 'team_lead', status: 'approved', stepOrder: 1, timestamp: new Date(now.getTime() - 62 * 24 * 60 * 60 * 1000) },
+          { stepName: 'manager', status: 'approved', stepOrder: 2, timestamp: new Date(now.getTime() - 61 * 24 * 60 * 60 * 1000) },
+          { stepName: 'hr', status: 'approved', stepOrder: 3, timestamp: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000) },
         ],
       },
     },
@@ -114,7 +129,7 @@ async function main() {
   // req_2: Approved Sick Leave (past)
   await prisma.leaveRequest.upsert({
     where: { id: 'req_2' },
-    update: {},
+    update: { currentStepOrder: 4 },
     create: {
       id: 'req_2',
       userId: employee1.id,
@@ -125,12 +140,12 @@ async function main() {
       reason: 'Flu',
       hasAttachment: true,
       overallStatus: 'approved',
+      currentStepOrder: 4,
       approvalSteps: {
         create: [
-          { stepName: 'submitted', status: 'approved', timestamp: new Date(now.getTime() - 32 * 24 * 60 * 60 * 1000) },
-          { stepName: 'manager', status: 'approved', timestamp: new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000) },
-          { stepName: 'hr', status: 'approved', timestamp: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
-          { stepName: 'final_approval', status: 'approved', timestamp: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+          { stepName: 'team_lead', status: 'approved', stepOrder: 1, timestamp: new Date(now.getTime() - 32 * 24 * 60 * 60 * 1000) },
+          { stepName: 'manager', status: 'approved', stepOrder: 2, timestamp: new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000) },
+          { stepName: 'hr', status: 'approved', stepOrder: 3, timestamp: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
         ],
       },
     },
@@ -139,7 +154,7 @@ async function main() {
   // req_3: Pending Emergency Leave (future)
   await prisma.leaveRequest.upsert({
     where: { id: 'req_3' },
-    update: {},
+    update: { currentStepOrder: 2 },
     create: {
       id: 'req_3',
       userId: employee1.id,
@@ -150,20 +165,22 @@ async function main() {
       reason: 'Personal Emergency',
       hasAttachment: false,
       overallStatus: 'pending',
+      currentStepOrder: 2,
       approvalSteps: {
         create: [
-          { stepName: 'submitted', status: 'approved', timestamp: new Date() },
-          { stepName: 'manager', status: 'pending', timestamp: new Date() },
-          { stepName: 'hr', status: 'pending', timestamp: now },
-          { stepName: 'final_approval', status: 'pending', timestamp: now },
+          { stepName: 'team_lead', status: 'approved', stepOrder: 1, timestamp: new Date() },
+          { stepName: 'manager', status: 'pending', stepOrder: 2, timestamp: new Date() },
+          { stepName: 'hr', status: 'pending', stepOrder: 3, timestamp: now },
         ],
       },
     },
   });
 
   // req_5: Mona Zaki's request (pending for manager to see)
-  await prisma.leaveRequest.create({
-    data: {
+  await prisma.leaveRequest.upsert({
+    where: { id: 'req_5' },
+    update: { currentStepOrder: 1 },
+    create: {
       id: 'req_5',
       userId: employee2.id,
       type: 'sick',
@@ -173,12 +190,12 @@ async function main() {
       reason: 'Doctor Appointment',
       hasAttachment: true,
       overallStatus: 'pending',
+      currentStepOrder: 1,
       approvalSteps: {
         create: [
-          { stepName: 'submitted', status: 'approved', timestamp: now },
-          { stepName: 'manager', status: 'pending', timestamp: now },
-          { stepName: 'hr', status: 'pending', timestamp: now },
-          { stepName: 'final_approval', status: 'pending', timestamp: now },
+          { stepName: 'team_lead', status: 'pending', stepOrder: 1, timestamp: now },
+          { stepName: 'manager', status: 'pending', stepOrder: 2, timestamp: now },
+          { stepName: 'hr', status: 'pending', stepOrder: 3, timestamp: now },
         ],
       },
     },

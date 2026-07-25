@@ -36,20 +36,20 @@ generator client {
   previewFeatures = ["driverAdapters"]
 }
 
-
-
 model User {
-  id       String @id @default(uuid())
-  email    String @unique
-  password String
-  name     String
-  role     String
-  
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  name          String
+  role          String
+
+  managerId     String?
+  manager       User?          @relation("ManagerHierarchy", fields: [managerId], references: [id])
+  directReports User[]         @relation("ManagerHierarchy")
+
   leaveRequests LeaveRequest[]
   leaveBalances LeaveBalance[]
 }
-
-
 
 model LeaveBalance {
   id        String    @id @default(uuid())
@@ -61,29 +61,31 @@ model LeaveBalance {
 }
 
 model LeaveRequest {
-  id            String              @id @default(uuid())
-  userId        String
-  user          User                @relation(fields: [userId], references: [id])
-  type          LeaveType
-  startDate     DateTime
-  endDate       DateTime
-  isHalfDay     Boolean
-  halfDayPeriod HalfDayPeriod?
-  reason        String
-  hasAttachment Boolean             @default(false)
-  overallStatus LeaveStatus         @default(pending)
-  approvalSteps LeaveApprovalStep[]
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  id               String              @id @default(uuid())
+  userId           String
+  user             User                @relation(fields: [userId], references: [id])
+  type             LeaveType
+  startDate        DateTime
+  endDate          DateTime
+  isHalfDay        Boolean
+  halfDayPeriod    HalfDayPeriod?
+  reason           String
+  hasAttachment    Boolean             @default(false)
+  overallStatus    LeaveStatus         @default(pending)
+  currentStepOrder Int                 @default(1)
+  approvalSteps    LeaveApprovalStep[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 }
 
 model LeaveApprovalStep {
-  id             String             @id @default(uuid())
-  requestId      String
-  request        LeaveRequest       @relation(fields: [requestId], references: [id])
-  stepName       String
-  status         ApprovalStepStatus
-  timestamp      DateTime
+  id        String             @id @default(uuid())
+  requestId String
+  request   LeaveRequest       @relation(fields: [requestId], references: [id])
+  stepName  String
+  status    ApprovalStepStatus
+  stepOrder Int                @default(0)
+  timestamp DateTime
 }
 
 // ---------------------------------------------------------

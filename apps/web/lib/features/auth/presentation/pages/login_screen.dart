@@ -180,6 +180,7 @@ class _RoleButtonState extends State<_RoleButton> {
             onTap: () async {
               try {
                 String email = 'employee@demo.com';
+                if (widget.role == UserRole.teamLead) email = 'teamlead@demo.com';
                 if (widget.role == UserRole.manager) email = 'manager@demo.com';
                 if (widget.role == UserRole.hrAdmin || widget.role == UserRole.superAdmin) email = 'hr@demo.com';
 
@@ -192,6 +193,8 @@ class _RoleButtonState extends State<_RoleButton> {
                 final token = response.data['access_token'];
                 final prefs = getIt<SharedPreferences>();
                 await prefs.setString('jwt_token', token);
+                await prefs.setString('user_id', response.data['user']['id']);
+                await prefs.setString('user_role', response.data['user']['role']);
                 
                 final socket = getIt<IO.Socket>();
                 socket.connect();

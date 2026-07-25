@@ -34,17 +34,17 @@ export class LeaveController {
   }
 
   @Get('pending')
-  getPendingApprovals() {
-    return this.leaveService.getPendingApprovals();
+  getPendingApprovals(@Request() req) {
+    return this.leaveService.getPendingApprovals(req.user.role, req.user.userId);
   }
 
   @Post(':id/approve')
-  approveRequest(@Param('id') id: string) {
-    return this.leaveService.approveRequest(id);
+  approveRequest(@Request() req, @Param('id') id: string) {
+    return this.leaveService.approveRequest(id, req.user.userId, req.user.role);
   }
 
   @Post(':id/reject')
-  rejectRequest(@Param('id') id: string) {
-    return this.leaveService.rejectRequest(id);
+  rejectRequest(@Request() req, @Param('id') id: string) {
+    return this.leaveService.rejectRequest(id, req.user.userId, req.user.role);
   }
 }
