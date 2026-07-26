@@ -1,4 +1,6 @@
 import 'package:hr_app_demo/core/utils/safe_cubit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hr_app_demo/core/di/injection.dart';
 import 'package:uuid/uuid.dart';
 import 'leave_state.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
@@ -12,7 +14,9 @@ class LeaveCubit extends SafeCubit<LeaveState> {
   final IO.Socket _socket;
 
   LeaveCubit(this._repository, this._socket) : super(LeaveInitial()) {
-    _socket.on('entity.updated', _onEntityUpdated);
+    final prefs = getIt<SharedPreferences>();
+    final userId = prefs.getString('user_id') ?? '';
+    _socket.on('entity.updated.$userId', _onEntityUpdated);
   }
 
   void _onEntityUpdated(data) {
@@ -23,7 +27,9 @@ class LeaveCubit extends SafeCubit<LeaveState> {
 
   @override
   Future<void> close() {
-    _socket.off('entity.updated', _onEntityUpdated);
+    final prefs = getIt<SharedPreferences>();
+    final userId = prefs.getString('user_id') ?? '';
+    _socket.off('entity.updated.$userId', _onEntityUpdated);
     return super.close();
   }
 

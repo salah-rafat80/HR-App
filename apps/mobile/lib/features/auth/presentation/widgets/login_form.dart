@@ -36,6 +36,7 @@ class _LoginFormState extends State<LoginForm> {
       final token = response.data['access_token'];
       final prefs = getIt<SharedPreferences>();
       await prefs.setString('jwt_token', token);
+      await prefs.setString('user_id', response.data['user']['id']);
       
       // Connect socket after successful login
       final socket = getIt<IO.Socket>();

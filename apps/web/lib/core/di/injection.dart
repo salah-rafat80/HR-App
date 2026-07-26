@@ -6,6 +6,8 @@ import '../theme/theme_cubit.dart';
 import 'package:dio/dio.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:hr_core/features/leave/data/datasources/api_leave_repository_impl.dart';
+import 'package:hr_core/features/attendance/data/datasources/api_attendance_repository_impl.dart';
+import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:hr_core/features/kpi/data/datasources/fake_kpi_datasource.dart';
 import 'package:hr_core/features/appraisal/data/datasources/fake_appraisal_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_admin_payroll_datasource.dart';
@@ -85,6 +87,7 @@ Future<void> initDI() async {
 
   // Repositories
   getIt.registerLazySingleton<LeaveRepository>(() => ApiLeaveRepositoryImpl(dio: getIt<Dio>()));
+  getIt.registerLazySingleton<AttendanceRepository>(() => ApiAttendanceRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<KpiRepository>(() => KpiRepositoryImpl(getIt<FakeKpiDataSource>()));
   getIt.registerLazySingleton<AppraisalRepository>(() => AppraisalRepositoryImpl(getIt<FakeAppraisalDataSource>()));
   getIt.registerLazySingleton<AdminPayrollRepository>(() => AdminPayrollRepositoryImpl(getIt<FakeAdminPayrollDataSource>()));

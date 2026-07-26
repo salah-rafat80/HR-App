@@ -30,4 +30,27 @@ class AttendanceRecord {
       locationLabel: locationLabel ?? this.locationLabel,
     );
   }
+
+  factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    return AttendanceRecord(
+      date: DateTime.parse(json['date']),
+      clockInTime: json['clockInTime'] != null ? DateTime.parse(json['clockInTime']) : null,
+      clockOutTime: json['clockOutTime'] != null ? DateTime.parse(json['clockOutTime']) : null,
+      status: AttendanceStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => AttendanceStatus.none,
+      ),
+      locationLabel: json['locationLabel'] ?? 'none',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date.toIso8601String(),
+      'clockInTime': clockInTime?.toIso8601String(),
+      'clockOutTime': clockOutTime?.toIso8601String(),
+      'status': status.name,
+      'locationLabel': locationLabel,
+    };
+  }
 }

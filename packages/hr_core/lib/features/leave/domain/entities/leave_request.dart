@@ -72,6 +72,20 @@ class LeaveRequest {
     required this.approvalSteps,
   });
 
+  String get displayStatus {
+    if (overallStatus != LeaveStatus.pending) {
+      return overallStatus.name;
+    }
+    final pendingStepIndex = approvalSteps.indexWhere((s) => s.status == LeaveStatus.pending);
+    if (pendingStepIndex != -1) {
+      final step = approvalSteps[pendingStepIndex];
+      // stepName is like 'manager', 'hr', 'final_approval'
+      final name = step.stepName.replaceAll('_', ' ');
+      return 'pending $name';
+    }
+    return overallStatus.name;
+  }
+
   LeaveRequest copyWith({
     LeaveStatus? overallStatus,
     List<LeaveApprovalStep>? approvalSteps,

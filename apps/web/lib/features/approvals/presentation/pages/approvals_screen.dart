@@ -8,36 +8,71 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/bloc/web_cubits.dart';
 import '../../../../core/di/injection.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
   final LeaveRepository _repo;
   final IO.Socket _socket;
+  final Set<String> _inFlightIds = {};
 
-  ApprovalsCubit(this._repo, this._socket) : super(() => _repo.getPendingApprovals(ApprovalScope.all)) {
-    _socket.on('entity.updated', _onEntityUpdated);
+  bool isInFlight(String id) => _inFlightIds.contains(id);
+
+  ApprovalsCubit(this._repo, this._socket, String userId, String role) : super(() => _repo.getPendingApprovals(ApprovalScope.all)) {
+    _socket.on('entity.updated.$userId', _onEntityUpdated);
+    _socket.on('entity.updated.$role', _onEntityUpdated);
   }
 
   void _onEntityUpdated(data) {
     if (data['entity'] == 'LeaveRequest' && !isClosed) {
-      load();
+      _loadSilently();
     }
+  }
+
+  Future<void> _loadSilently() async {
+    try {
+      final data = await fetchData();
+      if (!isClosed) emit(WebSuccess<List<LeaveRequest>>(data));
+    } catch (_) {}
   }
 
   @override
   Future<void> close() {
-    _socket.off('entity.updated', _onEntityUpdated);
+    final prefs = getIt<SharedPreferences>();
+    final userId = prefs.getString('user_id') ?? '';
+    final role = prefs.getString('user_role') ?? '';
+    _socket.off('entity.updated.$userId', _onEntityUpdated);
+    _socket.off('entity.updated.$role', _onEntityUpdated);
     return super.close();
   }
 
-  Future<void> approve(String id) async {
-    await _repo.approveRequest(id);
-    load();
+  Future<void> approve(String id, {void Function(String)? onError}) async {
+    await _performAction(id, _repo.approveRequest, onError);
   }
 
-  Future<void> reject(String id) async {
-    await _repo.rejectRequest(id);
-    load();
+  Future<void> reject(String id, {void Function(String)? onError}) async {
+    await _performAction(id, _repo.rejectRequest, onError);
+  }
+
+  Future<void> _performAction(String id, Future<void> Function(String) action, void Function(String)? onError) async {
+    if (state is WebSuccess<List<LeaveRequest>>) {
+      final currentList = (state as WebSuccess<List<LeaveRequest>>).data;
+      _inFlightIds.add(id);
+      emit(WebSuccess<List<LeaveRequest>>(List.from(currentList)));
+      
+      try {
+        await action(id);
+        _inFlightIds.remove(id);
+        _loadSilently();
+      } catch (e) {
+        _inFlightIds.remove(id);
+        emit(WebSuccess<List<LeaveRequest>>(List.from(currentList)));
+        onError?.call(e.toString());
+      }
+    } else {
+      await action(id);
+      load();
+    }
   }
 }
 
@@ -46,8 +81,12 @@ class ApprovalsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final prefs = getIt<SharedPreferences>();
+    final userId = prefs.getString('user_id') ?? '';
+    final role = prefs.getString('user_role') ?? '';
+
     return BlocProvider(
-      create: (_) => ApprovalsCubit(getIt<LeaveRepository>(), getIt<IO.Socket>()),
+      create: (_) => ApprovalsCubit(getIt<LeaveRepository>(), getIt<IO.Socket>(), userId, role),
       child: const _ApprovalsView(),
     );
   }
@@ -141,7 +180,10 @@ class _ApprovalsView extends StatelessWidget {
   }
 
   DataRow _buildRow(BuildContext context, LeaveRequest req) {
+    final cubit = context.read<ApprovalsCubit>();
+    final isFlight = cubit.isInFlight(req.id);
     final isPending = req.overallStatus == LeaveStatus.pending;
+    
     return DataRow(
       cells: [
         DataCell(Text(req.employeeName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600))),
@@ -154,22 +196,27 @@ class _ApprovalsView extends StatelessWidget {
               color: isPending ? Colors.orange.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(req.overallStatus.name, style: TextStyle(color: isPending ? Colors.orange : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+            child: Text(req.displayStatus.toUpperCase(), style: TextStyle(color: isPending ? Colors.orange : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
           ),
         ),
         DataCell(
-          Row(
+          isFlight 
+            ? const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 icon: Icon(Iconsax.tick_circle, color: isPending ? Colors.green : Colors.grey),
                 tooltip: 'Approve',
-                onPressed: isPending ? () => context.read<ApprovalsCubit>().approve(req.id) : null,
+                onPressed: isPending ? () => cubit.approve(req.id, onError: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')))) : null,
               ),
               IconButton(
                 icon: Icon(Iconsax.close_circle, color: isPending ? Colors.red : Colors.grey),
                 tooltip: 'Reject',
-                onPressed: isPending ? () => context.read<ApprovalsCubit>().reject(req.id) : null,
+                onPressed: isPending ? () => cubit.reject(req.id, onError: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')))) : null,
               ),
             ],
           ),

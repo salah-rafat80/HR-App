@@ -1,7 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
-
 
 @Injectable()
 export class LeaveService {
@@ -19,7 +18,10 @@ export class LeaveService {
   async getMyRequests(userId: string) {
     return this.prisma.leaveRequest.findMany({
       where: { userId },
-      include: { approvalSteps: true, user: true },
+      include: { 
+        approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
+        user: true 
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -36,16 +38,19 @@ export class LeaveService {
         reason: data.reason,
         hasAttachment: data.hasAttachment,
         overallStatus: 'pending',
+        currentStepOrder: 1,
         approvalSteps: {
           create: [
-            { stepName: 'submitted', status: 'approved', timestamp: new Date() },
-            { stepName: 'manager', status: 'pending', timestamp: new Date() },
-            { stepName: 'hr', status: 'pending', timestamp: new Date() },
-            { stepName: 'final_approval', status: 'pending', timestamp: new Date() },
+            { stepName: 'team_lead', status: 'pending', stepOrder: 1, timestamp: new Date() },
+            { stepName: 'manager', status: 'pending', stepOrder: 2, timestamp: new Date() },
+            { stepName: 'hr', status: 'pending', stepOrder: 3, timestamp: new Date() },
           ]
         }
       },
-      include: { approvalSteps: true, user: true },
+      include: { 
+        approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
+        user: true 
+      },
     });
 
     // Deduct balance optimistically
@@ -63,7 +68,13 @@ export class LeaveService {
       });
     }
 
-    this.events.emitEntityUpdated('LeaveRequest', 'created', request);
+    // Notify the employee
+    this.events.emitToUser(userId, 'created', request);
+    // Notify the team lead specifically
+    if (request.user.managerId) {
+      this.events.emitToUser(request.user.managerId, 'created', request);
+    }
+
     return request;
   }
 
@@ -88,68 +99,130 @@ export class LeaveService {
     }));
   }
 
-  async getPendingApprovals() {
-    // For demo, return all pending requests
+  async getPendingApprovals(role: string, actorUserId: string) {
+    let whereClause: any = { overallStatus: 'pending' };
+
+    if (role === 'hr' || role === 'hrAdmin') {
+      whereClause.currentStepOrder = 3;
+    } else if (role === 'team_lead') {
+      whereClause.currentStepOrder = 1;
+      whereClause.user = { managerId: actorUserId };
+    } else if (role === 'manager') {
+      whereClause.currentStepOrder = 2;
+      whereClause.user = { manager: { managerId: actorUserId } };
+    } else {
+      return []; // other roles don't approve
+    }
+
     return this.prisma.leaveRequest.findMany({
-      where: { overallStatus: 'pending' },
-      include: { approvalSteps: true, user: true },
+      where: whereClause,
+      include: { 
+        approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
+        user: true 
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async approveRequest(id: string) {
+  async approveRequest(id: string, actorUserId: string, actorRole: string) {
     const req = await this.prisma.leaveRequest.findUnique({
       where: { id },
-      include: { approvalSteps: true },
+      include: { 
+        approvalSteps: { orderBy: { stepOrder: 'asc' } },
+        user: { include: { manager: true } }
+      },
     });
 
     if (!req) throw new NotFoundException();
+    if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
 
-    const pendingStep = req.approvalSteps.find(s => s.status === 'pending');
-    if (pendingStep) {
-      await this.prisma.leaveApprovalStep.update({
-        where: { id: pendingStep.id },
-        data: { status: 'approved', timestamp: new Date() },
-      });
-
-      // Check if it was the last step
-      const isLast = req.approvalSteps.indexOf(pendingStep) === req.approvalSteps.length - 1;
-      const newStatus = isLast ? 'approved' : 'pending';
-
-      const updated = await this.prisma.leaveRequest.update({
-        where: { id },
-        data: { overallStatus: newStatus },
-        include: { approvalSteps: true, user: true },
-      });
-
-      this.events.emitEntityUpdated('LeaveRequest', 'updated', updated);
-      return updated;
+    // Authorization
+    if (req.currentStepOrder === 1) {
+      if (req.user.managerId !== actorUserId) throw new ForbiddenException('Not the team lead for this employee');
+    } else if (req.currentStepOrder === 2) {
+      if (req.user.manager?.managerId !== actorUserId) throw new ForbiddenException('Not the manager for this employee');
+    } else if (req.currentStepOrder === 3) {
+      if (actorRole !== 'hr' && actorRole !== 'hrAdmin') throw new ForbiddenException('Not HR Admin');
     }
+
+    const pendingStep = req.approvalSteps.find(s => s.stepOrder === req.currentStepOrder);
+    if (!pendingStep) throw new NotFoundException('Active step not found');
+
+    await this.prisma.leaveApprovalStep.update({
+      where: { id: pendingStep.id },
+      data: { status: 'approved', timestamp: new Date() },
+    });
+
+    const isLast = req.currentStepOrder === 3;
+    const newStatus = isLast ? 'approved' : 'pending';
+    const nextStepOrder = isLast ? req.currentStepOrder : req.currentStepOrder + 1;
+
+    const updated = await this.prisma.leaveRequest.update({
+      where: { id },
+      data: { 
+        overallStatus: newStatus,
+        currentStepOrder: nextStepOrder,
+      },
+      include: { 
+        approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
+        user: { include: { manager: true } }
+      },
+    });
+
+    // Targeted Events
+    this.events.emitToUser(req.userId, 'updated', updated); // Notify employee
+    
+    // Notify next approver
+    if (!isLast) {
+      if (nextStepOrder === 2 && updated.user.manager?.managerId) {
+        this.events.emitToUser(updated.user.manager.managerId, 'updated', updated);
+      } else if (nextStepOrder === 3) {
+        this.events.emitToRole('hr', 'updated', updated);
+      }
+    }
+
+    return updated;
   }
 
-  async rejectRequest(id: string) {
+  async rejectRequest(id: string, actorUserId: string, actorRole: string) {
     const req = await this.prisma.leaveRequest.findUnique({
       where: { id },
-      include: { approvalSteps: true },
+      include: { 
+        approvalSteps: { orderBy: { stepOrder: 'asc' } },
+        user: { include: { manager: true } }
+      },
     });
 
     if (!req) throw new NotFoundException();
+    if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
 
-    const pendingStep = req.approvalSteps.find(s => s.status === 'pending');
+    // Authorization
+    if (req.currentStepOrder === 1) {
+      if (req.user.managerId !== actorUserId) throw new ForbiddenException('Not the team lead for this employee');
+    } else if (req.currentStepOrder === 2) {
+      if (req.user.manager?.managerId !== actorUserId) throw new ForbiddenException('Not the manager for this employee');
+    } else if (req.currentStepOrder === 3) {
+      if (actorRole !== 'hr' && actorRole !== 'hrAdmin') throw new ForbiddenException('Not HR Admin');
+    }
+
+    const pendingStep = req.approvalSteps.find(s => s.stepOrder === req.currentStepOrder);
     if (pendingStep) {
       await this.prisma.leaveApprovalStep.update({
         where: { id: pendingStep.id },
         data: { status: 'rejected', timestamp: new Date() },
       });
-
-      const updated = await this.prisma.leaveRequest.update({
-        where: { id },
-        data: { overallStatus: 'rejected' },
-        include: { approvalSteps: true, user: true },
-      });
-
-      this.events.emitEntityUpdated('LeaveRequest', 'updated', updated);
-      return updated;
     }
+
+    const updated = await this.prisma.leaveRequest.update({
+      where: { id },
+      data: { overallStatus: 'rejected' },
+      include: { 
+        approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
+        user: true 
+      },
+    });
+
+    this.events.emitToUser(req.userId, 'updated', updated);
+    return updated;
   }
 }
