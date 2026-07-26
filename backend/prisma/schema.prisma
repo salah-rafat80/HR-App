@@ -31,6 +31,22 @@ enum HalfDayPeriod {
   afternoon
 }
 
+enum AttendanceStatus {
+  present
+  absent
+  late
+  workFromHome
+  onBusinessTrip
+  onLeave
+  none
+}
+
+enum OvertimeStatus {
+  pending
+  approved
+  rejected
+}
+
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
@@ -49,6 +65,9 @@ model User {
 
   leaveRequests LeaveRequest[]
   leaveBalances LeaveBalance[]
+  attendanceRecords AttendanceRecord[]
+  shiftInfos        ShiftInfo[]
+  overtimeRequests  OvertimeRequest[]
 }
 
 model LeaveBalance {
@@ -93,9 +112,39 @@ model LeaveApprovalStep {
 // ---------------------------------------------------------
 
 model AttendanceRecord {
+  id            String           @id @default(uuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id])
+  date          DateTime         @db.Date
+  clockInTime   DateTime?
+  clockOutTime  DateTime?
+  status        AttendanceStatus
+  locationLabel String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model ShiftInfo {
   id        String   @id @default(uuid())
-  // Add fields later
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  shiftName String
+  startTime DateTime
+  endTime   DateTime
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OvertimeRequest {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  date           DateTime       @db.Date
+  hoursRequested Float
+  reason         String
+  status         OvertimeStatus @default(pending)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model Kpi {

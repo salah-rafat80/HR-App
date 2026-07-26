@@ -2,8 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/theme_cubit.dart';
 
-import 'package:hr_core/features/attendance/data/datasources/fake_attendance_datasource.dart';
-import 'package:hr_core/features/attendance/data/repositories/attendance_repository_impl.dart';
+import 'package:hr_core/features/attendance/data/datasources/api_attendance_repository_impl.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
 import '../../features/attendance/presentation/bloc/attendance_cubit.dart';
 import 'package:hr_core/features/leave/data/datasources/api_leave_repository_impl.dart';
@@ -13,7 +12,6 @@ import 'package:dio/dio.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import '../../features/leave/presentation/bloc/leave_cubit.dart';
 import 'package:hr_core/features/kpi/data/datasources/fake_kpi_datasource.dart';
 import 'package:hr_core/features/kpi/data/repositories/kpi_repository_impl.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
@@ -89,7 +87,6 @@ Future<void> initDI() async {
   getIt.registerLazySingleton<IO.Socket>(() => socket);
 
   // Data Sources (Singletons for state sync)
-  getIt.registerLazySingleton(() => FakeAttendanceDataSource());
   getIt.registerLazySingleton(() => FakeHomeDataSource());
   getIt.registerLazySingleton(() => FakeKpiDataSource());
   getIt.registerLazySingleton(() => FakeAppraisalDataSource());
@@ -100,7 +97,7 @@ Future<void> initDI() async {
 
   // Repositories
   getIt.registerLazySingleton<AttendanceRepository>(
-      () => AttendanceRepositoryImpl(getIt<FakeAttendanceDataSource>()));
+      () => ApiAttendanceRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<HomeRepository>(
       () => HomeRepositoryImpl(getIt<FakeHomeDataSource>()));
   getIt.registerLazySingleton<LeaveRepository>(
@@ -119,7 +116,7 @@ Future<void> initDI() async {
       () => ItRequestRepositoryImpl(getIt<FakeItRequestDataSource>()));
 
   // Cubits
-  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<LeaveRepository>()));
+  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<IO.Socket>()));
   getIt.registerFactory(() => HomeCubit(
       getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
   getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<IO.Socket>()));

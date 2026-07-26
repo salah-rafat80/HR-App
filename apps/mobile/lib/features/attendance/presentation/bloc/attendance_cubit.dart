@@ -2,15 +2,20 @@ import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'attendance_state.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:hr_core/features/attendance/domain/entities/attendance_enums.dart';
-import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
-import 'package:hr_core/features/leave/domain/entities/leave_enums.dart';
-import 'package:easy_localization/easy_localization.dart';
+
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class AttendanceCubit extends SafeCubit<AttendanceState> {
   final AttendanceRepository _repository;
-  final LeaveRepository _leaveRepository;
+  final IO.Socket _socket;
 
-  AttendanceCubit(this._repository, this._leaveRepository) : super(AttendanceInitial());
+  AttendanceCubit(this._repository, this._socket) : super(AttendanceInitial()) {
+    _socket.on('entity.updated', (data) {
+      if (data['type'] == 'AttendanceRecord') {
+        loadAttendanceData();
+      }
+    });
+  }
 
   Future<void> loadAttendanceData() async {
     if (!isClosed) { emit(AttendanceLoading()); }
@@ -18,17 +23,6 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
       var today = await _repository.getTodayStatus();
       final history = await _repository.getHistory();
       final shift = await _repository.getShift();
-
-      final requests = await _leaveRepository.getMyRequests();
-      final onLeaveToday = requests.any((r) => 
-        r.overallStatus == LeaveStatus.approved && 
-        r.startDate.isBefore(DateTime.now().add(const Duration(days: 1))) &&
-        r.endDate.isAfter(DateTime.now().subtract(const Duration(days: 1)))
-      );
-
-      if (onLeaveToday) {
-        today = today.copyWith(status: AttendanceStatus.onLeave, locationLabel: 'on_leave_today_msg'.tr());
-      }
 
       if (!isClosed) { emit(AttendanceLoaded(todayStatus: today, history: history, shift: shift)); }
     } catch (e) {
