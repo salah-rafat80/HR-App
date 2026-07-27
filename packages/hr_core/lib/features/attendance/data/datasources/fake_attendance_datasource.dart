@@ -31,13 +31,24 @@ class FakeAttendanceDataSource {
     return _todayRecord;
   }
 
-  Future<void> clockIn(String locationLabel, AttendanceStatus mode) async {
+  Future<void> clockIn({
+    required String locationLabel,
+    required AttendanceStatus mode,
+    double? lat,
+    double? lng,
+    double? accuracy,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 800));
     _todayRecord = _todayRecord.copyWith(
       clockInTime: DateTime.now(),
       status: mode,
       locationLabel: locationLabel,
     );
+  }
+
+  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng}) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return const GeofenceStatus(withinRange: true, distanceMeters: 50, allowedRadiusMeters: 200);
   }
 
   Future<void> clockOut() async {

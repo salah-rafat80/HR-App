@@ -7,11 +7,12 @@ import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart
 import 'package:hr_core/features/leave/domain/entities/leave_request.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_enums.dart';
 
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class LeaveCubit extends SafeCubit<LeaveState> {
   final LeaveRepository _repository;
-  final IO.Socket _socket;
+  final io.Socket _socket;
+
 
   LeaveCubit(this._repository, this._socket) : super(LeaveInitial()) {
     final prefs = getIt<SharedPreferences>();

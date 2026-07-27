@@ -35,10 +35,10 @@ COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/entrypoint.sh ./
 
 # Make entrypoint executable
-RUN chmod +x ./entrypoint.sh
+RUN apk add --no-cache dos2unix && dos2unix ./entrypoint.sh && chmod +x ./entrypoint.sh
 
 # Expose port
 EXPOSE 3000
 
 # Start via entrypoint
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["sh", "./entrypoint.sh"]

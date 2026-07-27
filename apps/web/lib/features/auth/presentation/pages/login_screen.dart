@@ -9,7 +9,8 @@ import '../../../../core/router/app_routes.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/di/injection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
+
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -196,8 +197,12 @@ class _RoleButtonState extends State<_RoleButton> {
                 await prefs.setString('user_id', response.data['user']['id']);
                 await prefs.setString('user_role', response.data['user']['role']);
                 
-                final socket = getIt<IO.Socket>();
-                socket.connect();
+                try {
+                  final socket = getIt<io.Socket>();
+                  socket.connect();
+                } catch (_) {}
+
+
 
                 if (!context.mounted) return;
                 context.read<SessionCubit>().setRole(widget.role);

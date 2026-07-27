@@ -201,6 +201,33 @@ async function main() {
     },
   });
 
+  // 4. Create Company Settings
+  await prisma.companySettings.upsert({
+    where: { id: 'default_settings' },
+    update: {},
+    create: {
+      id: 'default_settings',
+      companyName: 'Demo Company',
+    },
+  });
+
+  await prisma.officeBranch.upsert({
+    where: { id: 'branch_main' },
+    update: {
+      latitude: 30.286884,
+      longitude: 31.756905,
+      radiusMeters: 200,
+    },
+    create: {
+      id: 'branch_main',
+      name: 'Main Office',
+      latitude: 30.286884,
+      longitude: 31.756905,
+      radiusMeters: 200,
+      isActive: true,
+    },
+  });
+
   console.log('Seeding completed.');
 }
 
@@ -210,5 +237,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await prisma.$disconnect(); await pool.end();
   });

@@ -10,8 +10,25 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   AttendanceRepositoryImpl(this._dataSource);
 
   @override
-  Future<void> clockIn(String locationLabel, AttendanceStatus mode) {
-    return _dataSource.clockIn(locationLabel, mode);
+  Future<void> clockIn({
+    required String locationLabel,
+    required AttendanceStatus mode,
+    double? lat,
+    double? lng,
+    double? accuracy,
+  }) {
+    return _dataSource.clockIn(
+      locationLabel: locationLabel,
+      mode: mode,
+      lat: lat,
+      lng: lng,
+      accuracy: accuracy,
+    );
+  }
+
+  @override
+  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng}) {
+    return _dataSource.getGeofenceStatus(lat: lat, lng: lng);
   }
 
   @override

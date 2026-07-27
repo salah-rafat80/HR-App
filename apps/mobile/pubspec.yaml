@@ -53,6 +53,8 @@ dependencies:
     path: ../../packages/hr_core
   dio: ^5.10.0
   socket_io_client: ^3.1.6
+  geolocator: ^14.0.2
+  local_auth: ^2.3.0
 
 
 dev_dependencies:

@@ -9,9 +9,8 @@ import 'package:hr_core/features/leave/data/datasources/api_leave_repository_imp
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
 import '../../features/leave/presentation/bloc/leave_cubit.dart';
 import 'package:dio/dio.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:socket_io_client/socket_io_client.dart' as io;
+
 import 'package:hr_core/features/kpi/data/datasources/fake_kpi_datasource.dart';
 import 'package:hr_core/features/kpi/data/repositories/kpi_repository_impl.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
@@ -47,6 +46,10 @@ import 'package:hr_core/features/org_chart/data/datasources/fake_org_chart_datas
 import 'package:hr_core/features/org_chart/domain/repositories/org_chart_repository.dart';
 import 'package:hr_core/features/org_chart/data/repositories/org_chart_repository_impl.dart';
 import '../../features/org_chart/presentation/bloc/org_chart_cubit.dart';
+import 'package:hr_core/features/admin/data/datasources/fake_system_config_datasource.dart';
+import 'package:hr_core/features/admin/data/datasources/api_system_config_datasource.dart';
+import 'package:hr_core/features/admin/domain/repositories/system_config_repository.dart';
+import 'package:hr_core/features/admin/data/repositories/system_config_repository_impl.dart';
 import '../bloc/session_cubit.dart';
 import '../utils/crash_reporter.dart';
 
@@ -63,7 +66,8 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  final String baseUrl = kIsWeb ? 'http://localhost:3000' : (Platform.isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
+  // We use localhost across the board since we enabled adb reverse tcp:3000 tcp:3000 for physical devices.
+  final String baseUrl = 'http://127.0.0.1:3000';
   
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
   
@@ -80,11 +84,18 @@ Future<void> initDI() async {
 
   getIt.registerLazySingleton<Dio>(() => dio);
 
-  final socket = IO.io(baseUrl, IO.OptionBuilder()
-      .setTransports(['websocket']) // for Flutter or Web
-      .disableAutoConnect()
-      .build());
-  getIt.registerLazySingleton<IO.Socket>(() => socket);
+  final socket = io.io(
+    baseUrl,
+    io.OptionBuilder()
+        .setTransports(['websocket', 'polling'])
+        .disableAutoConnect()
+        .disableReconnection()
+        .build(),
+  );
+  socket.onConnectError((_) {});
+  socket.onError((_) {});
+  getIt.registerLazySingleton<io.Socket>(() => socket);
+
 
   // Data Sources (Singletons for state sync)
   getIt.registerLazySingleton(() => FakeHomeDataSource());
@@ -94,6 +105,8 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => FakeTrainingDataSource());
   getIt.registerLazySingleton(() => FakeCommunicationDataSource());
   getIt.registerLazySingleton(() => FakeItRequestDataSource());
+  getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
+  getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
 
   // Repositories
   getIt.registerLazySingleton<AttendanceRepository>(
@@ -114,12 +127,14 @@ Future<void> initDI() async {
       () => CommunicationRepositoryImpl(getIt<FakeCommunicationDataSource>()));
   getIt.registerLazySingleton<ItRequestRepository>(
       () => ItRequestRepositoryImpl(getIt<FakeItRequestDataSource>()));
+  getIt.registerLazySingleton<SystemConfigRepository>(
+      () => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
 
   // Cubits
-  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<IO.Socket>()));
+  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>(), getIt<SystemConfigRepository>()));
   getIt.registerFactory(() => HomeCubit(
       getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
-  getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<IO.Socket>()));
+  getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => KpiCubit(getIt<KpiRepository>()));
   getIt.registerFactory(() => AppraisalCubit(getIt<AppraisalRepository>(), getIt<KpiRepository>()));
   getIt.registerFactory(() => PayrollCubit(getIt<PayrollRepository>()));

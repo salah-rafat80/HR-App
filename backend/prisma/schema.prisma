@@ -120,8 +120,29 @@ model AttendanceRecord {
   clockOutTime  DateTime?
   status        AttendanceStatus
   locationLabel String
+  clockInLat    Float?
+  clockInLng    Float?
+  distanceMeters Float?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+}
+
+model CompanySettings {
+  id                  String   @id @default(uuid())
+  companyName         String   @default("Demo Company")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model OfficeBranch {
+  id             String   @id @default(uuid())
+  name           String
+  latitude       Float
+  longitude      Float
+  radiusMeters   Int      @default(200)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model ShiftInfo {

@@ -82,9 +82,9 @@ class FakeSystemConfigDataSource {
   ];
 
   CompanySettings _companySettings = const CompanySettings(
-    companyName: 'Acme Corp',
+    companyName: 'Dream & Fly App',
     workWeekDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu'],
-    timezoneLabel: 'Arabian Standard Time',
+    timezoneLabel: 'Africa/Cairo (GMT+2)',
   );
 
   final List<IntegrationToggle> _integrations = [
@@ -129,4 +129,44 @@ class FakeSystemConfigDataSource {
       _integrations[index] = _integrations[index].copyWith(enabled: !_integrations[index].enabled);
     }
   }
+
+  final List<OfficeBranch> _branches = [
+    const OfficeBranch(
+      id: 'branch_main',
+      name: 'Main Office',
+      latitude: 30.286884,
+      longitude: 31.756905,
+      radiusMeters: 200,
+      isActive: true,
+    ),
+  ];
+
+  Future<List<OfficeBranch>> getBranches() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return List.from(_branches);
+  }
+
+  Future<void> addBranch(OfficeBranch branch) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final newBranch = branch.copyWith(
+      id: branch.id.isNotEmpty ? branch.id : 'branch_${DateTime.now().millisecondsSinceEpoch}',
+    );
+    _branches.add(newBranch);
+  }
+
+  Future<void> updateBranch(OfficeBranch branch) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    final index = _branches.indexWhere((b) => b.id == branch.id);
+    if (index != -1) {
+      _branches[index] = branch;
+    } else {
+      _branches.add(branch);
+    }
+  }
+
+  Future<void> deleteBranch(String id) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    _branches.removeWhere((b) => b.id == id);
+  }
 }
+
