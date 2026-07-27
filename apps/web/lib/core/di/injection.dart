@@ -4,7 +4,7 @@ import '../theme/theme_cubit.dart';
 
 // Import Data Sources from hr_core
 import 'package:dio/dio.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:hr_core/features/leave/data/datasources/api_leave_repository_impl.dart';
 import 'package:hr_core/features/attendance/data/datasources/api_attendance_repository_impl.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
@@ -13,6 +13,7 @@ import 'package:hr_core/features/appraisal/data/datasources/fake_appraisal_datas
 import 'package:hr_core/features/admin/data/datasources/fake_admin_payroll_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_recruitment_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_system_config_datasource.dart';
+import 'package:hr_core/features/admin/data/datasources/api_system_config_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_offboarding_datasource.dart';
 import 'package:hr_core/features/executive/data/datasources/fake_executive_datasource.dart';
 import 'package:hr_core/features/engagement/data/datasources/fake_engagement_datasource.dart';
@@ -69,11 +70,18 @@ Future<void> initDI() async {
 
   getIt.registerLazySingleton<Dio>(() => dio);
 
-  final socket = IO.io(baseUrl, IO.OptionBuilder()
-      .setTransports(['websocket'])
-      .disableAutoConnect()
-      .build());
-  getIt.registerLazySingleton<IO.Socket>(() => socket);
+  final socket = io.io(
+    baseUrl,
+    io.OptionBuilder()
+        .setTransports(['websocket', 'polling'])
+        .disableAutoConnect()
+        .disableReconnection()
+        .build(),
+  );
+  socket.onConnectError((_) {});
+  socket.onError((_) {});
+  getIt.registerLazySingleton<io.Socket>(() => socket);
+
 
   // Data Sources (Singletons for state sync within web app)
   getIt.registerLazySingleton(() => FakeKpiDataSource());
@@ -81,6 +89,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => FakeAdminPayrollDataSource());
   getIt.registerLazySingleton(() => FakeRecruitmentDataSource());
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
+  getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
   getIt.registerLazySingleton(() => FakeOffboardingDataSource());
   getIt.registerLazySingleton(() => FakeExecutiveDataSource());
   getIt.registerLazySingleton(() => FakeEngagementDataSource());
@@ -92,7 +101,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton<AppraisalRepository>(() => AppraisalRepositoryImpl(getIt<FakeAppraisalDataSource>()));
   getIt.registerLazySingleton<AdminPayrollRepository>(() => AdminPayrollRepositoryImpl(getIt<FakeAdminPayrollDataSource>()));
   getIt.registerLazySingleton<RecruitmentRepository>(() => RecruitmentRepositoryImpl(getIt<FakeRecruitmentDataSource>()));
-  getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>()));
+  getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
   getIt.registerLazySingleton<OffboardingRepository>(() => OffboardingRepositoryImpl(getIt<FakeOffboardingDataSource>()));
   getIt.registerLazySingleton<EngagementRepository>(() => EngagementRepositoryImpl(getIt<FakeEngagementDataSource>()));
   

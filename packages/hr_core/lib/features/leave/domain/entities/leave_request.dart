@@ -27,7 +27,7 @@ class LeaveApprovalStep {
     return LeaveApprovalStep(
       stepName: json['stepName'] as String,
       status: LeaveStatus.values.firstWhere(
-        (e) => e.name == json['status'],
+        (e) => e.name.toLowerCase() == json['status']?.toString().toLowerCase(),
         orElse: () => LeaveStatus.pending,
       ),
       timestamp: DateTime.parse(json['timestamp'] as String),
@@ -47,6 +47,8 @@ class LeaveRequest {
   final String id;
   final String? employeeId;
   final String? employeeName;
+  final String? employeeCode;
+  final String? employeeDepartment;
   final LeaveType type;
   final DateTime startDate;
   final DateTime endDate;
@@ -61,6 +63,8 @@ class LeaveRequest {
     required this.id,
     this.employeeId,
     this.employeeName,
+    this.employeeCode,
+    this.employeeDepartment,
     required this.type,
     required this.startDate,
     required this.endDate,
@@ -94,6 +98,8 @@ class LeaveRequest {
       id: id,
       employeeId: employeeId,
       employeeName: employeeName,
+      employeeCode: employeeCode,
+      employeeDepartment: employeeDepartment,
       type: type,
       startDate: startDate,
       endDate: endDate,
@@ -111,8 +117,10 @@ class LeaveRequest {
       id: json['id'] as String,
       employeeId: json['userId'] as String?,
       employeeName: json['user']?['name'] as String?,
+      employeeCode: json['user']?['code'] as String?,
+      employeeDepartment: json['user']?['department'] as String?,
       type: LeaveType.values.firstWhere(
-        (e) => e.name == json['type'],
+        (e) => e.name.toLowerCase() == json['type']?.toString().toLowerCase(),
         orElse: () => LeaveType.annual,
       ),
       startDate: DateTime.parse(json['startDate'] as String),
@@ -122,7 +130,7 @@ class LeaveRequest {
       reason: json['reason'] as String? ?? '',
       hasAttachment: json['hasAttachment'] as bool? ?? false,
       overallStatus: LeaveStatus.values.firstWhere(
-        (e) => e.name == json['overallStatus'],
+        (e) => e.name.toLowerCase() == json['overallStatus']?.toString().toLowerCase(),
         orElse: () => LeaveStatus.pending,
       ),
       approvalSteps: (json['approvalSteps'] as List<dynamic>?)

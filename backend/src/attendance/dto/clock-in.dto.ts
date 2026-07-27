@@ -8,4 +8,8 @@ export class ClockInDto {
 
   @IsEnum(AttendanceStatus)
   mode: AttendanceStatus;
+
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
 }

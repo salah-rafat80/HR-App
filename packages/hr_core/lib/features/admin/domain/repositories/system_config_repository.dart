@@ -19,4 +19,10 @@ abstract class SystemConfigRepository {
   
   Future<List<IntegrationToggle>> getIntegrations();
   Future<void> toggleIntegration(String name);
+
+  // Office Branches
+  Future<List<OfficeBranch>> getBranches();
+  Future<void> addBranch(OfficeBranch branch);
+  Future<void> updateBranch(OfficeBranch branch);
+  Future<void> deleteBranch(String id);
 }

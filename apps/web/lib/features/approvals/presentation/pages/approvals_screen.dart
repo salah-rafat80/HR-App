@@ -9,11 +9,11 @@ import 'package:shimmer/shimmer.dart';
 import '../../../../core/bloc/web_cubits.dart';
 import '../../../../core/di/injection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
   final LeaveRepository _repo;
-  final IO.Socket _socket;
+  final io.Socket _socket;
   final Set<String> _inFlightIds = {};
 
   bool isInFlight(String id) => _inFlightIds.contains(id);
@@ -22,6 +22,7 @@ class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
     _socket.on('entity.updated.$userId', _onEntityUpdated);
     _socket.on('entity.updated.$role', _onEntityUpdated);
   }
+
 
   void _onEntityUpdated(data) {
     if (data['entity'] == 'LeaveRequest' && !isClosed) {
@@ -86,7 +87,8 @@ class ApprovalsScreen extends StatelessWidget {
     final role = prefs.getString('user_role') ?? '';
 
     return BlocProvider(
-      create: (_) => ApprovalsCubit(getIt<LeaveRepository>(), getIt<IO.Socket>(), userId, role),
+      create: (_) => ApprovalsCubit(getIt<LeaveRepository>(), getIt<io.Socket>(), userId, role),
+
       child: const _ApprovalsView(),
     );
   }

@@ -11,6 +11,7 @@ class SystemConfigState {
   final List<RolePermission> rolePermissions;
   final CompanySettings companySettings;
   final List<IntegrationToggle> integrations;
+  final List<OfficeBranch> branches;
 
   const SystemConfigState({
     required this.leaveTypes,
@@ -19,6 +20,7 @@ class SystemConfigState {
     required this.rolePermissions,
     required this.companySettings,
     required this.integrations,
+    required this.branches,
   });
 
   SystemConfigState copyWith({
@@ -28,6 +30,7 @@ class SystemConfigState {
     List<RolePermission>? rolePermissions,
     CompanySettings? companySettings,
     List<IntegrationToggle>? integrations,
+    List<OfficeBranch>? branches,
   }) {
     return SystemConfigState(
       leaveTypes: leaveTypes ?? this.leaveTypes,
@@ -36,6 +39,7 @@ class SystemConfigState {
       rolePermissions: rolePermissions ?? this.rolePermissions,
       companySettings: companySettings ?? this.companySettings,
       integrations: integrations ?? this.integrations,
+      branches: branches ?? this.branches,
     );
   }
 }
@@ -52,6 +56,7 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
     final rolePermissions = await repo.getRolePermissions();
     final companySettings = await repo.getCompanySettings();
     final integrations = await repo.getIntegrations();
+    final branches = await repo.getBranches();
     return SystemConfigState(
       leaveTypes: leaveTypes,
       holidays: holidays,
@@ -59,6 +64,7 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
       rolePermissions: rolePermissions,
       companySettings: companySettings,
       integrations: integrations,
+      branches: branches,
     );
   }
 
@@ -101,6 +107,33 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
     _updateState((s) => s.copyWith(
       integrations: s.integrations.map((i) => i.name == name ? i.copyWith(enabled: !i.enabled) : i).toList(),
     ));
+  }
+
+  Future<void> addBranch(OfficeBranch branch) async {
+    try {
+      await _repo.addBranch(branch);
+      await load();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateBranch(OfficeBranch branch) async {
+    try {
+      await _repo.updateBranch(branch);
+      await load();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteBranch(String id) async {
+    try {
+      await _repo.deleteBranch(id);
+      await load();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   void _updateState(SystemConfigState Function(SystemConfigState) updater) {

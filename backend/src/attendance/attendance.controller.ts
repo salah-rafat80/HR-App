@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { ClockInDto } from './dto/clock-in.dto';
 import { RequestOvertimeDto } from './dto/request-overtime.dto';
@@ -12,6 +12,16 @@ export class AttendanceController {
   @Get('today')
   getTodayStatus(@Req() req) {
     return this.attendanceService.getTodayStatus(req.user.userId);
+  }
+
+  @Get('geofence-status')
+  async getGeofenceStatus(@Req() req) {
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+    if (isNaN(lat) || isNaN(lng)) {
+      throw new BadRequestException('Invalid coordinates');
+    }
+    return this.attendanceService.checkGeofence(lat, lng);
   }
 
   @Post('clock-in')
