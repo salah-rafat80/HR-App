@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../domain/entities/attendance_enums.dart';
 import '../../domain/entities/attendance_record.dart';
+import '../../domain/entities/overtime_request.dart';
 import '../../domain/entities/shift_info.dart';
 import '../../domain/repositories/attendance_repository.dart';
 
@@ -137,6 +138,23 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
       'hoursRequested': hours,
       'reason': reason,
     });
+  }
+
+  @override
+  Future<List<OvertimeRequest>> getOvertimeRequests() async {
+    try {
+      final response = await dio.get('/attendance/overtime');
+      return (response.data as List)
+          .map((e) => OvertimeRequest.fromJson(e))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Future<void> updateTodayMode(AttendanceStatus mode) async {
+    await dio.patch('/attendance/today/mode', data: {'mode': mode.name});
   }
 
   @override

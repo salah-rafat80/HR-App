@@ -7,6 +7,7 @@ import '../../../../core/bloc/web_cubits.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/recruitment_cubit.dart';
+import '../widgets/recruitment_kanban_column.dart';
 
 class RecruitmentScreen extends StatelessWidget {
   const RecruitmentScreen({super.key});
@@ -86,7 +87,7 @@ class _RecruitmentView extends StatelessWidget {
                           for (int i = 0; i < _columns.length; i++)
                             Padding(
                               padding: const EdgeInsets.only(right: 16),
-                              child: _KanbanColumn(
+                              child: KanbanColumn(
                                 stageKey: _columns[i],
                                 title: _columnLabels[i],
                                 candidates: candidates.where((c) => c.stage.name == _columns[i]).toList(),
@@ -146,129 +147,6 @@ class _RecruitmentView extends StatelessWidget {
   }
 }
 
-class _KanbanColumn extends StatelessWidget {
-  final String stageKey;
-  final String title;
-  final List<Candidate> candidates;
 
-  const _KanbanColumn({required this.stageKey, required this.title, required this.candidates});
 
-  @override
-  Widget build(BuildContext context) {
-    return DragTarget<Candidate>(
-      onWillAcceptWithDetails: (details) => details.data.stage.name != stageKey,
-      onAcceptWithDetails: (details) {
-        final newStage = CandidateStage.values.firstWhere((s) => s.name == stageKey, orElse: () => details.data.stage);
-        context.read<RecruitmentCubit>().moveCandidate(details.data.id, newStage);
-      },
-      builder: (context, candidateData, rejectedData) {
-        final isHovered = candidateData.isNotEmpty;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 300,
-          decoration: BoxDecoration(
-            color: isHovered ? AppColors.primary.withValues(alpha: 0.05) : Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isHovered ? AppColors.primary.withValues(alpha: 0.5) : Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
-              width: isHovered ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text('${candidates.length}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: candidates.isEmpty
-                    ? Center(child: Text('No candidates', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5))))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: candidates.length,
-                        itemBuilder: (context, index) {
-                          final c = candidates[index];
-                          return Draggable<Candidate>(
-                            data: c,
-                            feedback: Material(elevation: 8, borderRadius: BorderRadius.circular(12), child: SizedBox(width: 268, child: _CandidateCard(c, isDragging: true))),
-                            childWhenDragging: Opacity(opacity: 0.3, child: _CandidateCard(c)),
-                            child: _CandidateCard(c),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
 
-class _CandidateCard extends StatelessWidget {
-  final Candidate c;
-  final bool isDragging;
-
-  const _CandidateCard(this.c, {this.isDragging = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: isDragging ? 8 : 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-      shadowColor: Colors.black.withValues(alpha: 0.05),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            const SizedBox(height: 4),
-            Text('Job: ${c.jobId}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Iconsax.tag, size: 12, color: _stageColor(c.stage)),
-                    const SizedBox(width: 4),
-                    Text(c.stage.name, style: TextStyle(color: _stageColor(c.stage), fontSize: 10, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const Icon(Iconsax.more, size: 16, color: Colors.grey),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _stageColor(CandidateStage stage) {
-    switch (stage) {
-      case CandidateStage.applied: return Colors.blue;
-      case CandidateStage.screening: return Colors.orange;
-      case CandidateStage.interview: return Colors.purple;
-      case CandidateStage.offer: return Colors.teal;
-      case CandidateStage.hired: return Colors.green;
-      case CandidateStage.rejected: return Colors.red;
-    }
-  }
-}

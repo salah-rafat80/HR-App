@@ -1,16 +1,21 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:hr_core/features/attendance/domain/entities/attendance_enums.dart';
+import 'package:hr_core/features/attendance/domain/entities/attendance_record.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/attendance_cubit.dart';
 import '../bloc/attendance_state.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_card.dart';
+import 'components/live_clock.dart';
+import 'components/animated_clock_button.dart';
+import 'components/location_status_indicator.dart';
+import 'components/today_attendance_summary.dart';
 
 class AttendanceClockCard extends StatefulWidget {
   const AttendanceClockCard({super.key});
@@ -24,7 +29,8 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
   GeofenceStatus? _geofenceStatus;
   String? _locationError;
 
-  final LocalAuthentication auth = LocalAuthentication();
+  final LocalAuthentication _auth = LocalAuthentication();
+  bool _justClockedIn = false; // Flag to trigger success animation
 
   @override
   void initState() {
@@ -32,6 +38,7 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     _checkLocationStatus();
   }
 
+  // ── Location ────────────────────────────────────────────────────────────────
   Future<void> _checkLocationStatus({bool forceRefresh = false, bool showSnackBar = false}) async {
     if (!mounted) return;
     setState(() {
@@ -39,12 +46,11 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
       _locationError = null;
     });
 
-    // ── Step 1: Permissions ──────────────────────────────────────────────────
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       if (mounted) {
         setState(() {
-          _locationError = 'GPS is disabled. Please enable location services.';
+          _locationError = 'GPS disabled.';
           _isLoadingLocation = false;
         });
       }
@@ -58,21 +64,17 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
       if (mounted) {
         setState(() {
-          _locationError = 'Location permission denied.';
+          _locationError = 'Permission denied.';
           _isLoadingLocation = false;
         });
       }
       return;
     }
 
-    // ── Step 2: Get GPS position (fresh fix) ──────────────────────────
     Position? position;
     try {
       position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
       );
     } catch (_) {
       position = await Geolocator.getLastKnownPosition();
@@ -81,21 +83,20 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     if (position == null) {
       if (mounted) {
         setState(() {
-          _locationError = 'Could not get GPS signal. Please try again outdoors.';
+          _locationError = 'No GPS signal.';
           _isLoadingLocation = false;
         });
       }
       return;
     }
 
-    // ── Step 3: Ask AttendanceCubit for Geofence Status ──────────────────────
     if (!mounted) return;
     try {
       final status = await context.read<AttendanceCubit>().checkGeofence(
-        position.latitude,
-        position.longitude,
-        forceRefresh: forceRefresh,
-      );
+            position.latitude,
+            position.longitude,
+            forceRefresh: forceRefresh,
+          );
       if (!mounted) return;
       setState(() {
         _geofenceStatus = status;
@@ -104,7 +105,7 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
 
       if (showSnackBar && mounted) {
         final label = status.locationLabel ?? 'Office';
-        final distanceStr = status.distanceMeters > 99999 ? 'far' : '${status.distanceMeters.toStringAsFixed(0)}m';
+        final distanceStr = '${status.distanceMeters.toStringAsFixed(0)}m';
         final msg = status.withinRange
             ? 'Location updated: Within range of $label ($distanceStr)'
             : 'Location updated: Too far from $label ($distanceStr • allowed ${status.allowedRadiusMeters.toStringAsFixed(0)}m)';
@@ -120,13 +121,29 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _locationError = 'Server error checking geofence. Tap refresh to retry.';
+          _locationError = 'Geofence error.';
           _isLoadingLocation = false;
         });
       }
     }
   }
 
+  // ── Biometric ───────────────────────────────────────────────────────────────
+  Future<bool> _authenticateUser(String reason) async {
+    try {
+      return await _auth.authenticate(
+        localizedReason: reason,
+        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Authentication error: $e')));
+      }
+      return false;
+    }
+  }
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
   Future<void> _handleClockIn() async {
     if (_geofenceStatus == null || !_geofenceStatus!.withinRange) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,207 +152,241 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
       return;
     }
 
-    bool authenticated = false;
+    final authenticated = await _authenticateUser('Please authenticate to clock in');
+    if (!authenticated || !mounted) return;
+
     try {
-      authenticated = await auth.authenticate(
-        localizedReason: 'Please authenticate to clock in',
-        options: const AuthenticationOptions(
-          biometricOnly: false,
-          stickyAuth: true,
-        ),
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 5)),
       );
+      if (!mounted) return;
+      context.read<AttendanceCubit>().clockIn(
+            locationLabel: _geofenceStatus?.locationLabel ?? 'Office',
+            lat: position.latitude,
+            lng: position.longitude,
+            accuracy: position.accuracy,
+          );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Authentication error: $e')),
-      );
-      return;
-    }
-
-    if (authenticated && mounted) {
-      try {
-        Position position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 5),
-          ),
-        );
-        if (!mounted) return;
-        context.read<AttendanceCubit>().clockIn(
-          locationLabel: _geofenceStatus?.locationLabel ?? 'Office',
-          lat: position.latitude,
-          lng: position.longitude,
-          accuracy: position.accuracy,
-        );
-      } catch (e) {
-        if (!mounted) return;
-        context.read<AttendanceCubit>().clockIn(locationLabel: _geofenceStatus?.locationLabel ?? 'Office');
-      }
+      context.read<AttendanceCubit>().clockIn(
+            locationLabel: _geofenceStatus?.locationLabel ?? 'Office',
+          );
     }
   }
 
+  Future<void> _handleClockOut() async {
+    final authenticated = await _authenticateUser('Please authenticate to clock out');
+    if (!authenticated || !mounted) return;
+    context.read<AttendanceCubit>().clockOut();
+  }
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  int _calculateStreak(List<AttendanceRecord> history) {
+    int streak = 0;
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    
+    final sortedHistory = List<AttendanceRecord>.from(history)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    DateTime currentCheckDate = todayStart.subtract(const Duration(days: 1));
+    
+    for (final record in sortedHistory) {
+      final recordDate = DateTime(record.date.year, record.date.month, record.date.day);
+      if (recordDate.isAfter(todayStart) || recordDate.isAtSameMomentAs(todayStart)) continue;
+      
+      if (recordDate.isAtSameMomentAs(currentCheckDate)) {
+        if (record.clockInTime != null) {
+          streak++;
+          currentCheckDate = currentCheckDate.subtract(const Duration(days: 1));
+        } else {
+          break;
+        }
+      } else if (recordDate.isBefore(currentCheckDate)) {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return '${'good_morning'.tr()} ☀️';
+    if (hour < 17) return '${'good_afternoon'.tr()} 🌤️';
+    return '${'good_evening'.tr()} 🌙';
+  }
+
+  Color _getGradientStartColor(AttendanceLoaded state) {
+    if (state.isWfh) return Colors.indigo.shade400;
+    if (state.isOnBreak) return Colors.amber.shade600;
+    
+    final isClockedIn = state.todayStatus.clockInTime != null && state.todayStatus.clockOutTime == null;
+    if (isClockedIn) return AppColors.primary;
+
+    final hour = DateTime.now().hour;
+    if (hour < 12) return const Color(0xFFFF8C69); // Warm coral
+    if (hour < 17) return AppColors.primary; // Teal
+    return const Color(0xFF1E3A5F); // Deep indigo
+  }
+
+  Color _getGradientEndColor(AttendanceLoaded state) {
+    if (state.isWfh) return Colors.indigo.shade800;
+    if (state.isOnBreak) return Colors.orange.shade800;
+    
+    final isClockedIn = state.todayStatus.clockInTime != null && state.todayStatus.clockOutTime == null;
+    if (isClockedIn) return const Color(0xFF074740);
+
+    final hour = DateTime.now().hour;
+    if (hour < 12) return const Color(0xFFFF6B4A);
+    if (hour < 17) return const Color(0xFF0B6E64);
+    return const Color(0xFF0F1C2E);
+  }
+
+  // ── Build ───────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AttendanceCubit, AttendanceState>(
+    return BlocConsumer<AttendanceCubit, AttendanceState>(
+      listenWhen: (prev, current) {
+        if (current is AttendanceError && current.message == 'clock_out_failed') return true;
+        if (prev is AttendanceLoaded && current is AttendanceLoaded) {
+          // Detect clock in success
+          if (prev.todayStatus.clockInTime == null && current.todayStatus.clockInTime != null) return true;
+        }
+        return false;
+      },
+      listener: (context, state) {
+        if (state is AttendanceError && state.message == 'clock_out_failed') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('clock_out_error_msg'.tr()),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 10),
+              action: SnackBarAction(
+                label: 'retry'.tr(),
+                textColor: Colors.white,
+                onPressed: () => context.read<AttendanceCubit>().retryClockOut(),
+              ),
+            ),
+          );
+        } else if (state is AttendanceLoaded) {
+          // Trigger celebratory burst
+          if (mounted) {
+            setState(() => _justClockedIn = true);
+            Future.delayed(const Duration(seconds: 3), () {
+              if (mounted) setState(() => _justClockedIn = false);
+            });
+          }
+        }
+      },
       builder: (context, state) {
         if (state is! AttendanceLoaded) return const AppLoader();
-        
-        final isClockedIn = state.todayStatus.clockInTime != null && state.todayStatus.clockOutTime == null;
-
-        Widget locationIndicator;
-        if (_isLoadingLocation) {
-          locationIndicator = const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-              SizedBox(width: 8),
-              Text('Checking location...', style: TextStyle(color: Colors.grey)),
-            ],
-          );
-        } else if (_locationError != null) {
-          locationIndicator = Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.location_off, color: AppColors.error),
-              SizedBox(width: 8.w),
-              Flexible(child: Text(_locationError!, style: TextStyle(color: AppColors.error))),
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
-                onPressed: () => _checkLocationStatus(forceRefresh: true, showSnackBar: true),
-              )
-            ],
-          );
-        } else if (_geofenceStatus != null) {
-          final inRange = _geofenceStatus!.withinRange;
-          final branchName = _geofenceStatus!.locationLabel ?? 'Office';
-          final distanceStr = _geofenceStatus!.distanceMeters > 99999
-              ? 'far'
-              : '${_geofenceStatus!.distanceMeters.toStringAsFixed(0)}m';
-
-          locationIndicator = Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                inRange ? AppIcons.modules : Icons.location_off,
-                color: inRange ? AppColors.success : AppColors.error,
-              ),
-              SizedBox(width: 8.w),
-              Flexible(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      inRange ? '✅ $branchName' : '❌ $branchName',
-                      style: TextStyle(
-                        color: inRange ? AppColors.success : AppColors.error,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15.sp,
-                      ),
-                    ),
-                    Text(
-                      inRange
-                          ? '($distanceStr • Within range)'
-                          : 'Too far ($distanceStr away • max ${_geofenceStatus!.allowedRadiusMeters.toStringAsFixed(0)}m)',
-                      style: TextStyle(
-                        color: inRange ? AppColors.success : AppColors.error,
-                        fontSize: 12.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
-                onPressed: () => _checkLocationStatus(forceRefresh: true, showSnackBar: true),
-              ),
-            ],
-          );
-        } else {
-          locationIndicator = const SizedBox.shrink();
-        }
-
 
         final todayRec = state.todayStatus;
-        final isArabic = context.locale.languageCode == 'ar';
-        final timeFormat = DateFormat('hh:mm a', context.locale.languageCode);
-
-        Widget todaySummaryWidget = const SizedBox.shrink();
-        if (todayRec.clockInTime != null) {
-          final inStr = timeFormat.format(todayRec.clockInTime!);
-          final outStr = todayRec.clockOutTime != null
-              ? timeFormat.format(todayRec.clockOutTime!)
-              : (isArabic ? 'جاري العمل...' : 'Working...');
-
-          todaySummaryWidget = Container(
-            margin: EdgeInsets.only(top: 20.h),
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Column(
-                  children: [
-                    Text(isArabic ? 'توقيت الحضور' : 'Check In Time',
-                        style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
-                    SizedBox(height: 4.h),
-                    Text(inStr,
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13.sp,
-                            color: AppColors.success)),
-                  ],
-                ),
-                Container(height: 24.h, width: 1, color: Colors.grey[350]),
-                Column(
-                  children: [
-                    Text(isArabic ? 'توقيت الانصراف' : 'Check Out Time',
-                        style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
-                    SizedBox(height: 4.h),
-                    Text(outStr,
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13.sp,
-                            color: todayRec.clockOutTime != null
-                                ? AppColors.error
-                                : Colors.orange)),
-                  ],
-                ),
-              ],
-            ),
-          );
-        }
+        final isClockedIn = todayRec.clockInTime != null && todayRec.clockOutTime == null;
+        final isActionable = _geofenceStatus?.withinRange == true && !isClockedIn;
+        
+        int streak = _calculateStreak(state.history);
+        if (todayRec.clockInTime != null) streak++; // Add today
 
         return AppCard(
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
-            child: Column(
-              children: [
-                locationIndicator,
-                SizedBox(height: 24.h),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isClockedIn ? AppColors.error : AppColors.primary,
-                    shape: const CircleBorder(),
-                    padding: EdgeInsets.all(40.w),
+          padding: EdgeInsets.zero,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16.r),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  _getGradientStartColor(state),
+                  _getGradientEndColor(state),
+                ],
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(24.w),
+              child: Column(
+                children: [
+                  // ── Header: Greeting & Streak ──────────────────────────────
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _getGreeting(),
+                              style: TextStyle(
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            const LiveClock(),
+                          ],
+                        ),
+                      ),
+                      if (streak > 0)
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20.r),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('🔥', style: TextStyle(fontSize: 14.sp)),
+                              SizedBox(width: 4.w),
+                              Text(
+                                '$streak ${'days'.tr()}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
-                  onPressed: () {
-                    isClockedIn ? context.read<AttendanceCubit>().clockOut() : _handleClockIn();
-                  },
-                  child: Text(isClockedIn ? 'clock_out'.tr() : 'clock_in'.tr(), style: TextStyle(fontSize: 18.sp)),
-                ),
-                todaySummaryWidget,
-              ],
+                  SizedBox(height: 32.h),
+
+                  // ── Central Clock Button ────────────────────────────────────
+                  AnimatedClockButton(
+                    isClockedIn: isClockedIn,
+                    isActionable: isActionable,
+                    justClockedIn: _justClockedIn,
+                    clockInTime: todayRec.clockInTime,
+                    onTap: () => isClockedIn ? _handleClockOut() : _handleClockIn(),
+                  ),
+                  SizedBox(height: 32.h),
+
+                  // ── Location Indicator ──────────────────────────────────────
+                  LocationStatusIndicator(
+                    isLoadingLocation: _isLoadingLocation,
+                    locationError: _locationError,
+                    geofenceStatus: _geofenceStatus,
+                    onRefresh: () => _checkLocationStatus(forceRefresh: true, showSnackBar: true),
+                  ),
+                  
+                  // ── Today Summary ───────────────────────────────────────────
+                  if (todayRec.clockInTime != null)
+                    TodayAttendanceSummary(todayRec: todayRec),
+                ],
+              ),
             ),
           ),
         );
-
       },
     );
   }
+
+
 }
+

@@ -20,8 +20,8 @@ void main() async {
     // Initialize Dependency Injection
     await initDI();
     
-    // Disable Google Fonts runtime fetching to prevent crashes when offline
-    GoogleFonts.config.allowRuntimeFetching = true;
+    // Prevent Google Fonts from fetching at runtime — avoids slow startup & offline crashes
+    GoogleFonts.config.allowRuntimeFetching = false;
 
     // Set custom error widget
     ErrorWidget.builder = (FlutterErrorDetails details) {

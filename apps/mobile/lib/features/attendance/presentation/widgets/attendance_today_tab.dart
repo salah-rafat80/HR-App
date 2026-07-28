@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../widgets/attendance_clock_card.dart';
+import '../widgets/attendance_wfh_break_card.dart';
 
 class AttendanceTodayTab extends StatelessWidget {
   const AttendanceTodayTab({super.key});
@@ -12,9 +13,9 @@ class AttendanceTodayTab extends StatelessWidget {
       child: Column(
         children: [
           const AttendanceClockCard(),
-          SizedBox(height: 24.h),
-          // We can add WFH toggle and Break Tracker here later, 
-          // keeping under 50 lines per widget rule.
+          SizedBox(height: 16.h),
+          // P5 — WFH toggle + Break Tracker (hidden when not clocked in)
+          const AttendanceWfhBreakCard(),
         ],
       ),
     );

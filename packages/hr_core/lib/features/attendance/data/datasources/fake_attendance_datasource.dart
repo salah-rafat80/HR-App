@@ -1,5 +1,6 @@
 import '../../domain/entities/attendance_enums.dart';
 import '../../domain/entities/attendance_record.dart';
+import '../../domain/entities/overtime_request.dart';
 import '../../domain/entities/shift_info.dart';
 
 class FakeAttendanceDataSource {
@@ -19,6 +20,23 @@ class FakeAttendanceDataSource {
       locationLabel: 'Main Office',
     ),
   );
+
+  final List<OvertimeRequest> _overtimeRequests = [
+    OvertimeRequest(
+      id: 'ot-001',
+      hours: 2.0,
+      reason: 'Project deadline',
+      status: OvertimeStatus.approved,
+      submittedAt: DateTime.now().subtract(const Duration(days: 3)),
+    ),
+    OvertimeRequest(
+      id: 'ot-002',
+      hours: 1.5,
+      reason: 'Client call extension',
+      status: OvertimeStatus.pending,
+      submittedAt: DateTime.now().subtract(const Duration(days: 1)),
+    ),
+  ];
 
   final ShiftInfo _shift = ShiftInfo(
     name: 'Morning Shift',
@@ -53,9 +71,7 @@ class FakeAttendanceDataSource {
 
   Future<void> clockOut() async {
     await Future.delayed(const Duration(milliseconds: 800));
-    _todayRecord = _todayRecord.copyWith(
-      clockOutTime: DateTime.now(),
-    );
+    _todayRecord = _todayRecord.copyWith(clockOutTime: DateTime.now());
   }
 
   Future<List<AttendanceRecord>> getHistory() async {
@@ -70,6 +86,28 @@ class FakeAttendanceDataSource {
 
   Future<void> requestOvertime(double hours, String reason) async {
     await Future.delayed(const Duration(milliseconds: 1000));
+    _overtimeRequests.insert(
+      0,
+      OvertimeRequest(
+        id: 'ot-${DateTime.now().millisecondsSinceEpoch}',
+        hours: hours,
+        reason: reason,
+        status: OvertimeStatus.pending,
+        submittedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<List<OvertimeRequest>> getOvertimeRequests() async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return List.from(_overtimeRequests);
+  }
+
+  /// Patches only the mode/status of today's existing record.
+  /// Does NOT create a new clock-in record — used by WFH toggle.
+  Future<void> updateTodayMode(AttendanceStatus mode) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    _todayRecord = _todayRecord.copyWith(status: mode);
   }
 
   Future<void> startBreak() async {
