@@ -1,81 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hr_core/features/leave/domain/entities/leave_enums.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_request.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
-import 'package:hr_core/core/enums/role_enums.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../../core/bloc/web_cubits.dart';
 import '../../../../core/di/injection.dart';
+import '../bloc/approvals_cubit.dart';
+import '../widgets/approvals_data_table.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
-class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
-  final LeaveRepository _repo;
-  final io.Socket _socket;
-  final Set<String> _inFlightIds = {};
 
-  bool isInFlight(String id) => _inFlightIds.contains(id);
-
-  ApprovalsCubit(this._repo, this._socket, String userId, String role) : super(() => _repo.getPendingApprovals(ApprovalScope.all)) {
-    _socket.on('entity.updated.$userId', _onEntityUpdated);
-    _socket.on('entity.updated.$role', _onEntityUpdated);
-  }
-
-
-  void _onEntityUpdated(data) {
-    if (data['entity'] == 'LeaveRequest' && !isClosed) {
-      _loadSilently();
-    }
-  }
-
-  Future<void> _loadSilently() async {
-    try {
-      final data = await fetchData();
-      if (!isClosed) emit(WebSuccess<List<LeaveRequest>>(data));
-    } catch (_) {}
-  }
-
-  @override
-  Future<void> close() {
-    final prefs = getIt<SharedPreferences>();
-    final userId = prefs.getString('user_id') ?? '';
-    final role = prefs.getString('user_role') ?? '';
-    _socket.off('entity.updated.$userId', _onEntityUpdated);
-    _socket.off('entity.updated.$role', _onEntityUpdated);
-    return super.close();
-  }
-
-  Future<void> approve(String id, {void Function(String)? onError}) async {
-    await _performAction(id, _repo.approveRequest, onError);
-  }
-
-  Future<void> reject(String id, {void Function(String)? onError}) async {
-    await _performAction(id, _repo.rejectRequest, onError);
-  }
-
-  Future<void> _performAction(String id, Future<void> Function(String) action, void Function(String)? onError) async {
-    if (state is WebSuccess<List<LeaveRequest>>) {
-      final currentList = (state as WebSuccess<List<LeaveRequest>>).data;
-      _inFlightIds.add(id);
-      emit(WebSuccess<List<LeaveRequest>>(List.from(currentList)));
-      
-      try {
-        await action(id);
-        _inFlightIds.remove(id);
-        _loadSilently();
-      } catch (e) {
-        _inFlightIds.remove(id);
-        emit(WebSuccess<List<LeaveRequest>>(List.from(currentList)));
-        onError?.call(e.toString());
-      }
-    } else {
-      await action(id);
-      load();
-    }
-  }
-}
 
 class ApprovalsScreen extends StatelessWidget {
   const ApprovalsScreen({super.key});
@@ -135,7 +71,7 @@ class _ApprovalsView extends StatelessWidget {
                     if (state.data.isEmpty) {
                       return _buildEmptyState(context);
                     }
-                    return _buildDataTable(context, state.data);
+                    return ApprovalsDataTable(items: state.data);
                   }
                   return const SizedBox.shrink();
                 },
@@ -144,86 +80,6 @@ class _ApprovalsView extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDataTable(BuildContext context, List<LeaveRequest> items) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        dataTableTheme: DataTableThemeData(
-          headingRowColor: WidgetStateProperty.all(Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
-          dataRowColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
-            if (states.contains(WidgetState.hovered)) {
-              return Theme.of(context).colorScheme.primary.withValues(alpha: 0.05);
-            }
-            return null; // Use the default value.
-          }),
-        ),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 48), // minus padding
-          child: DataTable(
-            headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
-            showBottomBorder: true,
-            columns: const [
-              DataColumn(label: Text('Employee')),
-              DataColumn(label: Text('Request Type')),
-              DataColumn(label: Text('Duration')),
-              DataColumn(label: Text('Status')),
-              DataColumn(label: Text('Actions')),
-            ],
-            rows: items.map((item) => _buildRow(context, item)).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  DataRow _buildRow(BuildContext context, LeaveRequest req) {
-    final cubit = context.read<ApprovalsCubit>();
-    final isFlight = cubit.isInFlight(req.id);
-    final isPending = req.overallStatus == LeaveStatus.pending;
-    
-    return DataRow(
-      cells: [
-        DataCell(Text(req.employeeName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w600))),
-        DataCell(Text(req.type.name)),
-        DataCell(Text('${req.startDate.toString().split(' ')[0]} - ${req.endDate.toString().split(' ')[0]}')),
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: isPending ? Colors.orange.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(req.displayStatus.toUpperCase(), style: TextStyle(color: isPending ? Colors.orange : Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-          ),
-        ),
-        DataCell(
-          isFlight 
-            ? const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-              )
-            : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(Iconsax.tick_circle, color: isPending ? Colors.green : Colors.grey),
-                tooltip: 'Approve',
-                onPressed: isPending ? () => cubit.approve(req.id, onError: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')))) : null,
-              ),
-              IconButton(
-                icon: Icon(Iconsax.close_circle, color: isPending ? Colors.red : Colors.grey),
-                tooltip: 'Reject',
-                onPressed: isPending ? () => cubit.reject(req.id, onError: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')))) : null,
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

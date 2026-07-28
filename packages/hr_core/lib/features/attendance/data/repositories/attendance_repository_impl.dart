@@ -1,5 +1,6 @@
 import '../../domain/entities/attendance_enums.dart';
 import '../../domain/entities/attendance_record.dart';
+import '../../domain/entities/overtime_request.dart';
 import '../../domain/entities/shift_info.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../datasources/fake_attendance_datasource.dart';
@@ -59,6 +60,16 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   @override
   Future<void> requestOvertime(double hours, String reason) {
     return _dataSource.requestOvertime(hours, reason);
+  }
+
+  @override
+  Future<List<OvertimeRequest>> getOvertimeRequests() {
+    return _dataSource.getOvertimeRequests();
+  }
+
+  @override
+  Future<void> updateTodayMode(AttendanceStatus mode) {
+    return _dataSource.updateTodayMode(mode);
   }
 
   @override

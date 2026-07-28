@@ -69,7 +69,11 @@ Future<void> initDI() async {
   // We use localhost across the board since we enabled adb reverse tcp:3000 tcp:3000 for physical devices.
   final String baseUrl = 'http://127.0.0.1:3000';
   
-  final dio = Dio(BaseOptions(baseUrl: baseUrl));
+  final dio = Dio(BaseOptions(
+    baseUrl: baseUrl,
+    connectTimeout: const Duration(seconds: 5),
+    receiveTimeout: const Duration(seconds: 10),
+  ));
   
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {
