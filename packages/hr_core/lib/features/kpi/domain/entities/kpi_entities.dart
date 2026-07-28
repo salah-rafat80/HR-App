@@ -37,6 +37,32 @@ class Kpi {
       hasEvidence: hasEvidence ?? this.hasEvidence,
     );
   }
+
+  factory Kpi.fromJson(Map<String, dynamic> json) {
+    return Kpi(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      departmentObjective: json['departmentObjective'] as String,
+      targetValue: (json['targetValue'] as num).toDouble(),
+      currentValue: (json['currentValue'] as num).toDouble(),
+      selfAssessmentText: json['selfAssessmentText'] as String?,
+      hasEvidence: json['hasEvidence'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'departmentObjective': departmentObjective,
+      'targetValue': targetValue,
+      'currentValue': currentValue,
+      'selfAssessmentText': selfAssessmentText,
+      'hasEvidence': hasEvidence,
+    };
+  }
 }
 
 class KpiQuarterScore {
@@ -47,4 +73,18 @@ class KpiQuarterScore {
     required this.quarterLabel,
     required this.averageScorePercent,
   });
+
+  factory KpiQuarterScore.fromJson(Map<String, dynamic> json) {
+    return KpiQuarterScore(
+      quarterLabel: json['quarterLabel'] as String,
+      averageScorePercent: (json['averageScorePercent'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'quarterLabel': quarterLabel,
+      'averageScorePercent': averageScorePercent,
+    };
+  }
 }

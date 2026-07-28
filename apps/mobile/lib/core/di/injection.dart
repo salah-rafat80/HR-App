@@ -11,8 +11,7 @@ import '../../features/leave/presentation/bloc/leave_cubit.dart';
 import 'package:dio/dio.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
-import 'package:hr_core/features/kpi/data/datasources/fake_kpi_datasource.dart';
-import 'package:hr_core/features/kpi/data/repositories/kpi_repository_impl.dart';
+import 'package:hr_core/features/kpi/data/datasources/api_kpi_repository_impl.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
 import '../../features/kpi/presentation/bloc/kpi_cubit.dart';
 import 'package:hr_core/features/appraisal/data/datasources/fake_appraisal_datasource.dart';
@@ -103,7 +102,6 @@ Future<void> initDI() async {
 
   // Data Sources (Singletons for state sync)
   getIt.registerLazySingleton(() => FakeHomeDataSource());
-  getIt.registerLazySingleton(() => FakeKpiDataSource());
   getIt.registerLazySingleton(() => FakeAppraisalDataSource());
   getIt.registerLazySingleton(() => FakePayrollDataSource());
   getIt.registerLazySingleton(() => FakeTrainingDataSource());
@@ -120,7 +118,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton<LeaveRepository>(
       () => ApiLeaveRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<KpiRepository>(
-      () => KpiRepositoryImpl(getIt<FakeKpiDataSource>()));
+      () => ApiKpiRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<AppraisalRepository>(
       () => AppraisalRepositoryImpl(getIt<FakeAppraisalDataSource>()));
   getIt.registerLazySingleton<PayrollRepository>(
@@ -139,7 +137,7 @@ Future<void> initDI() async {
   getIt.registerFactory(() => HomeCubit(
       getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
   getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<io.Socket>()));
-  getIt.registerFactory(() => KpiCubit(getIt<KpiRepository>()));
+  getIt.registerFactory(() => KpiCubit(getIt<KpiRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => AppraisalCubit(getIt<AppraisalRepository>(), getIt<KpiRepository>()));
   getIt.registerFactory(() => PayrollCubit(getIt<PayrollRepository>()));
   getIt.registerFactory(() => TrainingCubit(getIt<TrainingRepository>()));

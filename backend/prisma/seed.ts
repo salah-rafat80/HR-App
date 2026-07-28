@@ -16,42 +16,48 @@ async function main() {
   // 1. Create Users
   const hrAdmin = await prisma.user.upsert({
     where: { email: 'hr@demo.com' },
-    update: {},
+    update: { department: 'HR', title: 'HR Manager' },
     create: {
       email: 'hr@demo.com',
       password: commonPassword,
       name: 'HR Admin',
       role: 'hr',
+      department: 'HR',
+      title: 'HR Manager',
     },
   });
 
   const manager = await prisma.user.upsert({
     where: { email: 'manager@demo.com' },
-    update: { managerId: null },
+    update: { managerId: null, department: 'Engineering', title: 'Engineering Director' },
     create: {
       email: 'manager@demo.com',
       password: commonPassword,
       name: 'Manager User',
       role: 'manager',
       managerId: null,
+      department: 'Engineering',
+      title: 'Engineering Director',
     },
   });
 
   const teamLead = await prisma.user.upsert({
     where: { email: 'teamlead@demo.com' },
-    update: { managerId: manager.id },
+    update: { managerId: manager.id, department: 'Engineering', title: 'Team Lead' },
     create: {
       email: 'teamlead@demo.com',
       password: commonPassword,
       name: 'Team Lead',
       role: 'team_lead',
       managerId: manager.id,
+      department: 'Engineering',
+      title: 'Team Lead',
     },
   });
 
   const employee1 = await prisma.user.upsert({
     where: { email: 'employee@demo.com' },
-    update: { managerId: teamLead.id },
+    update: { managerId: teamLead.id, department: 'Engineering', title: 'Frontend Developer' },
     create: {
       id: 'emp_1',
       email: 'employee@demo.com',
@@ -59,12 +65,14 @@ async function main() {
       name: 'Ahmed Salem',
       role: 'employee',
       managerId: teamLead.id,
+      department: 'Engineering',
+      title: 'Frontend Developer',
     },
   });
 
   const employee2 = await prisma.user.upsert({
     where: { email: 'emp2@demo.com' },
-    update: { managerId: teamLead.id },
+    update: { managerId: teamLead.id, department: 'Engineering', title: 'Backend Developer' },
     create: {
       id: 'emp_2',
       email: 'emp2@demo.com',
@@ -72,6 +80,68 @@ async function main() {
       name: 'Mona Zaki',
       role: 'employee',
       managerId: teamLead.id,
+      department: 'Engineering',
+      title: 'Backend Developer',
+    },
+  });
+
+  const employee3 = await prisma.user.upsert({
+    where: { email: 'emp3@demo.com' },
+    update: { managerId: teamLead.id, department: 'Engineering', title: 'QA Engineer' },
+    create: {
+      id: 'emp_3',
+      email: 'emp3@demo.com',
+      password: commonPassword,
+      name: 'Omar Farooq',
+      role: 'employee',
+      managerId: teamLead.id,
+      department: 'Engineering',
+      title: 'QA Engineer',
+    },
+  });
+
+  const employee4 = await prisma.user.upsert({
+    where: { email: 'emp4@demo.com' },
+    update: { managerId: manager.id, department: 'Product', title: 'Product Manager' },
+    create: {
+      id: 'emp_4',
+      email: 'emp4@demo.com',
+      password: commonPassword,
+      name: 'Sara Ali',
+      role: 'employee',
+      managerId: manager.id,
+      department: 'Product',
+      title: 'Product Manager',
+    },
+  });
+
+  const employee5 = await prisma.user.upsert({
+    where: { email: 'emp5@demo.com' },
+    update: { managerId: manager.id, department: 'Product', title: 'UI/UX Designer' },
+    create: {
+      id: 'emp_5',
+      email: 'emp5@demo.com',
+      password: commonPassword,
+      name: 'Tariq Hassan',
+      role: 'employee',
+      managerId: manager.id,
+      department: 'Product',
+      title: 'UI/UX Designer',
+    },
+  });
+
+  const employee6 = await prisma.user.upsert({
+    where: { email: 'emp6@demo.com' },
+    update: { managerId: hrAdmin.id, department: 'HR', title: 'HR Generalist' },
+    create: {
+      id: 'emp_6',
+      email: 'emp6@demo.com',
+      password: commonPassword,
+      name: 'Nour Youssef',
+      role: 'employee',
+      managerId: hrAdmin.id,
+      department: 'HR',
+      title: 'HR Generalist',
     },
   });
 
@@ -227,6 +297,56 @@ async function main() {
       isActive: true,
     },
   });
+
+  // 5. Seed KPIs
+  console.log('Seeding KPIs...');
+  
+  // emp_1 (Ahmed Salem) - Average: 85%
+  const emp1Kpis = [
+    { title: 'Customer Satisfaction Score', description: 'Maintain average CSAT.', departmentObjective: 'Improve customer support', targetValue: 5.0, currentValue: 4.5 },
+    { title: 'Bug Resolution Time', description: 'Average bug fix time.', departmentObjective: 'Reduce defects', targetValue: 10.0, currentValue: 8.0 },
+    { title: 'Feature Delivery', description: 'Epics completed.', departmentObjective: 'Accelerate product roadmap', targetValue: 100.0, currentValue: 90.0 },
+    { title: 'Code Coverage', description: 'Unit test code coverage.', departmentObjective: 'Improve software quality', targetValue: 80.0, currentValue: 64.0 },
+  ];
+  for (const kpi of emp1Kpis) {
+    await prisma.kpi.create({ data: { userId: 'emp_1', ...kpi } });
+  }
+
+  // emp_2 (Mona Zaki) - Average: 92%
+  await prisma.kpi.create({
+    data: { userId: 'emp_2', title: 'API Performance Optimization', description: 'Optimize backend response times.', departmentObjective: 'Improve backend speed', targetValue: 10.0, currentValue: 9.2 }
+  });
+
+  // emp_3 (Omar Farooq) - Average: 78%
+  await prisma.kpi.create({
+    data: { userId: 'emp_3', title: 'Automation Test Coverage', description: 'Write end-to-end integration tests.', departmentObjective: 'Increase automated quality checks', targetValue: 10.0, currentValue: 7.8 }
+  });
+
+  // emp_4 (Sara Ali) - Average: 88%
+  await prisma.kpi.create({
+    data: { userId: 'emp_4', title: 'Product Backlog Health', description: 'Keep backlog items detailed and prioritized.', departmentObjective: 'Define product requirements clearly', targetValue: 10.0, currentValue: 8.8 }
+  });
+
+  // emp_5 (Tariq Hassan) - Average: 95%
+  await prisma.kpi.create({
+    data: { userId: 'emp_5', title: 'User Research Session Count', description: 'Perform customer feedback interviews.', departmentObjective: 'Align designs with user needs', targetValue: 10.0, currentValue: 9.5 }
+  });
+
+  // emp_6 (Nour Youssef) - Average: 80%
+  await prisma.kpi.create({
+    data: { userId: 'emp_6', title: 'Employee Onboarding Time', description: 'Streamline onboarding for new hires.', departmentObjective: 'Improve HR efficiency', targetValue: 10.0, currentValue: 8.0 }
+  });
+
+  // Historical Quarter Scores for employee1
+  const historicalScores = [
+    { quarterLabel: 'Q2 2025', averageScorePercent: 0.72 },
+    { quarterLabel: 'Q3 2025', averageScorePercent: 0.78 },
+    { quarterLabel: 'Q4 2025', averageScorePercent: 0.81 },
+    { quarterLabel: 'Q1 2026', averageScorePercent: 0.85 },
+  ];
+  for (const score of historicalScores) {
+    await prisma.kpiQuarterScore.create({ data: { userId: 'emp_1', ...score } });
+  }
 
   console.log('Seeding completed.');
 }

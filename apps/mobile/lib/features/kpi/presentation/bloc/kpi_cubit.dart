@@ -1,11 +1,27 @@
 import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'kpi_state.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class KpiCubit extends SafeCubit<KpiState> {
   final KpiRepository _repository;
+  final io.Socket _socket;
 
-  KpiCubit(this._repository) : super(KpiInitial());
+  KpiCubit(this._repository, this._socket) : super(KpiInitial()) {
+    _socket.on('entity.updated', _onEntityUpdated);
+  }
+
+  void _onEntityUpdated(data) {
+    if (data['entity'] == 'Kpi' && !isClosed) {
+      loadData();
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _socket.off('entity.updated', _onEntityUpdated);
+    return super.close();
+  }
 
   Future<void> loadData() async {
     if (!isClosed) { emit(KpiLoading()); }

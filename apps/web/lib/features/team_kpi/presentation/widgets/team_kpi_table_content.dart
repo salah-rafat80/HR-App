@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hr_core/features/team/domain/entities/team_member.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/team_kpi_cubit.dart';
 
@@ -109,25 +108,7 @@ class TeamKpiTableContent extends StatelessWidget {
     );
   }
 
-    Widget _buildShimmer(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Shimmer.fromColors(
-      baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-      highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
-      child: DataTable(
-        columns: const [DataColumn(label: Text('EMPLOYEE')), DataColumn(label: Text('DEPARTMENT')), DataColumn(label: Text('ROLE')), DataColumn(label: Text('KPI SCORE')), DataColumn(label: Text('TREND'))],
-        rows: List.generate(5, (i) => DataRow(cells: [
-          DataCell(Container(width: 140, height: 16, color: Colors.white)),
-          DataCell(Container(width: 80, height: 16, color: Colors.white)),
-          DataCell(Container(width: 100, height: 16, color: Colors.white)),
-          DataCell(Container(width: 120, height: 16, color: Colors.white)),
-          DataCell(Container(width: 40, height: 16, color: Colors.white)),
-        ])),
-      ),
-    );
-  }
-
-    Widget _buildEmpty(BuildContext context) {
+  Widget _buildEmpty(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(48),
       child: Center(child: Column(children: [
@@ -137,22 +118,5 @@ class TeamKpiTableContent extends StatelessWidget {
       ])),
     );
   }
-
-    Widget _buildError(BuildContext context, String msg) {
-    return Padding(
-      padding: const EdgeInsets.all(48),
-      child: Center(child: Column(children: [
-        const Icon(Iconsax.warning_2, size: 48, color: Colors.red),
-        const SizedBox(height: 16),
-        Text('Failed to load KPI data', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 8),
-        Text(msg, style: const TextStyle(color: Colors.grey)),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(icon: const Icon(Iconsax.refresh), label: const Text('Retry'), onPressed: () => context.read<TeamKpiCubit>().load()),
-      ])),
-    );
-  }
-
-
 }
 
