@@ -8,7 +8,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:hr_core/features/leave/data/datasources/api_leave_repository_impl.dart';
 import 'package:hr_core/features/attendance/data/datasources/api_attendance_repository_impl.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
-import 'package:hr_core/features/kpi/data/datasources/fake_kpi_datasource.dart';
+import 'package:hr_core/features/kpi/data/datasources/api_kpi_repository_impl.dart';
 import 'package:hr_core/features/appraisal/data/datasources/fake_appraisal_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_admin_payroll_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_recruitment_datasource.dart';
@@ -20,7 +20,7 @@ import 'package:hr_core/features/engagement/data/datasources/fake_engagement_dat
 
 // Import Repositories from hr_core
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
-import 'package:hr_core/features/kpi/data/repositories/kpi_repository_impl.dart';
+// import 'package:hr_core/features/kpi/data/repositories/kpi_repository_impl.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
 import 'package:hr_core/features/appraisal/data/repositories/appraisal_repository_impl.dart';
 import 'package:hr_core/features/appraisal/domain/repositories/appraisal_repository.dart';
@@ -84,7 +84,6 @@ Future<void> initDI() async {
 
 
   // Data Sources (Singletons for state sync within web app)
-  getIt.registerLazySingleton(() => FakeKpiDataSource());
   getIt.registerLazySingleton(() => FakeAppraisalDataSource());
   getIt.registerLazySingleton(() => FakeAdminPayrollDataSource());
   getIt.registerLazySingleton(() => FakeRecruitmentDataSource());
@@ -97,7 +96,7 @@ Future<void> initDI() async {
   // Repositories
   getIt.registerLazySingleton<LeaveRepository>(() => ApiLeaveRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<AttendanceRepository>(() => ApiAttendanceRepositoryImpl(dio: getIt<Dio>()));
-  getIt.registerLazySingleton<KpiRepository>(() => KpiRepositoryImpl(getIt<FakeKpiDataSource>()));
+  getIt.registerLazySingleton<KpiRepository>(() => ApiKpiRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<AppraisalRepository>(() => AppraisalRepositoryImpl(getIt<FakeAppraisalDataSource>()));
   getIt.registerLazySingleton<AdminPayrollRepository>(() => AdminPayrollRepositoryImpl(getIt<FakeAdminPayrollDataSource>()));
   getIt.registerLazySingleton<RecruitmentRepository>(() => RecruitmentRepositoryImpl(getIt<FakeRecruitmentDataSource>()));

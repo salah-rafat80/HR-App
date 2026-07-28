@@ -46,11 +46,14 @@ class _KpiCard extends StatelessWidget {
     return AppCard(
       margin: EdgeInsets.only(bottom: 12.h),
       child: InkWell(
-        onTap: () => showModalBottomSheet(
-          context: context, 
-          isScrollControlled: true, 
-          builder: (_) => BlocProvider.value(value: context.read<KpiCubit>(), child: KpiDetailModal(kpi: kpi))
-        ),
+        onTap: () {
+          final kpiCubit = context.read<KpiCubit>();
+          showModalBottomSheet(
+            context: context, 
+            isScrollControlled: true, 
+            builder: (_) => BlocProvider.value(value: kpiCubit, child: KpiDetailModal(kpi: kpi)),
+          );
+        },
         child: Padding(
           padding: EdgeInsets.all(16.w),
           child: Column(

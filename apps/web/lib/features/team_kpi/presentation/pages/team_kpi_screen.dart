@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/bloc/web_cubits.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,7 +17,7 @@ class TeamKpiScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => TeamKpiCubit(getIt<KpiRepository>()),
+      create: (_) => TeamKpiCubit(getIt<KpiRepository>(), getIt<io.Socket>()),
       child: const _TeamKpiView(),
     );
   }

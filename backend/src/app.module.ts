@@ -7,6 +7,7 @@ import { EventsModule } from './events/events.module';
 import { LeaveModule } from './leave/leave.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { CompanySettingsModule } from './company-settings/company-settings.module';
+import { KpiModule } from './kpi/kpi.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CompanySettingsModule } from './company-settings/company-settings.modul
     LeaveModule,
     AttendanceModule,
     CompanySettingsModule,
+    KpiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
