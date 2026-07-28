@@ -6,7 +6,7 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
-[![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
+<a href="https://nestjs.com/"><img src="https://nestjs.com/logo.svg" height="28" alt="NestJS"></a>
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean_Architecture-success?style=for-the-badge)](#architecture)
 
 *Elevate your factory and enterprise workforce management with seamless automation, biometric integrations, and deep operational analytics.*
