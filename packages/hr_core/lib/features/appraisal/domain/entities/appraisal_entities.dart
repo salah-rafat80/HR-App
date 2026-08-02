@@ -21,6 +21,24 @@ class AppraisalCycle {
       selfAppraisalSubmitted: selfAppraisalSubmitted ?? this.selfAppraisalSubmitted,
     );
   }
+
+  factory AppraisalCycle.fromJson(Map<String, dynamic> json) {
+    return AppraisalCycle(
+      cycleLabel: json['cycleLabel'] as String,
+      status: AppraisalStatus.values.byName(json['status'] as String),
+      dueDate: DateTime.parse(json['dueDate'] as String),
+      selfAppraisalSubmitted: json['selfAppraisalSubmitted'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'cycleLabel': cycleLabel,
+      'status': status.name,
+      'dueDate': dueDate.toIso8601String(),
+      'selfAppraisalSubmitted': selfAppraisalSubmitted,
+    };
+  }
 }
 
 class SelfAppraisalQuestion {
@@ -41,6 +59,22 @@ class SelfAppraisalQuestion {
       answerText: answerText ?? this.answerText,
     );
   }
+
+  factory SelfAppraisalQuestion.fromJson(Map<String, dynamic> json) {
+    return SelfAppraisalQuestion(
+      id: json['id'] as String,
+      questionText: json['questionText'] as String,
+      answerText: json['answerText'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'questionText': questionText,
+      'answerText': answerText,
+    };
+  }
 }
 
 class Colleague {
@@ -55,6 +89,24 @@ class Colleague {
     required this.role,
     required this.avatarInitial,
   });
+
+  factory Colleague.fromJson(Map<String, dynamic> json) {
+    return Colleague(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      role: json['role'] as String,
+      avatarInitial: json['avatarInitial'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'role': role,
+      'avatarInitial': avatarInitial,
+    };
+  }
 }
 
 class PeerFeedback {
@@ -75,6 +127,22 @@ class PeerFeedback {
       submitted: submitted ?? this.submitted,
     );
   }
+
+  factory PeerFeedback.fromJson(Map<String, dynamic> json) {
+    return PeerFeedback(
+      colleague: Colleague.fromJson(json['colleague'] as Map<String, dynamic>),
+      feedbackText: json['feedbackText'] as String?,
+      submitted: json['submitted'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'colleague': colleague.toJson(),
+      'feedbackText': feedbackText,
+      'submitted': submitted,
+    };
+  }
 }
 
 class AppraisalCategoryRating {
@@ -87,6 +155,22 @@ class AppraisalCategoryRating {
     required this.score,
     required this.managerComment,
   });
+
+  factory AppraisalCategoryRating.fromJson(Map<String, dynamic> json) {
+    return AppraisalCategoryRating(
+      categoryName: json['categoryName'] as String,
+      score: (json['score'] as num).toDouble(),
+      managerComment: json['managerComment'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'categoryName': categoryName,
+      'score': score,
+      'managerComment': managerComment,
+    };
+  }
 }
 
 class AppraisalResult {
@@ -99,6 +183,24 @@ class AppraisalResult {
     required this.categoryRatings,
     required this.managerSummary,
   });
+
+  factory AppraisalResult.fromJson(Map<String, dynamic> json) {
+    return AppraisalResult(
+      overallRating: (json['overallRating'] as num).toDouble(),
+      categoryRatings: (json['categoryRatings'] as List)
+          .map((e) => AppraisalCategoryRating.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      managerSummary: json['managerSummary'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'overallRating': overallRating,
+      'categoryRatings': categoryRatings.map((e) => e.toJson()).toList(),
+      'managerSummary': managerSummary,
+    };
+  }
 }
 
 class DevelopmentGoal {
@@ -109,6 +211,20 @@ class DevelopmentGoal {
     required this.title,
     required this.progressPercent,
   });
+
+  factory DevelopmentGoal.fromJson(Map<String, dynamic> json) {
+    return DevelopmentGoal(
+      title: json['title'] as String,
+      progressPercent: (json['progressPercent'] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'progressPercent': progressPercent,
+    };
+  }
 }
 
 enum CareerStepStatus { completed, current, upcoming }
@@ -121,4 +237,18 @@ class CareerStep {
     required this.roleTitle,
     required this.status,
   });
+
+  factory CareerStep.fromJson(Map<String, dynamic> json) {
+    return CareerStep(
+      roleTitle: json['roleTitle'] as String,
+      status: CareerStepStatus.values.byName(json['status'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'roleTitle': roleTitle,
+      'status': status.name,
+    };
+  }
 }

@@ -348,6 +348,162 @@ async function main() {
     await prisma.kpiQuarterScore.create({ data: { userId: 'emp_1', ...score } });
   }
 
+  // 6. Seed Appraisal Data
+  console.log('Seeding Appraisal data...');
+  
+  const appraisalCycle = await prisma.appraisalCycle.upsert({
+    where: { id: 'cycle_q2_2026' },
+    update: {
+      label: 'Q2 2026 Review',
+      status: 'inProgress',
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+    },
+    create: {
+      id: 'cycle_q2_2026',
+      label: 'Q2 2026 Review',
+      status: 'inProgress',
+      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+    },
+  });
+
+  // Seed peer feedback requests for emp_1 if none exist
+  const peerFeedbackCount = await prisma.peerFeedback.count({
+    where: { cycleId: appraisalCycle.id },
+  });
+  if (peerFeedbackCount === 0) {
+    await prisma.peerFeedback.createMany({
+      data: [
+        {
+          fromUserId: 'emp_1',
+          toUserId: 'emp_5', // Tariq Hassan
+          cycleId: appraisalCycle.id,
+          feedbackText: 'Great teamwork and design skills.',
+          submitted: true,
+        },
+        {
+          fromUserId: 'emp_1',
+          toUserId: 'emp_2', // Mona Zaki
+          cycleId: appraisalCycle.id,
+          feedbackText: null,
+          submitted: false,
+        },
+        {
+          fromUserId: 'emp_1',
+          toUserId: 'emp_3', // Omar Farooq
+          cycleId: appraisalCycle.id,
+          feedbackText: null,
+          submitted: false,
+        },
+      ],
+    });
+  }
+
+  // Seed category ratings for emp_1 results screen if none exist
+  const categoryRatingCount = await prisma.appraisalCategoryRating.count({
+    where: { userId: 'emp_1', cycleId: appraisalCycle.id },
+  });
+  if (categoryRatingCount === 0) {
+    await prisma.appraisalCategoryRating.createMany({
+      data: [
+        {
+          userId: 'emp_1',
+          cycleId: appraisalCycle.id,
+          categoryName: 'Communication',
+          score: 4.5,
+          managerComment: 'Clear and proactive.',
+        },
+        {
+          userId: 'emp_1',
+          cycleId: appraisalCycle.id,
+          categoryName: 'Technical Skill',
+          score: 4.0,
+          managerComment: 'Solid performance.',
+        },
+        {
+          userId: 'emp_1',
+          cycleId: appraisalCycle.id,
+          categoryName: 'Teamwork',
+          score: 4.8,
+          managerComment: 'Excellent collaboration.',
+        },
+        {
+          userId: 'emp_1',
+          cycleId: appraisalCycle.id,
+          categoryName: 'Ownership',
+          score: 3.5,
+          managerComment: 'Good, but needs more initiative.',
+        },
+      ],
+    });
+  }
+
+  // Seed development goals for emp_1 if none exist
+  const developmentGoalCount = await prisma.developmentGoal.count({
+    where: { userId: 'emp_1' },
+  });
+  if (developmentGoalCount === 0) {
+    await prisma.developmentGoal.createMany({
+      data: [
+        {
+          userId: 'emp_1',
+          title: 'Master Flutter Animations',
+          progressPercent: 0.6,
+        },
+        {
+          userId: 'emp_1',
+          title: 'Lead a technical deep-dive',
+          progressPercent: 0.2,
+        },
+        {
+          userId: 'emp_1',
+          title: 'Improve test coverage in core module',
+          progressPercent: 0.9,
+        },
+      ],
+    });
+  }
+
+  // Seed career steps for emp_1 if none exist
+  const careerStepCount = await prisma.careerStep.count({
+    where: { userId: 'emp_1' },
+  });
+  if (careerStepCount === 0) {
+    await prisma.careerStep.createMany({
+      data: [
+        {
+          userId: 'emp_1',
+          roleTitle: 'Junior Developer',
+          status: 'completed',
+          order: 1,
+        },
+        {
+          userId: 'emp_1',
+          roleTitle: 'Mid-Level Developer',
+          status: 'completed',
+          order: 2,
+        },
+        {
+          userId: 'emp_1',
+          roleTitle: 'Senior Developer',
+          status: 'current',
+          order: 3,
+        },
+        {
+          userId: 'emp_1',
+          roleTitle: 'Tech Lead',
+          status: 'upcoming',
+          order: 4,
+        },
+        {
+          userId: 'emp_1',
+          roleTitle: 'Engineering Manager',
+          status: 'upcoming',
+          order: 5,
+        },
+      ],
+    });
+  }
+
   console.log('Seeding completed.');
 }
 

@@ -3,12 +3,28 @@ import 'appraisal_state.dart';
 import 'package:hr_core/features/appraisal/domain/repositories/appraisal_repository.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
 import 'package:hr_core/features/appraisal/domain/entities/appraisal_entities.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class AppraisalCubit extends SafeCubit<AppraisalState> {
   final AppraisalRepository _repository;
   final KpiRepository _kpiRepository;
+  final io.Socket _socket;
 
-  AppraisalCubit(this._repository, this._kpiRepository) : super(AppraisalInitial());
+  AppraisalCubit(this._repository, this._kpiRepository, this._socket) : super(AppraisalInitial()) {
+    _socket.on('entity.updated', _onEntityUpdated);
+  }
+
+  void _onEntityUpdated(data) {
+    if (data['entity'] == 'AppraisalCycle' && !isClosed) {
+      loadData();
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _socket.off('entity.updated', _onEntityUpdated);
+    return super.close();
+  }
 
   Future<void> loadData() async {
     if (!isClosed) { emit(AppraisalLoading()); }

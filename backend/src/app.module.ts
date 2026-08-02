@@ -8,6 +8,7 @@ import { LeaveModule } from './leave/leave.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { CompanySettingsModule } from './company-settings/company-settings.module';
 import { KpiModule } from './kpi/kpi.module';
+import { AppraisalModule } from './appraisal/appraisal.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { KpiModule } from './kpi/kpi.module';
     AttendanceModule,
     CompanySettingsModule,
     KpiModule,
+    AppraisalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
