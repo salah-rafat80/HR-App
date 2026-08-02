@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hr_core/features/appraisal/domain/entities/appraisal_entities.dart';
 import 'package:hr_core/features/appraisal/domain/repositories/appraisal_repository.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../../../core/bloc/web_cubits.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -14,7 +15,7 @@ class AppraisalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => AppraisalCubit(getIt<AppraisalRepository>()),
+      create: (_) => AppraisalCubit(getIt<AppraisalRepository>(), getIt<io.Socket>()),
       child: const _AppraisalView(),
     );
   }

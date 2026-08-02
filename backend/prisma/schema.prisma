@@ -73,6 +73,12 @@ model User {
   overtimeRequests  OvertimeRequest[]
   kpis              Kpi[]
   kpiQuarterScores  KpiQuarterScore[]
+  selfAppraisalAnswers  SelfAppraisalAnswer[]
+  peerFeedbacksSent     PeerFeedback[]            @relation("PeerFeedbackFrom")
+  peerFeedbacksReceived PeerFeedback[]            @relation("PeerFeedbackTo")
+  categoryRatings       AppraisalCategoryRating[]
+  developmentGoals      DevelopmentGoal[]
+  careerSteps           CareerStep[]
 }
 
 model LeaveBalance {
@@ -198,10 +204,95 @@ model KpiQuarterScore {
   updatedAt           DateTime @updatedAt
 }
 
-model AppraisalResult {
-  id        String   @id @default(uuid())
-  // Add fields later
-  createdAt DateTime @default(now())
+enum AppraisalStatus {
+  upcoming
+  inProgress
+  completed
+}
+
+model AppraisalCycle {
+  id                    String                 @id @default(uuid())
+  label                 String
+  status                AppraisalStatus        @default(upcoming)
+  dueDate               DateTime
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  selfAppraisalAnswers  SelfAppraisalAnswer[]
+  peerFeedbacks         PeerFeedback[]
+  categoryRatings       AppraisalCategoryRating[]
+}
+
+model SelfAppraisalAnswer {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  cycleId      String
+  cycle        AppraisalCycle @relation(fields: [cycleId], references: [id])
+  questionId   String
+  questionText String
+  answerText   String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([userId, cycleId, questionId])
+}
+
+model PeerFeedback {
+  id           String         @id @default(uuid())
+  fromUserId   String
+  fromUser     User           @relation("PeerFeedbackFrom", fields: [fromUserId], references: [id])
+  toUserId     String
+  toUser       User           @relation("PeerFeedbackTo", fields: [toUserId], references: [id])
+  cycleId      String
+  cycle        AppraisalCycle @relation(fields: [cycleId], references: [id])
+  feedbackText String?
+  submitted    Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([fromUserId, toUserId, cycleId])
+}
+
+model AppraisalCategoryRating {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  cycleId        String
+  cycle          AppraisalCycle @relation(fields: [cycleId], references: [id])
+  categoryName   String
+  score          Float
+  managerComment String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([userId, cycleId, categoryName])
+}
+
+model DevelopmentGoal {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  title           String
+  progressPercent Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum CareerStepStatus {
+  completed
+  current
+  upcoming
+}
+
+model CareerStep {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  roleTitle String
+  status    CareerStepStatus @default(upcoming)
+  order     Int
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 }
 
 model PayrollRun {
