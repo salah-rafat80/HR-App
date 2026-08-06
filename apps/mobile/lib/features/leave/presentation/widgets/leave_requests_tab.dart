@@ -20,6 +20,14 @@ class LeaveRequestsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<LeaveCubit, LeaveState>(
       builder: (context, state) {
+        if (state is LeaveError) {
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.w),
+              child: Text(state.message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+            ),
+          );
+        }
         if (state is! LeaveLoaded) return const AppLoader();
         if (state.requests.isEmpty) return const EmptyStateWidget(icon: AppIcons.modules, message: 'no_data_found');
         return ListView.builder(

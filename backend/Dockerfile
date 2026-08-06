@@ -33,6 +33,7 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/entrypoint.sh ./
+COPY --from=builder /app/hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json ./
 
 # Make entrypoint executable
 RUN apk add --no-cache dos2unix && dos2unix ./entrypoint.sh && chmod +x ./entrypoint.sh

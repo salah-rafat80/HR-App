@@ -8,6 +8,7 @@ import 'package:hr_app_demo/core/bloc/session_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:hr_app_demo/core/di/injection.dart';
+import 'package:hr_app_demo/core/services/fcm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
@@ -44,6 +45,18 @@ class _LoginFormState extends State<LoginForm> {
         socket.connect();
       } catch (_) {}
 
+      // Register FCM Token
+      try {
+        final fcmToken = await FcmService.instance.getToken();
+        if (fcmToken != null) {
+          await dio.patch('/auth/fcm-token', data: {
+            'email': _emailController.text,
+            'token': fcmToken,
+          });
+        }
+      } catch (e) {
+        debugPrint('FCM Token registration failed: $e');
+      }
 
 
       if (!mounted) return;

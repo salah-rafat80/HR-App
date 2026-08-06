@@ -1,0 +1,135 @@
+import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../router/app_router.dart';
+import '../widgets/in_app_notification.dart';
+
+/// Background message handler — must be a top-level function
+@pragma('vm:entry-point')
+Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
+  debugPrint('[FCM] Background message: ${message.notification?.title}');
+}
+
+class FcmService {
+  FcmService._();
+  static final FcmService instance = FcmService._();
+
+  final _messaging = FirebaseMessaging.instance;
+
+  final _localNotifications = FlutterLocalNotificationsPlugin();
+
+  static const _androidChannel = AndroidNotificationChannel(
+    'hr_app_high_importance',
+    'HR App Notifications',
+    description: 'Leave approvals, KPI updates, and overtime alerts',
+    importance: Importance.high,
+  );
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+
+  Future<void> init() async {
+    // 1. Request permission (Android 13+ / iOS)
+    await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    // 2. Create Android high-importance channel
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_androidChannel);
+
+    // 3. Init local notifications
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/launcher_icon');
+    await _localNotifications.initialize(
+      const InitializationSettings(android: androidSettings),
+    );
+
+    // 4. Foreground notification display (Android)
+    await _messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    // 5. Register background handler
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+
+    // 6. Handle foreground messages
+    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+
+    // 7. Handle notification tap when app is in background
+    FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTap);
+
+    // 8. Check if app was opened from a terminated-state notification
+    final initial = await _messaging.getInitialMessage();
+    if (initial != null) _onNotificationTap(initial);
+
+    debugPrint('[FCM] Initialized successfully');
+  }
+
+  // ── Token ──────────────────────────────────────────────────────────────────
+
+  Future<String?> getToken() async {
+    final token = await _messaging.getToken();
+    debugPrint('[FCM] Device token: $token');
+    return token;
+  }
+
+  /// Call this after login to register the token with our NestJS backend
+  Stream<String> get onTokenRefresh => _messaging.onTokenRefresh;
+
+  // ── Foreground Handler ─────────────────────────────────────────────────────
+
+  void _onForegroundMessage(RemoteMessage message) {
+    final notification = message.notification;
+    if (notification == null) return;
+
+    // Show system tray notification
+    _localNotifications.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannel.id,
+          _androidChannel.name,
+          channelDescription: _androidChannel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/launcher_icon',
+        ),
+      ),
+      payload: jsonEncode(message.data),
+    );
+
+    // Show premium in-app notification banner
+    final context = AppRouter.navigatorKey.currentContext;
+    if (context != null) {
+      InAppNotification.show(
+        context,
+        title: notification.title ?? '',
+        body: notification.body ?? '',
+        data: message.data,
+        onTap: () => _onNotificationTap(message),
+      );
+    }
+
+    debugPrint('[FCM] Foreground: ${notification.title} — ${notification.body}');
+  }
+
+  // ── Tap Handler ────────────────────────────────────────────────────────────
+
+  void _onNotificationTap(RemoteMessage message) {
+    debugPrint('[FCM] Notification tapped: ${message.data}');
+    // TODO: navigate based on message.data['type']
+    // e.g. 'leave_approved' → LeaveScreen
+    //      'kpi_updated'    → KpiScreen
+    //      'overtime_approved' → AttendanceScreen
+  }
+}

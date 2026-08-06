@@ -182,5 +182,6 @@
   "payroll_tab": "الرواتب",
   "system_config": "إعدادات النظام",
   "recruitment": "التوظيف",
-  "executive_dashboard": "لوحة القيادة التنفيذية"
+  "executive_dashboard": "لوحة القيادة التنفيذية",
+  "leave_apply_success": "تم تقديم طلب الإجازة بنجاح"
 }

@@ -58,6 +58,7 @@ model User {
   password      String
   name          String
   role          String
+  fcmToken      String?
 
   department    String?
   title         String?

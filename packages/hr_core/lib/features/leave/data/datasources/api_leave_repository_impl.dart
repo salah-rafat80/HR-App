@@ -35,10 +35,13 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
     }
   }
 
-
   @override
   Future<void> applyLeave(LeaveRequest draft) async {
-    await dio.post('/leave/apply', data: draft.toJson());
+    await dio.post(
+      '/leave/apply',
+      data: draft.toJson(),
+      options: Options(headers: {'Idempotency-Key': draft.id}),
+    );
   }
 
   @override
@@ -48,8 +51,12 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
 
   @override
   Future<List<TeamLeaveEntry>> getTeamCalendar() async {
-    final response = await dio.get('/leave/team-calendar');
-    return (response.data as List).map((e) => TeamLeaveEntry.fromJson(e)).toList();
+    try {
+      final response = await dio.get('/leave/team-calendar');
+      return (response.data as List).map((e) => TeamLeaveEntry.fromJson(e)).toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   @override

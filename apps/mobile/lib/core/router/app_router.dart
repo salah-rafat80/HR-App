@@ -19,10 +19,10 @@ import '../../features/communication/presentation/pages/communication_screen.dar
 import '../../features/engagement/presentation/pages/engagement_screen.dart';
 import '../../features/org_chart/presentation/pages/org_chart_screen.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
-
 class AppRouter {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>();
+
   static CustomTransitionPage _fadeTransition(Widget child) {
     return CustomTransitionPage(
       child: child,
@@ -33,92 +33,92 @@ class AppRouter {
   }
 
   static final router = GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: navigatorKey,
     initialLocation: AppRoutes.splash,
     routes: [
       GoRoute(
         path: AppRoutes.splash,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const SplashScreen()),
       ),
       GoRoute(
         path: AppRoutes.login,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const LoginScreen()),
       ),
 
       ShellRoute(
-        navigatorKey: _shellNavigatorKey,
+        navigatorKey: shellNavigatorKey,
         builder: (context, state, child) {
           return MainShell(child: child);
         },
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            parentNavigatorKey: _shellNavigatorKey,
+            parentNavigatorKey: shellNavigatorKey,
             pageBuilder: (context, state) => _fadeTransition(const HomeScreen()),
           ),
           GoRoute(
             path: AppRoutes.attendance,
-            parentNavigatorKey: _shellNavigatorKey,
+            parentNavigatorKey: shellNavigatorKey,
             pageBuilder: (context, state) => _fadeTransition(const AttendanceScreen()),
           ),
           GoRoute(
             path: AppRoutes.leave,
-            parentNavigatorKey: _shellNavigatorKey,
+            parentNavigatorKey: shellNavigatorKey,
             pageBuilder: (context, state) => _fadeTransition(const LeaveScreen()),
           ),
           GoRoute(
             path: AppRoutes.modules,
-            parentNavigatorKey: _shellNavigatorKey,
+            parentNavigatorKey: shellNavigatorKey,
             pageBuilder: (context, state) => _fadeTransition(const ModulesScreen()),
           ),
           GoRoute(
             path: AppRoutes.profile,
-            parentNavigatorKey: _shellNavigatorKey,
+            parentNavigatorKey: shellNavigatorKey,
             pageBuilder: (context, state) => _fadeTransition(const ProfileScreen()),
           ),
         ],
       ),
       GoRoute(
         path: '/coming-soon',
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const ComingSoonScreen()),
       ),
       GoRoute(
         path: AppRoutes.kpi,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const KpiScreen()),
       ),
       GoRoute(
         path: AppRoutes.appraisal,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const AppraisalScreen()),
       ),
       GoRoute(
         path: AppRoutes.payroll,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const PayrollScreen()),
       ),
       GoRoute(
         path: AppRoutes.training,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const TrainingScreen()),
       ),
       GoRoute(
         path: AppRoutes.communication,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const CommunicationScreen()),
       ),
 
       GoRoute(
         path: AppRoutes.engagement,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const EngagementScreen()),
       ),
       GoRoute(
         path: AppRoutes.orgChart,
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: navigatorKey,
         pageBuilder: (context, state) => _fadeTransition(const OrgChartScreen()),
       ),
     ],
