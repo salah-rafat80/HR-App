@@ -182,5 +182,6 @@
   "payroll_tab": "Payroll",
   "system_config": "System Config",
   "recruitment": "Recruitment",
-  "executive_dashboard": "Executive Dashboard"
+  "executive_dashboard": "Executive Dashboard",
+  "leave_apply_success": "Leave request submitted successfully"
 }

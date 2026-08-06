@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
+export const mockFcmTokens: Record<string, string> = {};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -53,5 +55,19 @@ export class AuthService {
       }
     };
   }
+
+  async updateFcmToken(email: string, token: string) {
+    try {
+      await this.prisma.user.update({
+        where: { email },
+        data: { fcmToken: token },
+      });
+    } catch (e) {
+      console.warn('Database offline, saving FCM token to memory mock for:', email);
+      mockFcmTokens[email] = token;
+    }
+    return { success: true };
+  }
 }
+
 

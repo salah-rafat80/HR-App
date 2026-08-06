@@ -26,7 +26,15 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
   Widget build(BuildContext context) {
     return BlocListener<LeaveCubit, LeaveState>(
       listener: (context, state) {
-        if (state is LeaveLoaded && state.applySuccess) Navigator.pop(context);
+        if (state is LeaveLoaded && state.applySuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('leave_apply_success'.tr()),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
       },
       child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 16.w, right: 16.w, top: 24.h),
@@ -47,13 +55,25 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
             SizedBox(height: 24.h),
             ElevatedButton(
               onPressed: () {
-                context.read<LeaveCubit>().applyLeave(_type, _start, _end, false, null, _reason.text, _type == LeaveType.sick);
+                final reasonText = _reason.text.trim().isEmpty ? 'Leave request' : _reason.text.trim();
+                context.read<LeaveCubit>().applyLeave(_type, _start, _end, false, null, reasonText, _type == LeaveType.sick);
               },
               child: BlocBuilder<LeaveCubit, LeaveState>(
                 builder: (context, state) {
                   return (state is LeaveLoaded && state.isApplying) ? const AppLoader(size: 24) : Text('submit_request'.tr());
                 },
               ),
+            ),
+            BlocBuilder<LeaveCubit, LeaveState>(
+              builder: (context, state) {
+                if (state is LeaveLoaded && state.applyError != null) {
+                  return Padding(
+                    padding: EdgeInsets.only(top: 8.h),
+                    child: Text(state.applyError!, style: TextStyle(color: Colors.red, fontSize: 12.sp)),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
             SizedBox(height: 24.h),
           ],
