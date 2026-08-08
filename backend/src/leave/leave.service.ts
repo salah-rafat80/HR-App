@@ -138,7 +138,7 @@ export class LeaveService {
       managerToken = managerToken || mockFcmTokens[request.user.managerId.replace('mock_', '')];
 
       if (managerToken) {
-        this.notifications.notifyNewLeaveRequest(managerToken, request.user.name);
+        this.notifications.notifyNewLeaveRequest(managerToken, request.user.name, request.id);
       }
     }
 
@@ -267,7 +267,7 @@ export class LeaveService {
     // Push notification to employee
     const empToken = updated.user?.fcmToken || mockFcmTokens[updated.user.email];
     if (empToken && newStatus === 'approved') {
-      this.notifications.notifyLeaveApproved(empToken, updated.user.name);
+      this.notifications.notifyLeaveApproved(empToken, updated.user.name, updated.id);
     }
     
     // Notify next approver
@@ -325,7 +325,7 @@ export class LeaveService {
     // Push notification to employee
     const empToken = updated.user?.fcmToken || mockFcmTokens[updated.user.email];
     if (empToken) {
-      this.notifications.notifyLeaveRejected(empToken, updated.user.name);
+      this.notifications.notifyLeaveRejected(empToken, updated.user.name, updated.id);
     }
     
     return updated;

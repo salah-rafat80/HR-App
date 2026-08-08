@@ -86,6 +86,7 @@ export class NotificationService implements OnModuleInit {
           notification: {
             channelId: 'hr_app_high_importance',
             sound: 'default',
+            color: '#0B6E64',
           },
         },
       });
@@ -99,48 +100,48 @@ export class NotificationService implements OnModuleInit {
 
   // ── Convenience helpers ──────────────────────────────────────────────────────
 
-  async notifyLeaveApproved(token: string, employeeName: string) {
+  async notifyLeaveApproved(token: string, employeeName: string, id: string) {
     return this.sendToDevice({
       token,
       title: '✅ تم اعتماد إجازتك',
       body: `مرحباً ${employeeName}، تمت الموافقة على طلب إجازتك`,
-      data: { type: 'leave_approved' },
+      data: { type: 'leave_approved', id },
     });
   }
 
-  async notifyLeaveRejected(token: string, employeeName: string) {
+  async notifyLeaveRejected(token: string, employeeName: string, id: string) {
     return this.sendToDevice({
       token,
       title: '❌ تم رفض طلب الإجازة',
       body: `مرحباً ${employeeName}، تم رفض طلب إجازتك`,
-      data: { type: 'leave_rejected' },
+      data: { type: 'leave_rejected', id },
     });
   }
 
-  async notifyNewLeaveRequest(token: string, employeeName: string) {
+  async notifyNewLeaveRequest(token: string, employeeName: string, id: string) {
     return this.sendToDevice({
       token,
       title: '📋 طلب إجازة جديد',
       body: `${employeeName} قدّم طلب إجازة يحتاج مراجعتك`,
-      data: { type: 'leave_pending' },
+      data: { type: 'leave_pending', id },
     });
   }
 
-  async notifyOvertimeApproved(token: string, employeeName: string) {
+  async notifyOvertimeApproved(token: string, employeeName: string, id?: string) {
     return this.sendToDevice({
       token,
       title: '✅ تم اعتماد الأوفرتايم',
       body: `مرحباً ${employeeName}، تمت الموافقة على طلب الأوفرتايم`,
-      data: { type: 'overtime_approved' },
+      data: { type: 'overtime_approved', ...(id ? { id } : {}) },
     });
   }
 
-  async notifyKpiUpdated(token: string, kpiTitle: string) {
+  async notifyKpiUpdated(token: string, kpiTitle: string, id?: string) {
     return this.sendToDevice({
       token,
       title: '🎯 تم تحديث KPI',
       body: `تم تحديث مؤشر "${kpiTitle}" الخاص بك`,
-      data: { type: 'kpi_updated' },
+      data: { type: 'kpi_updated', ...(id ? { id } : {}) },
     });
   }
 }

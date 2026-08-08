@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import '../router/app_router.dart';
+import '../router/app_routes.dart';
 import '../widgets/in_app_notification.dart';
 
 /// Background message handler — must be a top-level function
@@ -17,7 +18,6 @@ class FcmService {
   static final FcmService instance = FcmService._();
 
   final _messaging = FirebaseMessaging.instance;
-
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   static const _androidChannel = AndroidNotificationChannel(
@@ -46,13 +46,34 @@ class FcmService {
     // 3. Init local notifications
     const androidSettings =
         AndroidInitializationSettings('@mipmap/launcher_icon');
-    await _localNotifications.initialize(
-      const InitializationSettings(android: androidSettings),
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
     );
 
-    // 4. Foreground notification display (Android)
+    await _localNotifications.initialize(
+      const InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      ),
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        if (response.payload != null) {
+          try {
+            final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+            final message = RemoteMessage(data: data);
+            _onNotificationTap(message);
+          } catch (e) {
+            debugPrint('[FCM] Error parsing notification response: $e');
+          }
+        }
+      },
+    );
+
+    // 4. Foreground notification display (Android/iOS)
+    // Set alert to false to prevent native heads-up popups on iOS in the foreground
     await _messaging.setForegroundNotificationPresentationOptions(
-      alert: true,
+      alert: false,
       badge: true,
       sound: true,
     );
@@ -90,7 +111,9 @@ class FcmService {
     final notification = message.notification;
     if (notification == null) return;
 
-    // Show system tray notification
+    // Show system tray notification SILENTLY (low importance) in foreground
+    // This inserts the notification quietly into the status drawer,
+    // avoiding heads-up overlaps with our custom glassmorphic in-app banner.
     _localNotifications.show(
       notification.hashCode,
       notification.title,
@@ -100,9 +123,14 @@ class FcmService {
           _androidChannel.id,
           _androidChannel.name,
           channelDescription: _androidChannel.description,
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: Importance.low,
+          priority: Priority.low,
+          playSound: false,
+          enableVibration: false,
           icon: '@mipmap/launcher_icon',
+          color: const Color(0xFF0B6E64),
+          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+          styleInformation: const BigTextStyleInformation(''),
         ),
       ),
       payload: jsonEncode(message.data),
@@ -127,9 +155,18 @@ class FcmService {
 
   void _onNotificationTap(RemoteMessage message) {
     debugPrint('[FCM] Notification tapped: ${message.data}');
-    // TODO: navigate based on message.data['type']
-    // e.g. 'leave_approved' → LeaveScreen
-    //      'kpi_updated'    → KpiScreen
-    //      'overtime_approved' → AttendanceScreen
+    final context = AppRouter.navigatorKey.currentContext;
+    if (context == null) return;
+
+    final type = message.data['type']?.toString();
+    if (type == null) return;
+
+    if (type.startsWith('leave')) {
+      GoRouter.of(context).push(AppRoutes.leave);
+    } else if (type == 'kpi_updated') {
+      GoRouter.of(context).push(AppRoutes.kpi);
+    } else if (type == 'overtime_approved' || type == 'overtime_pending') {
+      GoRouter.of(context).push(AppRoutes.attendance);
+    }
   }
 }
