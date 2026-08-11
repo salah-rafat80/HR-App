@@ -9,6 +9,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { CompanySettingsModule } from './company-settings/company-settings.module';
 import { KpiModule } from './kpi/kpi.module';
 import { AppraisalModule } from './appraisal/appraisal.module';
+import { PayrollModule } from './payroll/payroll.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AppraisalModule } from './appraisal/appraisal.module';
     CompanySettingsModule,
     KpiModule,
     AppraisalModule,
+    PayrollModule,
   ],
   controllers: [AppController],
   providers: [AppService],

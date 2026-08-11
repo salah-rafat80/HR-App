@@ -17,6 +17,29 @@ class PayrollRun extends Equatable {
     required this.employeeCount,
   });
 
+  factory PayrollRun.fromJson(Map<String, dynamic> json) {
+    return PayrollRun(
+      id: json['id'] as String,
+      periodLabel: json['periodLabel'] as String,
+      status: PayrollStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => PayrollStatus.draft,
+      ),
+      totalAmount: (json['totalAmount'] as num).toDouble(),
+      employeeCount: json['employeeCount'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'periodLabel': periodLabel,
+      'status': status.name,
+      'totalAmount': totalAmount,
+      'employeeCount': employeeCount,
+    };
+  }
+
   PayrollRun copyWith({
     PayrollStatus? status,
   }) {

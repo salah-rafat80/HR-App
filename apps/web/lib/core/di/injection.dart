@@ -13,15 +13,14 @@ import 'package:hr_core/features/appraisal/data/datasources/api_appraisal_reposi
 import 'package:hr_core/features/appraisal/domain/repositories/appraisal_repository.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
 import 'package:hr_core/features/kpi/domain/repositories/kpi_repository.dart';
-import 'package:hr_core/features/admin/data/datasources/fake_admin_payroll_datasource.dart';
+import 'package:hr_core/features/admin/data/datasources/api_admin_payroll_repository_impl.dart';
+import 'package:hr_core/features/admin/domain/repositories/admin_payroll_repository.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_recruitment_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_system_config_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/api_system_config_datasource.dart';
 import 'package:hr_core/features/admin/data/datasources/fake_offboarding_datasource.dart';
 import 'package:hr_core/features/executive/data/datasources/fake_executive_datasource.dart';
 import 'package:hr_core/features/engagement/data/datasources/fake_engagement_datasource.dart';
-import 'package:hr_core/features/admin/data/repositories/admin_payroll_repository_impl.dart';
-import 'package:hr_core/features/admin/domain/repositories/admin_payroll_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/recruitment_repository_impl.dart';
 import 'package:hr_core/features/admin/domain/repositories/recruitment_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/system_config_repository_impl.dart';
@@ -80,7 +79,6 @@ Future<void> initDI() async {
 
 
   // Data Sources (Singletons for state sync within web app)
-  getIt.registerLazySingleton(() => FakeAdminPayrollDataSource());
   getIt.registerLazySingleton(() => FakeRecruitmentDataSource());
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
   getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
@@ -93,7 +91,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton<AttendanceRepository>(() => ApiAttendanceRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<KpiRepository>(() => ApiKpiRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<AppraisalRepository>(() => ApiAppraisalRepositoryImpl(dio: getIt<Dio>()));
-  getIt.registerLazySingleton<AdminPayrollRepository>(() => AdminPayrollRepositoryImpl(getIt<FakeAdminPayrollDataSource>()));
+  getIt.registerLazySingleton<AdminPayrollRepository>(() => ApiAdminPayrollRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<RecruitmentRepository>(() => RecruitmentRepositoryImpl(getIt<FakeRecruitmentDataSource>()));
   getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
   getIt.registerLazySingleton<OffboardingRepository>(() => OffboardingRepositoryImpl(getIt<FakeOffboardingDataSource>()));
