@@ -21,10 +21,12 @@ class FcmService {
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   static const _androidChannel = AndroidNotificationChannel(
-    'hr_app_high_importance',
+    'hr_app_high_importance_v2',
     'HR App Notifications',
     description: 'Leave approvals, KPI updates, and overtime alerts',
     importance: Importance.high,
+    playSound: true,
+    enableVibration: true,
   );
 
   // ── Init ───────────────────────────────────────────────────────────────────
@@ -71,9 +73,8 @@ class FcmService {
     );
 
     // 4. Foreground notification display (Android/iOS)
-    // Set alert to false to prevent native heads-up popups on iOS in the foreground
     await _messaging.setForegroundNotificationPresentationOptions(
-      alert: false,
+      alert: true,
       badge: true,
       sound: true,
     );
@@ -111,9 +112,6 @@ class FcmService {
     final notification = message.notification;
     if (notification == null) return;
 
-    // Show system tray notification SILENTLY (low importance) in foreground
-    // This inserts the notification quietly into the status drawer,
-    // avoiding heads-up overlaps with our custom glassmorphic in-app banner.
     _localNotifications.show(
       notification.hashCode,
       notification.title,
@@ -123,10 +121,10 @@ class FcmService {
           _androidChannel.id,
           _androidChannel.name,
           channelDescription: _androidChannel.description,
-          importance: Importance.low,
-          priority: Priority.low,
-          playSound: false,
-          enableVibration: false,
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
           icon: '@mipmap/launcher_icon',
           color: const Color(0xFF0B6E64),
           largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),

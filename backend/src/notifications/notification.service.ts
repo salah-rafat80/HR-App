@@ -94,7 +94,7 @@ export class NotificationService implements OnModuleInit {
         android: {
           priority: 'high',
           notification: {
-            channelId: 'hr_app_high_importance',
+            channelId: 'hr_app_high_importance_v2',
             sound: 'default',
             color: '#0B6E64',
           },
