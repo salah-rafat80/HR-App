@@ -217,15 +217,38 @@ export class LeaveService {
   }
 
   async approveRequest(id: string, actorUserId: string, actorRole: string) {
-    const req = await this.prisma.leaveRequest.findUnique({
-      where: { id },
-      include: { 
-        approvalSteps: { orderBy: { stepOrder: 'asc' } },
-        user: { include: { manager: true } }
-      },
-    });
+    // Try DB first
+    let req: any = null;
+    try {
+      req = await this.prisma.leaveRequest.findUnique({
+        where: { id },
+        include: { 
+          approvalSteps: { orderBy: { stepOrder: 'asc' } },
+          user: { include: { manager: true } }
+        },
+      });
+    } catch (_) {}
 
-    if (!req) throw new NotFoundException();
+    // Fall back to in-memory (demo mode — no seeded DB)
+    if (!req) {
+      const allMemory: any[] = [];
+      for (const [, reqs] of globalInMemoryRequests) allMemory.push(...reqs);
+      req = allMemory.find(r => r.id === id);
+      if (!req) throw new NotFoundException();
+
+      if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
+
+      const pendingStep = req.approvalSteps?.find((s: any) => s.stepOrder === req.currentStepOrder);
+      if (pendingStep) pendingStep.status = 'approved';
+
+      const isLast = req.currentStepOrder === 3;
+      req.overallStatus = isLast ? 'approved' : 'pending';
+      if (!isLast) req.currentStepOrder += 1;
+
+      this.events.emitToUser(req.userId, 'updated', req);
+      return req;
+    }
+
     if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
 
     // Authorization
@@ -237,7 +260,7 @@ export class LeaveService {
       if (actorRole !== 'hr' && actorRole !== 'hrAdmin') throw new ForbiddenException('Not HR Admin');
     }
 
-    const pendingStep = req.approvalSteps.find(s => s.stepOrder === req.currentStepOrder);
+    const pendingStep = req.approvalSteps.find((s: any) => s.stepOrder === req.currentStepOrder);
     if (!pendingStep) throw new NotFoundException('Active step not found');
 
     await this.prisma.leaveApprovalStep.update({
@@ -261,16 +284,13 @@ export class LeaveService {
       },
     });
 
-    // Targeted Events
-    this.events.emitToUser(req.userId, 'updated', updated); // Notify employee
+    this.events.emitToUser(req.userId, 'updated', updated);
 
-    // Push notification to employee
     const empToken = updated.user?.fcmToken || mockFcmTokens[updated.user.email];
     if (empToken && newStatus === 'approved') {
       this.notifications.notifyLeaveApproved(empToken, updated.user.name, updated.id);
     }
     
-    // Notify next approver
     if (!isLast) {
       if (nextStepOrder === 2 && updated.user.manager?.managerId) {
         this.events.emitToUser(updated.user.manager.managerId, 'updated', updated);
@@ -283,13 +303,34 @@ export class LeaveService {
   }
 
   async rejectRequest(id: string, actorUserId: string, actorRole: string) {
-    const req = await this.prisma.leaveRequest.findUnique({
-      where: { id },
-      include: { 
-        approvalSteps: { orderBy: { stepOrder: 'asc' } },
-        user: { include: { manager: true } }
-      },
-    });
+    // Try DB first
+    let req: any = null;
+    try {
+      req = await this.prisma.leaveRequest.findUnique({
+        where: { id },
+        include: { 
+          approvalSteps: { orderBy: { stepOrder: 'asc' } },
+          user: { include: { manager: true } }
+        },
+      });
+    } catch (_) {}
+
+    // Fall back to in-memory (demo mode — no seeded DB)
+    if (!req) {
+      const allMemory: any[] = [];
+      for (const [, reqs] of globalInMemoryRequests) allMemory.push(...reqs);
+      req = allMemory.find(r => r.id === id);
+      if (!req) throw new NotFoundException();
+
+      if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
+
+      const pendingStep = req.approvalSteps?.find((s: any) => s.stepOrder === req.currentStepOrder);
+      if (pendingStep) pendingStep.status = 'rejected';
+      req.overallStatus = 'rejected';
+
+      this.events.emitToUser(req.userId, 'updated', req);
+      return req;
+    }
 
     if (!req) throw new NotFoundException();
     if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
