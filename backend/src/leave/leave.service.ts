@@ -31,8 +31,9 @@ export class LeaveService {
   }
 
   async getMyRequests(userId: string) {
+    let dbResults: any[] = [];
     try {
-      return await this.prisma.leaveRequest.findMany({
+      dbResults = await this.prisma.leaveRequest.findMany({
         where: { userId },
         include: { 
           approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
@@ -42,8 +43,13 @@ export class LeaveService {
       });
     } catch (e) {
       console.warn('Database offline, returning fallback my-requests');
-      return globalInMemoryRequests.get(userId) || [];
     }
+
+    // Always merge with in-memory (covers demo mode where DB has no data)
+    const memoryResults = globalInMemoryRequests.get(userId) || [];
+    const dbIds = new Set(dbResults.map((r: any) => r.id));
+    const uniqueMemory = memoryResults.filter((r: any) => !dbIds.has(r.id));
+    return [...dbResults, ...uniqueMemory];
   }
 
 
@@ -112,33 +118,41 @@ export class LeaveService {
         user: { id: userId, name: 'Mock User', managerId: 'mock_manager' }
       };
 
-      const existing = globalInMemoryRequests.get(userId) || [];
-      existing.unshift(request);
-      globalInMemoryRequests.set(userId, existing);
+      const existingOnFail = globalInMemoryRequests.get(userId) || [];
+      existingOnFail.unshift(request);
+      globalInMemoryRequests.set(userId, existingOnFail);
+    }
+
+    // Always also save to in-memory for getMyRequests fallback merge
+    const inMemExisting = globalInMemoryRequests.get(userId) || [];
+    if (!inMemExisting.find((r: any) => r.id === request.id)) {
+      inMemExisting.unshift(request);
+      globalInMemoryRequests.set(userId, inMemExisting);
     }
 
     // Notify the employee
     this.events.emitToUser(userId, 'created', request);
-    // Notify all team_lead admins on web portal so their list auto-refreshes
+    // Notify all admin roles so their pending list auto-refreshes
     this.events.emitToRole('team_lead', 'created', request);
     this.events.emitToRole('manager', 'created', request);
     this.events.emitToRole('hr', 'created', request);
     this.events.emitToRole('hrAdmin', 'created', request);
+
     // Notify the team lead specifically
-    if (request.user.managerId) {
-      this.events.emitToUser(request.user.managerId, 'created', request);
+    const managerId = request.user?.managerId;
+    if (managerId) {
+      this.events.emitToUser(managerId, 'created', request);
       
       let managerToken: string | undefined = undefined;
       try {
-        const manager = await this.prisma.user.findUnique({ where: { id: request.user.managerId } });
+        const manager = await this.prisma.user.findUnique({ where: { id: managerId } });
         if (manager?.fcmToken) managerToken = manager.fcmToken;
       } catch(e) {}
 
-      // Fallback for mock db
-      managerToken = managerToken || mockFcmTokens[request.user.managerId.replace('mock_', '')];
+      managerToken = managerToken || mockFcmTokens[managerId.replace('mock_', '')];
 
       if (managerToken) {
-        this.notifications.notifyNewLeaveRequest(managerToken, request.user.name, request.id);
+        this.notifications.notifyNewLeaveRequest(managerToken, request.user?.name ?? 'Employee', request.id);
       }
     }
 
