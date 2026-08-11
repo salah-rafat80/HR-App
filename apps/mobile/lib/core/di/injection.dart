@@ -63,8 +63,8 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  // We use localhost across the board since we enabled adb reverse tcp:3000 tcp:3000 for physical devices.
-  final String baseUrl = 'http://127.0.0.1:3000';
+  // Connected to live backend on Render
+  final String baseUrl = 'https://hr-app-lswi.onrender.com';
   
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,
