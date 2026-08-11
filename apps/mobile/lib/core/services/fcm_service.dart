@@ -153,20 +153,33 @@ class FcmService {
 
   // ── Tap Handler ────────────────────────────────────────────────────────────
 
+  RemoteMessage? _pendingMessage;
+
+  void consumePendingNotification(BuildContext context) {
+    if (_pendingMessage != null) {
+      final msg = _pendingMessage!;
+      _pendingMessage = null;
+      _onNotificationTap(msg);
+    }
+  }
+
   void _onNotificationTap(RemoteMessage message) {
     debugPrint('[FCM] Notification tapped: ${message.data}');
-    final context = AppRouter.navigatorKey.currentContext;
-    if (context == null) return;
-
     final type = message.data['type']?.toString();
     if (type == null) return;
 
-    if (type.startsWith('leave')) {
-      GoRouter.of(context).push(AppRoutes.leave);
-    } else if (type == 'kpi_updated') {
-      GoRouter.of(context).push(AppRoutes.kpi);
-    } else if (type == 'overtime_approved' || type == 'overtime_pending') {
-      GoRouter.of(context).push(AppRoutes.attendance);
+    final context = AppRouter.navigatorKey.currentContext;
+    if (context != null && context.mounted) {
+      if (type.startsWith('leave')) {
+        context.go(AppRoutes.leave);
+      } else if (type == 'kpi_updated') {
+        context.go(AppRoutes.kpi);
+      } else if (type.startsWith('overtime')) {
+        context.go(AppRoutes.attendance);
+      }
+    } else {
+      debugPrint('[FCM] Context not ready yet, caching pending notification: ${message.data}');
+      _pendingMessage = message;
     }
   }
 }
