@@ -25,6 +25,7 @@ export class NotificationService implements OnModuleInit {
 
     try {
       let serviceAccount;
+      let serviceAccountPath = 'ENVIRONMENT_VARIABLES';
       if (process.env.FIREBASE_CREDENTIALS) {
         try {
           serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
@@ -44,7 +45,7 @@ export class NotificationService implements OnModuleInit {
           path.resolve(__dirname, '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
         ];
 
-        let serviceAccountPath = '';
+        serviceAccountPath = '';
         for (const p of possiblePaths) {
           if (fs.existsSync(p)) {
             serviceAccountPath = p;

@@ -48,7 +48,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  final String baseUrl = 'http://localhost:3000';
+  final String baseUrl = 'https://hr-app-lswi.onrender.com';
   
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
 
