@@ -21,10 +21,12 @@ class FcmService {
   final _localNotifications = FlutterLocalNotificationsPlugin();
 
   static const _androidChannel = AndroidNotificationChannel(
-    'hr_app_high_importance',
+    'hr_app_high_importance_v2',
     'HR App Notifications',
     description: 'Leave approvals, KPI updates, and overtime alerts',
     importance: Importance.high,
+    playSound: true,
+    enableVibration: true,
   );
 
   // ── Init ───────────────────────────────────────────────────────────────────
@@ -71,9 +73,8 @@ class FcmService {
     );
 
     // 4. Foreground notification display (Android/iOS)
-    // Set alert to false to prevent native heads-up popups on iOS in the foreground
     await _messaging.setForegroundNotificationPresentationOptions(
-      alert: false,
+      alert: true,
       badge: true,
       sound: true,
     );
@@ -111,9 +112,6 @@ class FcmService {
     final notification = message.notification;
     if (notification == null) return;
 
-    // Show system tray notification SILENTLY (low importance) in foreground
-    // This inserts the notification quietly into the status drawer,
-    // avoiding heads-up overlaps with our custom glassmorphic in-app banner.
     _localNotifications.show(
       notification.hashCode,
       notification.title,
@@ -123,10 +121,10 @@ class FcmService {
           _androidChannel.id,
           _androidChannel.name,
           channelDescription: _androidChannel.description,
-          importance: Importance.low,
-          priority: Priority.low,
-          playSound: false,
-          enableVibration: false,
+          importance: Importance.high,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
           icon: '@mipmap/launcher_icon',
           color: const Color(0xFF0B6E64),
           largeIcon: const DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
@@ -153,20 +151,33 @@ class FcmService {
 
   // ── Tap Handler ────────────────────────────────────────────────────────────
 
+  RemoteMessage? _pendingMessage;
+
+  void consumePendingNotification(BuildContext context) {
+    if (_pendingMessage != null) {
+      final msg = _pendingMessage!;
+      _pendingMessage = null;
+      _onNotificationTap(msg);
+    }
+  }
+
   void _onNotificationTap(RemoteMessage message) {
     debugPrint('[FCM] Notification tapped: ${message.data}');
-    final context = AppRouter.navigatorKey.currentContext;
-    if (context == null) return;
-
     final type = message.data['type']?.toString();
     if (type == null) return;
 
-    if (type.startsWith('leave')) {
-      GoRouter.of(context).push(AppRoutes.leave);
-    } else if (type == 'kpi_updated') {
-      GoRouter.of(context).push(AppRoutes.kpi);
-    } else if (type == 'overtime_approved' || type == 'overtime_pending') {
-      GoRouter.of(context).push(AppRoutes.attendance);
+    final context = AppRouter.navigatorKey.currentContext;
+    if (context != null && context.mounted) {
+      if (type.startsWith('leave')) {
+        context.go(AppRoutes.leave);
+      } else if (type == 'kpi_updated') {
+        context.go(AppRoutes.kpi);
+      } else if (type.startsWith('overtime')) {
+        context.go(AppRoutes.attendance);
+      }
+    } else {
+      debugPrint('[FCM] Context not ready yet, caching pending notification: ${message.data}');
+      _pendingMessage = message;
     }
   }
 }

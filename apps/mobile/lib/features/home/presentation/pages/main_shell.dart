@@ -5,11 +5,27 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/widgets/floating_nav_bar.dart';
+import '../../../../core/services/fcm_service.dart';
 
-class MainShell extends StatelessWidget {
+class MainShell extends StatefulWidget {
   final Widget child;
 
   const MainShell({super.key, required this.child});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        FcmService.instance.consumePendingNotification(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +40,7 @@ class MainShell extends StatelessWidget {
     return BlocBuilder<ThemeCubit, ThemeMode>(
       builder: (context, theme) {
         return Scaffold(
-          body: child,
+          body: widget.child,
           bottomNavigationBar: SafeArea(
             child: FloatingNavBar(
               items: items,

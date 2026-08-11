@@ -57,14 +57,15 @@ export class AuthService {
   }
 
   async updateFcmToken(email: string, token: string) {
+    // Always save to in-memory so approve/reject can find it even if DB user has null fcmToken
+    mockFcmTokens[email] = token;
     try {
       await this.prisma.user.update({
         where: { email },
         data: { fcmToken: token },
       });
     } catch (e) {
-      console.warn('Database offline, saving FCM token to memory mock for:', email);
-      mockFcmTokens[email] = token;
+      console.warn('Database offline or user not found, FCM token saved to memory only for:', email);
     }
     return { success: true };
   }
