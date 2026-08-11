@@ -262,16 +262,24 @@ export class LeaveService {
       // Emit socket event to employee
       this.events.emitToUser(req.userId, 'updated', req);
 
-      // Send FCM push notification — derive email from mock userId (e.g. "mock_employee@demo.com" → "employee@demo.com")
-      if (isLast) {
-        const empEmail = req.user?.email ?? req.userId.replace(/^mock_/, '');
-        const empToken = mockFcmTokens[empEmail];
-        const empName = req.user?.name ?? empEmail.split('@')[0];
-        if (empToken) {
+      // Send FCM push notification on EVERY approval step (not just final)
+      const empEmail = req.user?.email ?? req.userId.replace(/^mock_/, '');
+      const empToken = mockFcmTokens[empEmail];
+      const empName = req.user?.name ?? empEmail.split('@')[0];
+      if (empToken) {
+        if (isLast) {
           this.notifications.notifyLeaveApproved(empToken, empName, req.id);
         } else {
-          console.warn(`[FCM] No token found for employee: ${empEmail}. mockFcmTokens keys: ${Object.keys(mockFcmTokens).join(', ')}`);
+          // Intermediate step — notify employee their request is progressing
+          this.notifications.sendToDevice({
+            token: empToken,
+            title: '⏳ جاري مراجعة طلبك',
+            body: `مرحباً ${empName}، تمت الموافقة على خطوة وطلبك في انتظار الموافقة التالية`,
+            data: { type: 'leave_step_approved', id: req.id },
+          });
         }
+      } else {
+        console.warn(`[FCM] No token for employee: ${empEmail} — keys: ${Object.keys(mockFcmTokens).join(', ')}`);
       }
 
       return req;
@@ -314,9 +322,19 @@ export class LeaveService {
 
     this.events.emitToUser(req.userId, 'updated', updated);
 
+    // Send FCM notification on EVERY approval step (not just final)
     const empToken = updated.user?.fcmToken || mockFcmTokens[updated.user.email];
-    if (empToken && newStatus === 'approved') {
-      this.notifications.notifyLeaveApproved(empToken, updated.user.name, updated.id);
+    if (empToken) {
+      if (newStatus === 'approved') {
+        this.notifications.notifyLeaveApproved(empToken, updated.user.name, updated.id);
+      } else {
+        this.notifications.sendToDevice({
+          token: empToken,
+          title: '⏳ جاري مراجعة طلبك',
+          body: `مرحباً ${updated.user.name}، تمت الموافقة على خطوة وطلبك في انتظار الموافقة التالية`,
+          data: { type: 'leave_step_approved', id: updated.id },
+        });
+      }
     }
     
     if (!isLast) {
