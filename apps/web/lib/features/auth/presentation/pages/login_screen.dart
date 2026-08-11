@@ -153,15 +153,16 @@ class _RoleButton extends StatefulWidget {
 
 class _RoleButtonState extends State<_RoleButton> {
   bool _hovered = false;
+  bool _loading = false;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
+      onEnter: (_) => setState(() => _hovered = !_loading && true),
       onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
+      cursor: _loading ? SystemMouseCursors.basic : SystemMouseCursors.click,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
@@ -178,7 +179,8 @@ class _RoleButtonState extends State<_RoleButton> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () async {
+            onTap: _loading ? null : () async {
+              setState(() => _loading = true);
               try {
                 String email = 'employee@demo.com';
                 if (widget.role == UserRole.teamLead) email = 'teamlead@demo.com';
@@ -202,13 +204,12 @@ class _RoleButtonState extends State<_RoleButton> {
                   socket.connect();
                 } catch (_) {}
 
-
-
                 if (!context.mounted) return;
                 context.read<SessionCubit>().setRole(widget.role);
                 context.go(AppRoutes.dashboard);
               } catch (e) {
                 if (!context.mounted) return;
+                setState(() => _loading = false);
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed')));
               }
             },
@@ -236,7 +237,18 @@ class _RoleButtonState extends State<_RoleButton> {
                       ],
                     ),
                   ),
-                  Icon(Iconsax.arrow_right_3, size: 18, color: _hovered ? AppColors.primary : cs.onSurfaceVariant),
+                  _loading
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              _hovered ? AppColors.primary : cs.onSurfaceVariant,
+                            ),
+                          ),
+                        )
+                      : Icon(Iconsax.arrow_right_3, size: 18, color: _hovered ? AppColors.primary : cs.onSurfaceVariant),
                 ],
               ),
             ),
