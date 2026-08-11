@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/bloc/web_cubits.dart';
 import 'package:hr_core/features/admin/domain/entities/payroll_run.dart';
 import 'package:hr_core/features/admin/domain/repositories/admin_payroll_repository.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../../../core/di/injection.dart';
 import '../bloc/payroll_cubit.dart';
 
@@ -17,7 +18,7 @@ class PayrollScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => PayrollCubit(getIt<AdminPayrollRepository>()),
+      create: (_) => PayrollCubit(getIt<AdminPayrollRepository>(), getIt<io.Socket>()),
       child: const _PayrollView(),
     );
   }

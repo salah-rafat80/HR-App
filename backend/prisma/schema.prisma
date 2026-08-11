@@ -80,6 +80,8 @@ model User {
   categoryRatings       AppraisalCategoryRating[]
   developmentGoals      DevelopmentGoal[]
   careerSteps           CareerStep[]
+  payslips              Payslip[]
+  bonusNotices          BonusNotice[]
 }
 
 model LeaveBalance {
@@ -296,11 +298,66 @@ model CareerStep {
   updatedAt DateTime         @updatedAt
 }
 
-model PayrollRun {
-  id        String   @id @default(uuid())
-  // Add fields later
-  createdAt DateTime @default(now())
+enum PayslipLineItemType {
+  allowance
+  deduction
 }
+
+enum PayrollStatus {
+  draft
+  processing
+  pendingApproval
+  approved
+  paid
+}
+
+model PayrollRun {
+  id            String        @id @default(uuid())
+  periodLabel   String
+  status        PayrollStatus @default(draft)
+  totalAmount   Float         @default(0)
+  employeeCount Int           @default(0)
+  payslips      Payslip[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Payslip {
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id])
+  monthLabel   String
+  baseSalary   Float
+  netPay       Float
+  payrollRunId String?
+  payrollRun   PayrollRun?       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  lineItems    PayslipLineItem[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model PayslipLineItem {
+  id        String              @id @default(uuid())
+  label     String
+  amount    Float
+  type      PayslipLineItemType
+  payslipId String
+  payslip   Payslip             @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+}
+
+model BonusNotice {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  monthLabel String
+  amount     Float
+  message    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 
 model TrainingCourse {
   id        String   @id @default(uuid())

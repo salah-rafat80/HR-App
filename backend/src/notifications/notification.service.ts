@@ -24,34 +24,43 @@ export class NotificationService implements OnModuleInit {
     }
 
     try {
-      const fs = require('fs');
-      const possiblePaths = [
-        // 1. Backend root when running from dist (3 levels up)
-        path.resolve(__dirname, '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
-        // 2. Monorepo root when running from dist (4 levels up)
-        path.resolve(__dirname, '../../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
-        // 3. Backend root when running from src (2 levels up)
-        path.resolve(__dirname, '../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
-        // 4. Monorepo root when running from src (3 levels up)
-        path.resolve(__dirname, '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
-      ];
-
-      let serviceAccountPath = '';
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          serviceAccountPath = p;
-          break;
+      let serviceAccount;
+      if (process.env.FIREBASE_CREDENTIALS) {
+        try {
+          serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+        } catch (e) {
+          throw new Error('Failed to parse FIREBASE_CREDENTIALS environment variable as JSON');
         }
-      }
+      } else {
+        const fs = require('fs');
+        const possiblePaths = [
+          // 1. Backend root when running from dist (3 levels up)
+          path.resolve(__dirname, '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+          // 2. Monorepo root when running from dist (4 levels up)
+          path.resolve(__dirname, '../../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+          // 3. Backend root when running from src (2 levels up)
+          path.resolve(__dirname, '../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+          // 4. Monorepo root when running from src (3 levels up)
+          path.resolve(__dirname, '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+        ];
 
-      if (!serviceAccountPath) {
-        throw new Error(
-          `Could not find firebase-adminsdk credentials file in any of: ${possiblePaths.join(', ')}`,
-        );
-      }
+        let serviceAccountPath = '';
+        for (const p of possiblePaths) {
+          if (fs.existsSync(p)) {
+            serviceAccountPath = p;
+            break;
+          }
+        }
 
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const serviceAccount = require(serviceAccountPath);
+        if (!serviceAccountPath) {
+          throw new Error(
+            `Could not find firebase-adminsdk credentials file in any of: ${possiblePaths.join(', ')}`,
+          );
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        serviceAccount = require(serviceAccountPath);
+      }
 
       this.app = initializeApp({
         credential: cert(serviceAccount),

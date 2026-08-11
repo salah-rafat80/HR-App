@@ -1,11 +1,27 @@
 import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'payroll_state.dart';
 import 'package:hr_core/features/payroll/domain/repositories/payroll_repository.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 
 class PayrollCubit extends SafeCubit<PayrollState> {
   final PayrollRepository _repository;
+  final io.Socket _socket;
 
-  PayrollCubit(this._repository) : super(PayrollInitial());
+  PayrollCubit(this._repository, this._socket) : super(PayrollInitial()) {
+    _socket.on('entity.updated', _onEntityUpdated);
+  }
+
+  void _onEntityUpdated(data) {
+    if ((data['entity'] == 'Payslip' || data['entity'] == 'BonusNotice') && !isClosed) {
+      loadData();
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _socket.off('entity.updated', _onEntityUpdated);
+    return super.close();
+  }
 
   Future<void> loadData() async {
     if (!isClosed) { emit(PayrollLoading()); }
