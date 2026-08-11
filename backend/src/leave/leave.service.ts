@@ -259,7 +259,21 @@ export class LeaveService {
       req.overallStatus = isLast ? 'approved' : 'pending';
       if (!isLast) req.currentStepOrder += 1;
 
+      // Emit socket event to employee
       this.events.emitToUser(req.userId, 'updated', req);
+
+      // Send FCM push notification — derive email from mock userId (e.g. "mock_employee@demo.com" → "employee@demo.com")
+      if (isLast) {
+        const empEmail = req.user?.email ?? req.userId.replace(/^mock_/, '');
+        const empToken = mockFcmTokens[empEmail];
+        const empName = req.user?.name ?? empEmail.split('@')[0];
+        if (empToken) {
+          this.notifications.notifyLeaveApproved(empToken, empName, req.id);
+        } else {
+          console.warn(`[FCM] No token found for employee: ${empEmail}. mockFcmTokens keys: ${Object.keys(mockFcmTokens).join(', ')}`);
+        }
+      }
+
       return req;
     }
 
