@@ -47,36 +47,50 @@ class AppRouter {
         pageBuilder: (context, state) => _fadeTransition(const LoginScreen()),
       ),
 
-      ShellRoute(
-        navigatorKey: shellNavigatorKey,
-        builder: (context, state, child) {
-          return MainShell(child: child);
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return MainShell(navigationShell: navigationShell);
         },
-        routes: [
-          GoRoute(
-            path: AppRoutes.home,
-            parentNavigatorKey: shellNavigatorKey,
-            pageBuilder: (context, state) => _fadeTransition(const HomeScreen()),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                pageBuilder: (context, state) => _fadeTransition(const HomeScreen()),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.attendance,
-            parentNavigatorKey: shellNavigatorKey,
-            pageBuilder: (context, state) => _fadeTransition(const AttendanceScreen()),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.attendance,
+                pageBuilder: (context, state) => _fadeTransition(const AttendanceScreen()),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.leave,
-            parentNavigatorKey: shellNavigatorKey,
-            pageBuilder: (context, state) => _fadeTransition(const LeaveScreen()),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.leave,
+                pageBuilder: (context, state) => _fadeTransition(const LeaveScreen()),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.modules,
-            parentNavigatorKey: shellNavigatorKey,
-            pageBuilder: (context, state) => _fadeTransition(const ModulesScreen()),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.modules,
+                pageBuilder: (context, state) => _fadeTransition(const ModulesScreen()),
+              ),
+            ],
           ),
-          GoRoute(
-            path: AppRoutes.profile,
-            parentNavigatorKey: shellNavigatorKey,
-            pageBuilder: (context, state) => _fadeTransition(const ProfileScreen()),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.profile,
+                pageBuilder: (context, state) => _fadeTransition(const ProfileScreen()),
+              ),
+            ],
           ),
         ],
       ),

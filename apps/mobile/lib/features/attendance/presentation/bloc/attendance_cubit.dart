@@ -21,11 +21,19 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
 
   AttendanceCubit(this._repository, this._socket, this._configRepo)
       : super(AttendanceInitial()) {
-    _socket.on('entity.updated', (data) {
-      if (data['type'] == 'AttendanceRecord') {
-        loadAttendanceData();
-      }
-    });
+    _socket.on('entity.updated', _onEntityUpdated);
+  }
+
+  void _onEntityUpdated(dynamic data) {
+    if (data is Map && data['type'] == 'AttendanceRecord' && !isClosed) {
+      loadAttendanceData();
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _socket.off('entity.updated', _onEntityUpdated);
+    return super.close();
   }
 
   // ── Data Loading ────────────────────────────────────────────────────────────
@@ -33,10 +41,15 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
   Future<void> loadAttendanceData() async {
     emit(AttendanceLoading());
     try {
-      final today = await _repository.getTodayStatus();
-      final history = await _repository.getHistory();
-      final shift = await _repository.getShift();
-      final overtimeRequests = await _repository.getOvertimeRequests();
+      final todayFuture = _repository.getTodayStatus();
+      final historyFuture = _repository.getHistory();
+      final shiftFuture = _repository.getShift();
+      final overtimeFuture = _repository.getOvertimeRequests();
+
+      final today = await todayFuture;
+      final history = await historyFuture;
+      final shift = await shiftFuture;
+      final overtimeRequests = await overtimeFuture;
 
       emit(AttendanceLoaded(
         todayStatus: today,

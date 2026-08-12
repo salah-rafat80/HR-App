@@ -25,11 +25,11 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Initialize FCM (Push Notifications)
-    await FcmService.instance.init();
-
     // Initialize Dependency Injection
     await initDI();
+
+    // Initialize FCM asynchronously without blocking runApp()
+    unawaited(FcmService.instance.init());
     
     // Allow Google Fonts to fetch dynamically at runtime and cache locally
     GoogleFonts.config.allowRuntimeFetching = true;
