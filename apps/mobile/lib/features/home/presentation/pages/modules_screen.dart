@@ -7,26 +7,37 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 
+class ModuleItem {
+  final String titleKey;
+  final IconData icon;
+  final String route;
+
+  const ModuleItem({
+    required this.titleKey,
+    required this.icon,
+    required this.route,
+  });
+}
+
 class ModulesScreen extends StatelessWidget {
+  static const List<ModuleItem> _modules = [
+    ModuleItem(titleKey: 'attendance_title', icon: AppIcons.attendance, route: AppRoutes.attendance),
+    ModuleItem(titleKey: 'leave_management', icon: AppIcons.leave, route: AppRoutes.leave),
+    ModuleItem(titleKey: 'my_kpis', icon: AppIcons.kpi, route: AppRoutes.kpi),
+    ModuleItem(titleKey: 'appraisal_module', icon: AppIcons.appraisal, route: AppRoutes.appraisal),
+    ModuleItem(titleKey: 'payroll_title', icon: AppIcons.payroll, route: AppRoutes.payroll),
+    ModuleItem(titleKey: 'training_title', icon: AppIcons.training, route: AppRoutes.training),
+    ModuleItem(titleKey: 'communication_hub', icon: AppIcons.communication, route: AppRoutes.communication),
+    ModuleItem(titleKey: 'Engagement', icon: AppIcons.engagement, route: AppRoutes.engagement),
+    ModuleItem(titleKey: 'Org Chart', icon: AppIcons.orgChart, route: AppRoutes.orgChart),
+  ];
+
   const ModulesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final modules = [
-      {'title': 'attendance_title', 'icon': AppIcons.attendance, 'route': AppRoutes.attendance},
-      {'title': 'leave_management', 'icon': AppIcons.leave, 'route': AppRoutes.leave},
-      {'title': 'my_kpis', 'icon': AppIcons.kpi, 'route': AppRoutes.kpi},
-      {'title': 'appraisal_module', 'icon': AppIcons.appraisal, 'route': AppRoutes.appraisal},
-      {'title': 'payroll_title', 'icon': AppIcons.payroll, 'route': AppRoutes.payroll},
-      {'title': 'training_title', 'icon': AppIcons.training, 'route': AppRoutes.training},
-      {'title': 'communication_hub', 'icon': AppIcons.communication, 'route': AppRoutes.communication},
-      {'title': 'Engagement', 'icon': AppIcons.engagement, 'route': AppRoutes.engagement},
-      {'title': 'Org Chart', 'icon': AppIcons.orgChart, 'route': AppRoutes.orgChart},
-    ];
-
     return Scaffold(
-      
-        appBar: AppCustomBar(automaticallyImplyLeading: false, title: Text('modules'.tr())),
+      appBar: AppCustomBar(automaticallyImplyLeading: false, title: Text('modules'.tr())),
       body: GridView.builder(
         padding: EdgeInsets.all(16.w),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -35,16 +46,15 @@ class ModulesScreen extends StatelessWidget {
           mainAxisSpacing: 16.h,
           childAspectRatio: 0.8,
         ),
-        itemCount: modules.length,
+        itemCount: _modules.length,
         itemBuilder: (context, index) {
-          final mod = modules[index];
+          final mod = _modules[index];
           return InkWell(
             onTap: () {
-              final route = mod['route'] as String;
-              if (route == AppRoutes.attendance || route == AppRoutes.leave) {
-                context.go(route);
+              if (mod.route == AppRoutes.attendance || mod.route == AppRoutes.leave) {
+                context.go(mod.route);
               } else {
-                context.push(route);
+                context.push(mod.route);
               }
             },
             child: Column(
@@ -53,11 +63,11 @@ class ModulesScreen extends StatelessWidget {
                 CircleAvatar(
                   radius: 30.w,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  child: Icon(mod['icon'] as IconData, color: AppColors.primary, size: 28.w),
+                  child: Icon(mod.icon, color: AppColors.primary, size: 28.w),
                 ),
                 SizedBox(height: 8.h),
                 Text(
-                  (mod['title'] as String).tr(),
+                  mod.titleKey.tr(),
                   style: TextStyle(fontSize: 12.sp),
                   textAlign: TextAlign.center,
                 ),
@@ -69,3 +79,4 @@ class ModulesScreen extends StatelessWidget {
     );
   }
 }
+
