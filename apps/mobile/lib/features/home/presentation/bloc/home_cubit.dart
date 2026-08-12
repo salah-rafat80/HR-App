@@ -67,14 +67,20 @@ class HomeCubit extends SafeCubit<HomeState> {
 
 
   Future<_HomeDashboardPayload> _fetchDashboardPayload() async {
-    final data = await _homeRepository.getDashboardData();
-    var attendance = await _attendanceRepository.getTodayStatus();
-    
-    final balances = await _leaveRepository.getBalances();
+    final dataFuture = _homeRepository.getDashboardData();
+    final todayAttendanceFuture = _attendanceRepository.getTodayStatus();
+    final balancesFuture = _leaveRepository.getBalances();
+    final requestsFuture = _leaveRepository.getMyRequests();
+    final kpiScoreFuture = _kpiRepository.getOverallQuarterScore();
+    final pendingTrainingsFuture = _trainingRepository.getPendingMandatoryCourses();
+
+    final data = await dataFuture;
+    var attendance = await todayAttendanceFuture;
+    final balances = await balancesFuture;
     final totalLeft = balances.fold<int>(0, (sum, b) => sum + b.daysLeft);
     final totalDays = balances.fold<int>(0, (sum, b) => sum + b.daysTotal);
 
-    final requests = await _leaveRepository.getMyRequests();
+    final requests = await requestsFuture;
 
     // Calendar day boundary matching for today's leave status (F-002)
     final now = DateTime.now();
@@ -94,8 +100,8 @@ class HomeCubit extends SafeCubit<HomeState> {
       );
     }
 
-    final kpiScore = await _kpiRepository.getOverallQuarterScore();
-    final pendingTrainings = await _trainingRepository.getPendingMandatoryCourses();
+    final kpiScore = await kpiScoreFuture;
+    final pendingTrainings = await pendingTrainingsFuture;
 
     final updatedData = HomeDashboardData(
       employeeName: data.employeeName,

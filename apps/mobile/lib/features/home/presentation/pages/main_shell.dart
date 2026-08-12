@@ -6,12 +6,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/widgets/floating_nav_bar.dart';
 import '../../../../core/services/fcm_service.dart';
-import '../../../../core/router/app_routes.dart';
 
 class MainShell extends StatefulWidget {
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
-  const MainShell({super.key, required this.child});
+  const MainShell({super.key, required this.navigationShell});
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -43,12 +42,12 @@ class _MainShellState extends State<MainShell> {
     return BlocBuilder<ThemeCubit, ThemeMode>(
       builder: (context, theme) {
         return Scaffold(
-          body: widget.child,
+          body: widget.navigationShell,
           bottomNavigationBar: SafeArea(
             child: FloatingNavBar(
               items: _getNavItems(context),
-              selectedIndex: _calculateSelectedIndex(context),
-              onItemSelected: (index) => _onItemTapped(index, context),
+              selectedIndex: widget.navigationShell.currentIndex,
+              onItemSelected: (index) => _onItemTapped(index),
             ),
           ),
         );
@@ -56,28 +55,11 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  static int _calculateSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith(AppRoutes.home)) return 0;
-    if (location.startsWith(AppRoutes.attendance)) return 1;
-    if (location.startsWith(AppRoutes.leave)) return 2;
-    if (location.startsWith(AppRoutes.modules)) return 3;
-    if (location.startsWith(AppRoutes.profile)) return 4;
-    return 0;
-  }
-
-  void _onItemTapped(int index, BuildContext context) {
-    if (index == 0) {
-      context.go(AppRoutes.home);
-    } else if (index == 1) {
-      context.go(AppRoutes.attendance);
-    } else if (index == 2) {
-      context.go(AppRoutes.leave);
-    } else if (index == 3) {
-      context.go(AppRoutes.modules);
-    } else if (index == 4) {
-      context.go(AppRoutes.profile);
-    }
+  void _onItemTapped(int index) {
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
   }
 }
 
