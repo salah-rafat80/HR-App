@@ -89,7 +89,7 @@ class HomeGreetingHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Notifications', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+                Text('notifications'.tr(), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
                 SizedBox(height: 16.h),
                 if (pendingTrainings > 0)
                   ListTile(
@@ -97,7 +97,7 @@ class HomeGreetingHeader extends StatelessWidget {
                     title: Text('home_mandatory_training_notif'.tr(namedArgs: {'count': '$pendingTrainings'})),
                   )
                 else
-                  const ListTile(title: Text('No new notifications')),
+                  ListTile(title: Text('no_notifications'.tr())),
                 SizedBox(height: 16.h),
               ],
             ),
