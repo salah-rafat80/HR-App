@@ -1,8 +1,12 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
-import { mockFcmTokens } from '../auth/auth.service';
+
 
 // Module-level singleton — survives NestJS hot-reload (not wiped on file change)
 const globalInMemoryRequests = new Map<string, any[]>();
@@ -35,9 +39,9 @@ export class LeaveService {
     try {
       dbResults = await this.prisma.leaveRequest.findMany({
         where: { userId },
-        include: { 
-          approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
-          user: true 
+        include: {
+          approvalSteps: { orderBy: { stepOrder: 'asc' } },
+          user: true,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -51,7 +55,6 @@ export class LeaveService {
     const uniqueMemory = memoryResults.filter((r: any) => !dbIds.has(r.id));
     return [...dbResults, ...uniqueMemory];
   }
-
 
   async applyLeave(userId: string, data: any) {
     let request: any;
@@ -70,27 +73,44 @@ export class LeaveService {
           currentStepOrder: 1,
           approvalSteps: {
             create: [
-              { stepName: 'team_lead', status: 'pending', stepOrder: 1, timestamp: new Date() },
-              { stepName: 'manager', status: 'pending', stepOrder: 2, timestamp: new Date() },
-              { stepName: 'hr', status: 'pending', stepOrder: 3, timestamp: new Date() },
-            ]
-          }
+              {
+                stepName: 'team_lead',
+                status: 'pending',
+                stepOrder: 1,
+                timestamp: new Date(),
+              },
+              {
+                stepName: 'manager',
+                status: 'pending',
+                stepOrder: 2,
+                timestamp: new Date(),
+              },
+              {
+                stepName: 'hr',
+                status: 'pending',
+                stepOrder: 3,
+                timestamp: new Date(),
+              },
+            ],
+          },
         },
-        include: { 
-          approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
-          user: true 
+        include: {
+          approvalSteps: { orderBy: { stepOrder: 'asc' } },
+          user: true,
         },
       });
 
       // Deduct balance optimistically
-      const balances = await this.prisma.leaveBalance.findMany({ where: { userId, type: data.type } });
+      const balances = await this.prisma.leaveBalance.findMany({
+        where: { userId, type: data.type },
+      });
       if (balances.length > 0) {
         const b = balances[0];
         const start = new Date(data.startDate);
         const end = new Date(data.endDate);
         const diffTime = Math.abs(end.getTime() - start.getTime());
         const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        
+
         await this.prisma.leaveBalance.update({
           where: { id: b.id },
           data: { daysUsed: b.daysUsed + days },
@@ -111,11 +131,26 @@ export class LeaveService {
         overallStatus: 'pending',
         currentStepOrder: 1,
         approvalSteps: [
-          { stepName: 'team_lead', status: 'pending', stepOrder: 1, timestamp: new Date() },
-          { stepName: 'manager', status: 'pending', stepOrder: 2, timestamp: new Date() },
-          { stepName: 'hr', status: 'pending', stepOrder: 3, timestamp: new Date() },
+          {
+            stepName: 'team_lead',
+            status: 'pending',
+            stepOrder: 1,
+            timestamp: new Date(),
+          },
+          {
+            stepName: 'manager',
+            status: 'pending',
+            stepOrder: 2,
+            timestamp: new Date(),
+          },
+          {
+            stepName: 'hr',
+            status: 'pending',
+            stepOrder: 3,
+            timestamp: new Date(),
+          },
         ],
-        user: { id: userId, name: 'Mock User', managerId: 'mock_manager' }
+        user: { id: userId, name: 'Mock User', managerId: 'mock_manager' },
       };
 
       const existingOnFail = globalInMemoryRequests.get(userId) || [];
@@ -142,17 +177,21 @@ export class LeaveService {
     const managerId = request.user?.managerId;
     if (managerId) {
       this.events.emitToUser(managerId, 'created', request);
-      
+
       let managerToken: string | undefined = undefined;
       try {
-        const manager = await this.prisma.user.findUnique({ where: { id: managerId } });
+        const manager = await this.prisma.user.findUnique({
+          where: { id: managerId },
+        });
         if (manager?.fcmToken) managerToken = manager.fcmToken;
-      } catch(e) {}
-
-      managerToken = managerToken || mockFcmTokens[managerId.replace('mock_', '')];
+      } catch (e) {}
 
       if (managerToken) {
-        this.notifications.notifyNewLeaveRequest(managerToken, request.user?.name ?? 'Employee', request.id);
+        this.notifications.notifyNewLeaveRequest(
+          managerToken,
+          request.user?.name ?? 'Employee',
+          request.id,
+        );
       }
     }
 
@@ -160,7 +199,9 @@ export class LeaveService {
   }
 
   async cancelRequest(id: string) {
-    await this.prisma.leaveApprovalStep.deleteMany({ where: { requestId: id } });
+    await this.prisma.leaveApprovalStep.deleteMany({
+      where: { requestId: id },
+    });
     const deleted = await this.prisma.leaveRequest.delete({ where: { id } });
     this.events.emitEntityUpdated('LeaveRequest', 'deleted', deleted);
     return deleted;
@@ -172,8 +213,8 @@ export class LeaveService {
       where: { overallStatus: 'approved' },
       include: { user: true },
     });
-    
-    return requests.map(r => ({
+
+    return requests.map((r) => ({
       colleagueName: r.user.name,
       startDate: r.startDate,
       endDate: r.endDate,
@@ -198,9 +239,9 @@ export class LeaveService {
     try {
       const dbResults = await this.prisma.leaveRequest.findMany({
         where: { overallStatus: 'pending', currentStepOrder: stepOrder },
-        include: { 
-          approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
-          user: true 
+        include: {
+          approvalSteps: { orderBy: { stepOrder: 'asc' } },
+          user: true,
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -210,13 +251,14 @@ export class LeaveService {
       for (const [, reqs] of globalInMemoryRequests) {
         allMemoryRequests.push(...reqs);
       }
-      const memoryPending = allMemoryRequests.filter(r => 
-        r.overallStatus === 'pending' && r.currentStepOrder === stepOrder
+      const memoryPending = allMemoryRequests.filter(
+        (r) =>
+          r.overallStatus === 'pending' && r.currentStepOrder === stepOrder,
       );
 
       // Avoid duplicates
       const dbIds = new Set(dbResults.map((r: any) => r.id));
-      const uniqueMemory = memoryPending.filter(r => !dbIds.has(r.id));
+      const uniqueMemory = memoryPending.filter((r) => !dbIds.has(r.id));
       return [...dbResults, ...uniqueMemory];
     } catch (e) {
       console.warn('Database offline, returning in-memory pending approvals');
@@ -224,8 +266,9 @@ export class LeaveService {
       for (const [, reqs] of globalInMemoryRequests) {
         allMemoryRequests.push(...reqs);
       }
-      return allMemoryRequests.filter(r => 
-        r.overallStatus === 'pending' && r.currentStepOrder === stepOrder
+      return allMemoryRequests.filter(
+        (r) =>
+          r.overallStatus === 'pending' && r.currentStepOrder === stepOrder,
       );
     }
   }
@@ -236,9 +279,9 @@ export class LeaveService {
     try {
       req = await this.prisma.leaveRequest.findUnique({
         where: { id },
-        include: { 
+        include: {
           approvalSteps: { orderBy: { stepOrder: 'asc' } },
-          user: { include: { manager: true } }
+          user: { include: { manager: true } },
         },
       });
     } catch (_) {}
@@ -247,12 +290,15 @@ export class LeaveService {
     if (!req) {
       const allMemory: any[] = [];
       for (const [, reqs] of globalInMemoryRequests) allMemory.push(...reqs);
-      req = allMemory.find(r => r.id === id);
+      req = allMemory.find((r) => r.id === id);
       if (!req) throw new NotFoundException();
 
-      if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
+      if (req.overallStatus !== 'pending')
+        throw new ForbiddenException('Request is not pending');
 
-      const pendingStep = req.approvalSteps?.find((s: any) => s.stepOrder === req.currentStepOrder);
+      const pendingStep = req.approvalSteps?.find(
+        (s: any) => s.stepOrder === req.currentStepOrder,
+      );
       if (pendingStep) pendingStep.status = 'approved';
 
       const isLast = req.currentStepOrder === 3;
@@ -263,9 +309,8 @@ export class LeaveService {
       this.events.emitToUser(req.userId, 'updated', req);
 
       // Send FCM push notification on EVERY approval step (not just final)
-      const empEmail = req.user?.email ?? req.userId.replace(/^mock_/, '');
-      const empToken = mockFcmTokens[empEmail];
-      const empName = req.user?.name ?? empEmail.split('@')[0];
+      const empToken = req.user?.fcmToken;
+      const empName = req.user?.name ?? 'Employee';
       if (empToken) {
         if (isLast) {
           this.notifications.notifyLeaveApproved(empToken, empName, req.id);
@@ -279,24 +324,30 @@ export class LeaveService {
           });
         }
       } else {
-        console.warn(`[FCM] No token for employee: ${empEmail} — keys: ${Object.keys(mockFcmTokens).join(', ')}`);
+        console.warn('[FCM] No token found for user ID:', req.userId);
       }
 
       return req;
     }
 
-    if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
+    if (req.overallStatus !== 'pending')
+      throw new ForbiddenException('Request is not pending');
 
     // Authorization
     if (req.currentStepOrder === 1) {
-      if (req.user.managerId !== actorUserId) throw new ForbiddenException('Not the team lead for this employee');
+      if (req.user.managerId !== actorUserId)
+        throw new ForbiddenException('Not the team lead for this employee');
     } else if (req.currentStepOrder === 2) {
-      if (req.user.manager?.managerId !== actorUserId) throw new ForbiddenException('Not the manager for this employee');
+      if (req.user.manager?.managerId !== actorUserId)
+        throw new ForbiddenException('Not the manager for this employee');
     } else if (req.currentStepOrder === 3) {
-      if (actorRole !== 'hr' && actorRole !== 'hrAdmin') throw new ForbiddenException('Not HR Admin');
+      if (actorRole !== 'hr' && actorRole !== 'hrAdmin')
+        throw new ForbiddenException('Not HR Admin');
     }
 
-    const pendingStep = req.approvalSteps.find((s: any) => s.stepOrder === req.currentStepOrder);
+    const pendingStep = req.approvalSteps.find(
+      (s: any) => s.stepOrder === req.currentStepOrder,
+    );
     if (!pendingStep) throw new NotFoundException('Active step not found');
 
     await this.prisma.leaveApprovalStep.update({
@@ -306,27 +357,33 @@ export class LeaveService {
 
     const isLast = req.currentStepOrder === 3;
     const newStatus = isLast ? 'approved' : 'pending';
-    const nextStepOrder = isLast ? req.currentStepOrder : req.currentStepOrder + 1;
+    const nextStepOrder = isLast
+      ? req.currentStepOrder
+      : req.currentStepOrder + 1;
 
     const updated = await this.prisma.leaveRequest.update({
       where: { id },
-      data: { 
+      data: {
         overallStatus: newStatus,
         currentStepOrder: nextStepOrder,
       },
-      include: { 
-        approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
-        user: { include: { manager: true } }
+      include: {
+        approvalSteps: { orderBy: { stepOrder: 'asc' } },
+        user: { include: { manager: true } },
       },
     });
 
     this.events.emitToUser(req.userId, 'updated', updated);
 
     // Send FCM notification on EVERY approval step (not just final)
-    const empToken = updated.user?.fcmToken || mockFcmTokens[updated.user.email];
+    const empToken = updated.user?.fcmToken;
     if (empToken) {
       if (newStatus === 'approved') {
-        this.notifications.notifyLeaveApproved(empToken, updated.user.name, updated.id);
+        this.notifications.notifyLeaveApproved(
+          empToken,
+          updated.user.name,
+          updated.id,
+        );
       } else {
         this.notifications.sendToDevice({
           token: empToken,
@@ -336,10 +393,14 @@ export class LeaveService {
         });
       }
     }
-    
+
     if (!isLast) {
       if (nextStepOrder === 2 && updated.user.manager?.managerId) {
-        this.events.emitToUser(updated.user.manager.managerId, 'updated', updated);
+        this.events.emitToUser(
+          updated.user.manager.managerId,
+          'updated',
+          updated,
+        );
       } else if (nextStepOrder === 3) {
         this.events.emitToRole('hr', 'updated', updated);
       }
@@ -354,9 +415,9 @@ export class LeaveService {
     try {
       req = await this.prisma.leaveRequest.findUnique({
         where: { id },
-        include: { 
+        include: {
           approvalSteps: { orderBy: { stepOrder: 'asc' } },
-          user: { include: { manager: true } }
+          user: { include: { manager: true } },
         },
       });
     } catch (_) {}
@@ -365,12 +426,15 @@ export class LeaveService {
     if (!req) {
       const allMemory: any[] = [];
       for (const [, reqs] of globalInMemoryRequests) allMemory.push(...reqs);
-      req = allMemory.find(r => r.id === id);
+      req = allMemory.find((r) => r.id === id);
       if (!req) throw new NotFoundException();
 
-      if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
+      if (req.overallStatus !== 'pending')
+        throw new ForbiddenException('Request is not pending');
 
-      const pendingStep = req.approvalSteps?.find((s: any) => s.stepOrder === req.currentStepOrder);
+      const pendingStep = req.approvalSteps?.find(
+        (s: any) => s.stepOrder === req.currentStepOrder,
+      );
       if (pendingStep) pendingStep.status = 'rejected';
       req.overallStatus = 'rejected';
 
@@ -379,18 +443,24 @@ export class LeaveService {
     }
 
     if (!req) throw new NotFoundException();
-    if (req.overallStatus !== 'pending') throw new ForbiddenException('Request is not pending');
+    if (req.overallStatus !== 'pending')
+      throw new ForbiddenException('Request is not pending');
 
     // Authorization
     if (req.currentStepOrder === 1) {
-      if (req.user.managerId !== actorUserId) throw new ForbiddenException('Not the team lead for this employee');
+      if (req.user.managerId !== actorUserId)
+        throw new ForbiddenException('Not the team lead for this employee');
     } else if (req.currentStepOrder === 2) {
-      if (req.user.manager?.managerId !== actorUserId) throw new ForbiddenException('Not the manager for this employee');
+      if (req.user.manager?.managerId !== actorUserId)
+        throw new ForbiddenException('Not the manager for this employee');
     } else if (req.currentStepOrder === 3) {
-      if (actorRole !== 'hr' && actorRole !== 'hrAdmin') throw new ForbiddenException('Not HR Admin');
+      if (actorRole !== 'hr' && actorRole !== 'hrAdmin')
+        throw new ForbiddenException('Not HR Admin');
     }
 
-    const pendingStep = req.approvalSteps.find(s => s.stepOrder === req.currentStepOrder);
+    const pendingStep = req.approvalSteps.find(
+      (s) => s.stepOrder === req.currentStepOrder,
+    );
     if (pendingStep) {
       await this.prisma.leaveApprovalStep.update({
         where: { id: pendingStep.id },
@@ -401,20 +471,24 @@ export class LeaveService {
     const updated = await this.prisma.leaveRequest.update({
       where: { id },
       data: { overallStatus: 'rejected' },
-      include: { 
-        approvalSteps: { orderBy: { stepOrder: 'asc' } }, 
-        user: true 
+      include: {
+        approvalSteps: { orderBy: { stepOrder: 'asc' } },
+        user: true,
       },
     });
 
     this.events.emitToUser(req.userId, 'updated', updated);
-    
+
     // Push notification to employee
-    const empToken = updated.user?.fcmToken || mockFcmTokens[updated.user.email];
+    const empToken = updated.user?.fcmToken;
     if (empToken) {
-      this.notifications.notifyLeaveRejected(empToken, updated.user.name, updated.id);
+      this.notifications.notifyLeaveRejected(
+        empToken,
+        updated.user.name,
+        updated.id,
+      );
     }
-    
+
     return updated;
   }
 }

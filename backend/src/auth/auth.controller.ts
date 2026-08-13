@@ -5,9 +5,14 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -16,13 +21,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
-  signIn(@Body() signInDto: Record<string, any>) {
-    return this.authService.login(signInDto.email, signInDto.password);
+  signIn(@Body() loginDto: LoginDto) {
+    return this.authService.login(loginDto.employeeCode, loginDto.password);
   }
 
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Patch('fcm-token')
-  updateFcmToken(@Body() body: { email: string; token: string }) {
-    return this.authService.updateFcmToken(body.email, body.token);
+  updateFcmToken(@Request() req: any, @Body() dto: UpdateFcmTokenDto) {
+    return this.authService.updateFcmToken(req.user.userId, dto.fcmToken);
   }
 }

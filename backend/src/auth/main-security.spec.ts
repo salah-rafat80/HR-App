@@ -1,44 +1,52 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe, Controller, Post, Body, Get } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import helmet from 'helmet';
 import * as express from 'express';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { AppModule } from '../app.module';
+import { PrismaService } from '../prisma/prisma.service';
 
-class SampleDto {
-  @IsNotEmpty()
-  @IsString()
-  data!: string;
-}
-
-@Controller('security-test')
-class SecurityTestController {
-  @Get('ping')
-  ping() {
-    return { status: 'ok' };
-  }
-
-  @Post('validate')
-  validate(@Body() dto: SampleDto) {
-    return dto;
-  }
-}
-
-describe('Real Application Security & Configuration Suite', () => {
+describe('Real Application Security & Bootstrap Configuration Suite', () => {
   let app: INestApplication;
   const allowedOrigin = 'https://trusted.hr-app.com';
 
+  const mockPrisma = {
+    user: {
+      findUnique: jest.fn().mockImplementation(({ where }) => {
+        if (where.employeeCode === 'EMP-001') {
+          return Promise.resolve({
+            id: 'user-uuid-1234',
+            employeeCode: 'EMP-001',
+            email: 'employee@company.com',
+            password:
+              '$2b$10$e8w8mX8hJ.1zX8zX8zX8zO1zX8zX8zX8zX8zX8zX8zX8zX8zX8zX8',
+            name: 'John Doe',
+            role: 'employee',
+            isActive: true,
+          });
+        }
+        return Promise.resolve(null);
+      }),
+      update: jest.fn().mockResolvedValue({ id: 'user-uuid-1234' }),
+    },
+  };
+
   beforeAll(async () => {
     process.env.CORS_ALLOWED_ORIGINS = allowedOrigin;
+    process.env.JWT_SECRET =
+      'test-jwt-secret-min-32-characters-required-for-security-tests';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      controllers: [SecurityTestController],
-    }).compile();
+      imports: [AppModule],
+    })
+      .overrideProvider(PrismaService)
+      .useValue(mockPrisma)
+      .compile();
 
-    // Instantiate Nest app with bodyParser: false matching main.ts
+    // Create app with bodyParser: false matching main.ts
     app = moduleFixture.createNestApplication({ bodyParser: false });
 
-    // Apply main.ts configuration
+    // Apply exact main.ts configuration
     app.use(helmet());
 
     const httpAdapter = app.getHttpAdapter();
@@ -51,7 +59,6 @@ describe('Real Application Security & Configuration Suite', () => {
       }
     }
 
-    // Explicit 100kb body limit
     app.use(express.json({ limit: '100kb' }));
     app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
@@ -63,12 +70,16 @@ describe('Real Application Security & Configuration Suite', () => {
       }),
     );
 
+    const allowedOrigins = [allowedOrigin];
     app.enableCors({
-      origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        if (!origin || origin === allowedOrigin) {
+      origin: (
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void,
+      ) => {
+        if (!origin || allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        return callback(new Error(`CORS policy forbidden for origin: ${origin}`), false);
+        return callback(null, false);
       },
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
@@ -83,32 +94,38 @@ describe('Real Application Security & Configuration Suite', () => {
   });
 
   it('1. Helmet headers set & x-powered-by header disabled', async () => {
-    const res = await request(app.getHttpServer()).get('/security-test/ping');
+    const res = await request(app.getHttpServer()).get('/auth/login');
     expect(res.headers['x-powered-by']).toBeUndefined();
     expect(res.headers['x-content-type-options']).toBe('nosniff');
   });
 
-  it('2. Allowed origin gets CORS permission', async () => {
+  it('2. Allowed origin receives CORS permission header', async () => {
     const res = await request(app.getHttpServer())
-      .get('/security-test/ping')
-      .set('Origin', allowedOrigin);
+      .post('/auth/login')
+      .set('Origin', allowedOrigin)
+      .send({ employeeCode: 'EMP-001', password: 'Password123!' });
 
     expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
     expect(res.headers['access-control-allow-credentials']).toBe('true');
   });
 
-  it('3. Unallowed origin is denied CORS permission', async () => {
+  it('3. Unallowed origin gets standard non-500 response without CORS header', async () => {
     const res = await request(app.getHttpServer())
-      .get('/security-test/ping')
-      .set('Origin', 'https://malicious-attacker.com');
+      .post('/auth/login')
+      .set('Origin', 'https://untrusted-hacker.com')
+      .send({ employeeCode: 'EMP-001', password: 'Password123!' });
 
+    expect(res.status).not.toBe(500);
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 
   it('4. Request payload > 100KB is rejected with 413 Payload Too Large', async () => {
-    const oversizedPayload = { data: 'A'.repeat(105 * 1024) }; // 105 KB
+    const oversizedPayload = {
+      employeeCode: 'EMP-001',
+      password: 'A'.repeat(105 * 1024),
+    };
     const res = await request(app.getHttpServer())
-      .post('/security-test/validate')
+      .post('/auth/login')
       .send(oversizedPayload);
 
     expect(res.status).toBe(413);
@@ -116,13 +133,16 @@ describe('Real Application Security & Configuration Suite', () => {
 
   it('5. Request with unknown DTO field is rejected with 400 Bad Request', async () => {
     const res = await request(app.getHttpServer())
-      .post('/security-test/validate')
+      .post('/auth/login')
       .send({
-        data: 'validString',
-        unknownField: 'illegalPayload',
+        employeeCode: 'EMP-001',
+        password: 'Password123!',
+        unsupportedExtraParam: 'hackedPayload',
       });
 
     expect(res.status).toBe(400);
-    expect(JSON.stringify(res.body)).toContain('property unknownField should not exist');
+    expect(JSON.stringify(res.body)).toContain(
+      'property unsupportedExtraParam should not exist',
+    );
   });
 });

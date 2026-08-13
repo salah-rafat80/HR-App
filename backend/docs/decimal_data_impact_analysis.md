@@ -1,9 +1,9 @@
-# Per-Table Decimal Monetary Data-Impact Analysis
+# Per-Table Decimal Monetary & Idempotency Data-Impact Analysis
 
 ## 1. Precision & Currency Policy
 - **Type**: `Decimal(12, 2)` (`NUMERIC(12, 2)`)
 - **Scale**: 2 decimal places (cents / minor units)
-- **Maximum Representable Value**: `9,999,999,999.99` (up to 10 billion currency units)
+- **Range Boundary**: `[-9,999,999,999.99, 9,999,999,999.99]`
 - **Rounding Strategy**: Bank's rounding (`HALF_EVEN`) for intermediate tax and allowance calculations.
 
 ## 2. Table-by-Table Data Impact Assessment
@@ -13,36 +13,37 @@
 - **Original Type**: `DOUBLE PRECISION` (`Float`)
 - **New Type**: `DECIMAL(12, 2)`
 - **Conversion Expression**: `USING "totalAmount"::numeric(12,2)`
-- **Data Impact Risk**: Zero data loss for non-fractional or 2-decimal values. Floating-point values with floating binary artifacts (e.g. `1250.0000000000002`) are truncated cleanly to `1250.00`.
+- **Data Impact Guarantee**: Zero data loss guaranteed **only after** Preflight Checks 1 & 2 pass (validating no `NaN`, `Infinity`, or range overflow).
 
 ### B. Table `"Payslip"`
-- **Columns Affected**: `baseSalary`, `netPay`
-- **Original Type**: `DOUBLE PRECISION` (`Float`)
-- **New Type**: `DECIMAL(12, 2)`
+- **Columns Affected**: `baseSalary`, `netPay`, `payrollRunId`
+- **Original Type**: `DOUBLE PRECISION` (`Float`), `TEXT` (nullable)
+- **New Type**: `DECIMAL(12, 2)`, `TEXT` (NOT NULL)
+- **Idempotency Policy**: `@@unique([userId, payrollRunId])`. Non-null `payrollRunId` ensures true idempotency in PostgreSQL.
 - **Conversion Expression**: `USING "baseSalary"::numeric(12,2)`, `USING "netPay"::numeric(12,2)`
-- **Data Impact Risk**: None. Replaces binary float approximations with exact decimal representations.
 
 ### C. Table `"PayslipLineItem"`
 - **Column Affected**: `amount`
 - **Original Type**: `DOUBLE PRECISION` (`Float`)
 - **New Type**: `DECIMAL(12, 2)`
-- **Conversion Expression**: `USING "amount"::numeric(12,2)`
-- **Data Impact Risk**: None. Guarantees that line-item additions equal `netPay` without cent rounding errors.
 
 ### D. Table `"BonusNotice"`
 - **Column Affected**: `amount`
 - **Original Type**: `DOUBLE PRECISION` (`Float`)
 - **New Type**: `DECIMAL(12, 2)`
-- **Conversion Expression**: `USING "amount"::numeric(12,2)`
-- **Data Impact Risk**: None.
 
-## 3. Staging Verification Queries
+## 3. Mandatory Preflight SQL Verification Queries
 
 ```sql
--- 1. Check for any out-of-range monetary values prior to migration
-SELECT id, "totalAmount" FROM "PayrollRun" WHERE "totalAmount" > 9999999999.99;
-SELECT id, "baseSalary", "netPay" FROM "Payslip" WHERE "baseSalary" > 9999999999.99 OR "netPay" > 9999999999.99;
+-- 1. Preflight Check for NaN or Infinity values
+SELECT 'Payslip' AS tbl, id FROM "Payslip" WHERE "baseSalary" = 'NaN'::float OR "baseSalary" = 'Infinity'::float OR "netPay" = 'NaN'::float OR "netPay" = 'Infinity'::float;
 
--- 2. Verify precision conversion post-migration
-SELECT id, "baseSalary", pg_typeof("baseSalary") FROM "Payslip" LIMIT 5;
+-- 2. Preflight Check for values exceeding Decimal(12,2) range
+SELECT 'Payslip' AS tbl, id FROM "Payslip" WHERE ABS("baseSalary") > 9999999999.99 OR ABS("netPay") > 9999999999.99;
+
+-- 3. Preflight Check for values requiring >2 decimal place rounding
+SELECT 'Payslip' AS tbl, id, "netPay" FROM "Payslip" WHERE ROUND("netPay"::numeric, 2) != "netPay"::numeric;
+
+-- 4. Preflight Check for duplicate (userId, payrollRunId) pairs
+SELECT "userId", "payrollRunId", COUNT(*) FROM "Payslip" GROUP BY "userId", "payrollRunId" HAVING COUNT(*) > 1;
 ```

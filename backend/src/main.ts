@@ -66,10 +66,7 @@ export async function bootstrap() {
       ) {
         return callback(null, true);
       }
-      return callback(
-        new Error(`CORS policy forbidden for origin: ${origin}`),
-        false,
-      );
+      return callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

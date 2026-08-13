@@ -355,8 +355,8 @@ model Payslip {
   monthLabel   String
   baseSalary   Decimal           @db.Decimal(12, 2)
   netPay       Decimal           @db.Decimal(12, 2)
-  payrollRunId String?
-  payrollRun   PayrollRun?       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  payrollRunId String
+  payrollRun   PayrollRun        @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
   lineItems    PayslipLineItem[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
