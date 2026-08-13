@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
+import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 
 @Injectable()
 export class LeaveService {
@@ -32,7 +33,7 @@ export class LeaveService {
     });
   }
 
-  async applyLeave(userId: string, data: any) {
+  async applyLeave(userId: string, data: CreateLeaveRequestDto) {
     const request = await this.prisma.leaveRequest.create({
       data: {
         userId,
@@ -107,11 +108,13 @@ export class LeaveService {
       });
 
       if (manager?.fcmToken) {
-        this.notifications.notifyNewLeaveRequest(
-          manager.fcmToken,
-          request.user?.name ?? 'Employee',
-          request.id,
-        );
+        void this.notifications
+          .notifyNewLeaveRequest(
+            manager.fcmToken,
+            request.user?.name ?? 'Employee',
+            request.id,
+          )
+          .catch(() => undefined);
       }
     }
 
@@ -153,12 +156,38 @@ export class LeaveService {
       return [];
     }
 
+    const include = {
+      approvalSteps: { orderBy: { stepOrder: 'asc' as const } },
+      user: true,
+    };
+
+    if (role === 'team_lead') {
+      return this.prisma.leaveRequest.findMany({
+        where: {
+          overallStatus: 'pending',
+          currentStepOrder: stepOrder,
+          user: { managerId: actorUserId },
+        },
+        include,
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (role === 'manager') {
+      return this.prisma.leaveRequest.findMany({
+        where: {
+          overallStatus: 'pending',
+          currentStepOrder: stepOrder,
+          user: { manager: { is: { managerId: actorUserId } } },
+        },
+        include,
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
     return this.prisma.leaveRequest.findMany({
       where: { overallStatus: 'pending', currentStepOrder: stepOrder },
-      include: {
-        approvalSteps: { orderBy: { stepOrder: 'asc' } },
-        user: true,
-      },
+      include,
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -225,18 +254,18 @@ export class LeaveService {
     const empToken = updated.user?.fcmToken;
     if (empToken) {
       if (newStatus === 'approved') {
-        this.notifications.notifyLeaveApproved(
-          empToken,
-          updated.user.name,
-          updated.id,
-        );
+        void this.notifications
+          .notifyLeaveApproved(empToken, updated.user.name, updated.id)
+          .catch(() => undefined);
       } else {
-        this.notifications.sendToDevice({
-          token: empToken,
-          title: '⏳ جاري مراجعة طلبك',
-          body: `مرحباً ${updated.user.name}، تمت الموافقة على خطوة وطلبك في انتظار الموافقة التالية`,
-          data: { type: 'leave_step_approved', id: updated.id },
-        });
+        void this.notifications
+          .sendToDevice({
+            token: empToken,
+            title: '⏳ جاري مراجعة طلبك',
+            body: `مرحباً ${updated.user.name}، تمت الموافقة على خطوة وطلبك في انتظار الموافقة التالية`,
+            data: { type: 'leave_step_approved', id: updated.id },
+          })
+          .catch(() => undefined);
       }
     }
 
@@ -295,11 +324,9 @@ export class LeaveService {
 
     const empToken = updated.user?.fcmToken;
     if (empToken) {
-      this.notifications.notifyLeaveRejected(
-        empToken,
-        updated.user.name,
-        updated.id,
-      );
+      void this.notifications
+        .notifyLeaveRejected(empToken, updated.user.name, updated.id)
+        .catch(() => undefined);
     }
 
     return updated;

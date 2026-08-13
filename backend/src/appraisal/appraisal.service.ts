@@ -42,7 +42,7 @@ export class AppraisalService {
     };
   }
 
-  async getSelfAppraisalQuestions() {
+  getSelfAppraisalQuestions() {
     return [
       { id: 'q1', questionText: 'What were your key achievements this cycle?' },
       { id: 'q2', questionText: 'What challenges did you face?' },
@@ -105,20 +105,28 @@ export class AppraisalService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const peerFeedbacks: any[] = [];
+    const peerFeedbacks: Array<{
+      colleague: {
+        id: string;
+        name: string;
+        role: string;
+        avatarInitial: string;
+      };
+      feedbackText: string | null;
+      submitted: boolean;
+    }> = [];
     for (const col of colleagues) {
-      let feedback: any = null;
-      if (cycle) {
-        feedback = await this.prisma.peerFeedback.findUnique({
-          where: {
-            fromUserId_toUserId_cycleId: {
-              fromUserId: userId,
-              toUserId: col.id,
-              cycleId: cycle.id,
+      const feedback = cycle
+        ? await this.prisma.peerFeedback.findUnique({
+            where: {
+              fromUserId_toUserId_cycleId: {
+                fromUserId: userId,
+                toUserId: col.id,
+                cycleId: cycle.id,
+              },
             },
-          },
-        });
-      }
+          })
+        : null;
 
       peerFeedbacks.push({
         colleague: {

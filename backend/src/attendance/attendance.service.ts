@@ -234,11 +234,11 @@ export class AttendanceService {
     });
   }
 
-  async startBreak(userId: string) {
+  startBreak(userId: string) {
     return { status: 'Break started', userId };
   }
 
-  async endBreak(userId: string) {
+  endBreak(userId: string) {
     return { status: 'Break ended', userId };
   }
 }

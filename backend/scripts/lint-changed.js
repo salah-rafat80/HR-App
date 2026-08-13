@@ -1,71 +1,44 @@
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-// Legacy baseline files pending full refactoring in future commits
-const LEGACY_EXCLUDED_FILES = [
-  'src/leave/leave.service.ts',
-  'src/appraisal/appraisal.service.ts',
-  'src/payroll/payroll.service.ts',
-  'src/attendance/attendance.service.ts',
-  'src/notifications/notification.service.ts',
-];
+function changedTypescriptFiles(diffTarget) {
+  return execFileSync('git', ['diff', '--name-only', diffTarget, '--', '*.ts'], {
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .map((file) => file.trim())
+    .filter(Boolean);
+}
 
 try {
-  let diffTarget = process.argv[2] || '--cached';
+  const requestedRange = process.argv[2] || '--cached';
+  let fileList;
 
-  let rawFiles = '';
   try {
-    rawFiles = execSync(`git diff --name-only ${diffTarget} -- "*.ts"`, {
-      encoding: 'utf8',
-    });
-  } catch (e) {
-    // Fallback if target revision not found
-    try {
-      rawFiles = execSync('git diff --name-only HEAD~1..HEAD -- "*.ts"', {
-        encoding: 'utf8',
-      });
-    } catch (e2) {
-      rawFiles = execSync('git diff --name-only --cached -- "*.ts"', {
-        encoding: 'utf8',
-      });
-    }
+    fileList = changedTypescriptFiles(requestedRange);
+  } catch {
+    fileList = changedTypescriptFiles('HEAD~1..HEAD');
   }
 
-  const fileList = rawFiles
-    .split('\n')
-    .map((f) => f.trim())
-    .filter(Boolean);
-
-  const currentDir = process.cwd();
-  const repoRoot = execSync('git rev-parse --show-toplevel', {
+  const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
     encoding: 'utf8',
   }).trim();
+  const currentDir = process.cwd();
+  const files = fileList
+    .map((file) => path.relative(currentDir, path.join(repoRoot, file)))
+    .filter((file) => fs.existsSync(file));
 
-  const stagedFiles = fileList
-    .map((f) => path.relative(currentDir, path.join(repoRoot, f)))
-    .filter(
-      (f) =>
-        fs.existsSync(f) &&
-        !LEGACY_EXCLUDED_FILES.some((legacy) => f.replaceAll('\\', '/').endsWith(legacy)),
-    );
-
-  if (stagedFiles.length === 0) {
-    console.log('No new or refactored changed TypeScript files to lint.');
+  if (files.length === 0) {
+    console.log('No changed TypeScript files in the selected commit range.');
     process.exit(0);
   }
 
-  console.log(`Linting ${stagedFiles.length} refactored changed file(s):`);
-  stagedFiles.forEach((f) => console.log(`  - ${f}`));
-
-  execSync(`npx eslint ${stagedFiles.map((f) => `"${f}"`).join(' ')}`, {
-    stdio: 'inherit',
-  });
-  console.log('✅ Changed refactored files passed ESLint checks.');
-  process.exit(0);
+  console.log(`Linting ${files.length} changed TypeScript file(s):`);
+  files.forEach((file) => console.log(`  - ${file}`));
+  execFileSync('npx', ['eslint', ...files], { stdio: 'inherit' });
+  console.log('Changed files passed ESLint checks.');
 } catch (error) {
-  console.error(
-    '❌ Blocking Changed-Files Lint Gate: Changed files contain ESLint errors.',
-  );
+  console.error('Blocking Changed-Files Lint Gate failed.');
   process.exit(1);
 }

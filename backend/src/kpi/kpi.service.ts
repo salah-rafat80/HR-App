@@ -151,7 +151,14 @@ export class KpiService {
       include: { kpis: true },
     });
 
-    const teamMembers = [];
+    const teamMembers: Array<{
+      id: string;
+      name: string;
+      title: string;
+      department: string;
+      kpiScorePercent: number;
+      leaveStatus: string;
+    }> = [];
     const today = new Date();
 
     for (const u of users) {
