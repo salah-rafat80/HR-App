@@ -20,7 +20,7 @@
 - **Original Type**: `DOUBLE PRECISION` (`Float`), `TEXT` (nullable)
 - **New Type**: `DECIMAL(12, 2)`, `TEXT` (NOT NULL)
 - **Idempotency Policy**: `@@unique([userId, payrollRunId])`. Non-null `payrollRunId` ensures true idempotency in PostgreSQL.
-- **Conversion Expression**: `USING "baseSalary"::numeric(12,2)`, `USING "netPay"::numeric(12,2)`
+- **Manual Reconciliation Requirement**: Migration will abort if any existing `Payslip` has `payrollRunId IS NULL`. Automatic attachment to synthetic payroll runs is strictly prohibited; manual HR/payroll reconciliation mapping must be performed prior to migration.
 
 ### C. Table `"PayslipLineItem"`
 - **Column Affected**: `amount`
@@ -44,6 +44,9 @@ SELECT 'Payslip' AS tbl, id FROM "Payslip" WHERE ABS("baseSalary") > 9999999999.
 -- 3. Preflight Check for values requiring >2 decimal place rounding
 SELECT 'Payslip' AS tbl, id, "netPay" FROM "Payslip" WHERE ROUND("netPay"::numeric, 2) != "netPay"::numeric;
 
--- 4. Preflight Check for duplicate (userId, payrollRunId) pairs
+-- 4. Preflight Check for NULL payrollRunId (Must return 0 rows before migration)
+SELECT id, "userId", "monthLabel" FROM "Payslip" WHERE "payrollRunId" IS NULL;
+
+-- 5. Preflight Check for duplicate (userId, payrollRunId) pairs
 SELECT "userId", "payrollRunId", COUNT(*) FROM "Payslip" GROUP BY "userId", "payrollRunId" HAVING COUNT(*) > 1;
 ```

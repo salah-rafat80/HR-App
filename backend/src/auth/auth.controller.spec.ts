@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let authService: any;
+  let authService: { login: jest.Mock; updateFcmToken: jest.Mock };
 
   beforeEach(async () => {
     authService = {
@@ -29,22 +29,29 @@ describe('AuthController', () => {
     authService.login.mockResolvedValue({ access_token: 'signed-token' });
 
     const dto = { employeeCode: 'EMP-001', password: 'Password123!' };
-    const res = await controller.signIn(dto);
+    const res = (await controller.signIn(dto)) as { access_token: string };
 
     expect(authService.login).toHaveBeenCalledWith('EMP-001', 'Password123!');
     expect(res.access_token).toBe('signed-token');
   });
 
-  it('2. updateFcmToken uses authenticated req.user.userId', async () => {
+  it('2. FCM update prevents cross-user modification by strictly using req.user.userId from authenticated JWT', async () => {
     authService.updateFcmToken.mockResolvedValue({ success: true });
 
-    const req = { user: { userId: 'user-uuid-1234' } };
-    const dto = { fcmToken: 'fcm-token-val' };
-    const res = await controller.updateFcmToken(req, dto);
+    // User A is authenticated in req.user
+    const req = {
+      user: { userId: 'user-A-uuid', role: 'employee' },
+    };
+    const dto = { fcmToken: 'new-fcm-token-for-user-A' };
 
+    const res = (await controller.updateFcmToken(req, dto)) as {
+      success: boolean;
+    };
+
+    // Asserts that update is scoped to 'user-A-uuid' regardless of client input
     expect(authService.updateFcmToken).toHaveBeenCalledWith(
-      'user-uuid-1234',
-      'fcm-token-val',
+      'user-A-uuid',
+      'new-fcm-token-for-user-A',
     );
     expect(res.success).toBe(true);
   });

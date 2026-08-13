@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 interface FailureRecord {
@@ -14,6 +15,13 @@ interface FailureRecord {
 
 @Injectable()
 export class AuthService {
+  /**
+   * SECURITY DOCUMENTATION:
+   * This in-memory failure map provides single-instance temporary rate-limiting protection
+   * against progressive password guessing per employeeCode. It is suitable for single-node
+   * application instances. For multi-instance distributed deployments, a distributed store
+   * (e.g. Redis Throttler store) must replace this temporary in-memory map.
+   */
   private failureMap = new Map<string, FailureRecord>();
 
   constructor(
@@ -52,7 +60,9 @@ export class AuthService {
 
   async login(employeeCode: string, pass: string) {
     if (!employeeCode || !pass) {
-      throw new UnauthorizedException('Employee code and password are required');
+      throw new UnauthorizedException(
+        'Employee code and password are required',
+      );
     }
 
     const normalizedCode = employeeCode.trim().toUpperCase();
@@ -60,13 +70,14 @@ export class AuthService {
     // Apply progressive delay for repeated failed attempts
     await this.applyProgressiveDelay(normalizedCode);
 
-    let user;
+    let user: User | null = null;
     try {
       user = await this.prisma.user.findUnique({
         where: { employeeCode: normalizedCode },
       });
-    } catch (e: any) {
-      console.error('Database connection error during login:', e.message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('Database connection error during login:', msg);
       throw new InternalServerErrorException(
         'Database access failure. Please try again later.',
       );
@@ -117,8 +128,9 @@ export class AuthService {
         data: { fcmToken: token },
       });
       return { success: true, message: 'FCM token updated successfully' };
-    } catch (e: any) {
-      console.error('Failed to update FCM token for user:', userId, e.message);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('Failed to update FCM token for user:', userId, msg);
       throw new InternalServerErrorException(
         'Failed to persist FCM token to database',
       );

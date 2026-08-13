@@ -39,19 +39,11 @@ BEGIN
   END IF;
 END $$;
 
--- Preflight Check 3: Detect orphaned Payslips with NULL payrollRunId (Auto-backfill synthetic migration run)
+-- Preflight Check 3: Detect orphaned Payslips with NULL payrollRunId (Manual HR/Payroll reconciliation required)
 DO $$
-DECLARE
-  migration_run_id TEXT := 'legacy-preflight-migration-run';
 BEGIN
   IF EXISTS (SELECT 1 FROM "Payslip" WHERE "payrollRunId" IS NULL) THEN
-    INSERT INTO "PayrollRun" ("id", "periodLabel", "status", "totalAmount", "employeeCount", "createdAt", "updatedAt")
-    VALUES (migration_run_id, 'Legacy Backfill Run', 'approved', 0, 0, NOW(), NOW())
-    ON CONFLICT ("id") DO NOTHING;
-
-    UPDATE "Payslip"
-    SET "payrollRunId" = migration_run_id
-    WHERE "payrollRunId" IS NULL;
+    RAISE EXCEPTION 'PREFLIGHT FAILURE: Payslips with NULL payrollRunId detected. Manual HR/payroll reconciliation is required before applying NOT NULL constraint.';
   END IF;
 END $$;
 
