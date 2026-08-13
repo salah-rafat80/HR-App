@@ -1,9 +1,22 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { CompanySettingsService } from './company-settings.service';
-import { CreateOfficeBranchDto, UpdateOfficeBranchDto } from './dto/office-branch.dto';
+import {
+  CreateOfficeBranchDto,
+  UpdateOfficeBranchDto,
+} from './dto/office-branch.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Role } from '../auth/roles.enum';
 
 @Controller('company-settings')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,21 +29,23 @@ export class CompanySettingsController {
   }
 
   @Post('branches')
-  @Roles('superAdmin', 'hr', 'hrAdmin', 'admin', 'manager')
+  @Roles(Role.superAdmin, Role.hrAdmin, Role.hr, Role.manager)
   async addBranch(@Body() data: CreateOfficeBranchDto) {
     return this.settingsService.addBranch(data);
   }
 
   @Patch('branches/:id')
-  @Roles('superAdmin', 'hr', 'hrAdmin', 'admin', 'manager')
-  async updateBranch(@Param('id') id: string, @Body() data: UpdateOfficeBranchDto) {
+  @Roles(Role.superAdmin, Role.hrAdmin, Role.hr, Role.manager)
+  async updateBranch(
+    @Param('id') id: string,
+    @Body() data: UpdateOfficeBranchDto,
+  ) {
     return this.settingsService.updateBranch(id, data);
   }
 
   @Delete('branches/:id')
-  @Roles('superAdmin', 'hr', 'hrAdmin', 'admin', 'manager')
+  @Roles(Role.superAdmin, Role.hrAdmin, Role.hr, Role.manager)
   async deleteBranch(@Param('id') id: string) {
     return this.settingsService.deleteBranch(id);
   }
 }
-

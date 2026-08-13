@@ -1,9 +1,20 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { PayrollService } from './payroll.service';
 import { CreatePayrollRunDto } from './dto/payroll.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { Role } from '../auth/roles.enum';
 
 @UseGuards(JwtAuthGuard)
 @Controller('payroll')
@@ -17,7 +28,10 @@ export class PayrollController {
   }
 
   @Get('payslips/:monthLabel')
-  async getPayslipDetail(@Request() req, @Param('monthLabel') monthLabel: string) {
+  async getPayslipDetail(
+    @Request() req,
+    @Param('monthLabel') monthLabel: string,
+  ) {
     return this.payrollService.getPayslipDetail(req.user.userId, monthLabel);
   }
 
@@ -34,34 +48,37 @@ export class PayrollController {
   @Post('tax-certificate/download')
   @HttpCode(HttpStatus.OK)
   async downloadTaxCertificate() {
-    return { success: true, message: 'Tax certificate downloaded successfully' };
+    return {
+      success: true,
+      message: 'Tax certificate downloaded successfully',
+    };
   }
 
   // Admin-facing endpoints
   @Get('runs')
   @UseGuards(RolesGuard)
-  @Roles('hr', 'hrAdmin', 'superAdmin')
+  @Roles(Role.hrAdmin, Role.superAdmin, Role.hr)
   async getPayrollRuns() {
     return this.payrollService.getPayrollRuns();
   }
 
   @Post('runs')
   @UseGuards(RolesGuard)
-  @Roles('hr', 'hrAdmin', 'superAdmin')
+  @Roles(Role.hrAdmin, Role.superAdmin)
   async createRun(@Body() data: CreatePayrollRunDto) {
     return this.payrollService.createRun(data.periodLabel);
   }
 
   @Post('runs/:id/process')
   @UseGuards(RolesGuard)
-  @Roles('hr', 'hrAdmin', 'superAdmin')
+  @Roles(Role.hrAdmin, Role.superAdmin)
   async processRun(@Param('id') id: string) {
     return this.payrollService.processRun(id);
   }
 
   @Post('runs/:id/approve')
   @UseGuards(RolesGuard)
-  @Roles('hr', 'hrAdmin', 'superAdmin')
+  @Roles(Role.hrAdmin, Role.superAdmin)
   async approveRun(@Param('id') id: string) {
     return this.payrollService.approveRun(id);
   }
