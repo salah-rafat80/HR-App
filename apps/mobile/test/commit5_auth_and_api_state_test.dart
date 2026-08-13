@@ -1,15 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
+import 'package:hr_core/core/services/token_storage.dart';
 import 'package:hr_app_demo/core/services/token_service.dart';
 import 'package:hr_app_demo/core/bloc/session_cubit.dart';
 import 'package:hr_app_demo/core/di/injection.dart';
 import 'package:hr_core/features/kpi/data/datasources/api_kpi_repository_impl.dart';
 import 'package:hr_core/features/payroll/data/datasources/api_payroll_repository_impl.dart';
 
-class MockTokenStorage {
+class MockTokenStorage implements TokenStorage {
   String? token;
+
+  @override
   Future<void> saveToken(String val) async => token = val;
+  @override
   Future<String?> getToken() async => token;
+  @override
   Future<void> clearToken() async => token = null;
 }
 
@@ -30,6 +35,7 @@ class FakeHttpClientAdapter implements HttpClientAdapter {
 }
 
 void main() {
+  late MockTokenStorage tokenStorage;
   late TokenService tokenService;
   late SessionCubit sessionCubit;
   late Dio dio;
@@ -37,8 +43,9 @@ void main() {
 
   setUp(() {
     getIt.reset();
-    tokenService = TokenService();
-    sessionCubit = SessionCubit();
+    tokenStorage = MockTokenStorage();
+    tokenService = TokenService(storage: tokenStorage);
+    sessionCubit = SessionCubit(tokenStorage: tokenStorage);
     adapter = FakeHttpClientAdapter();
 
     dio = Dio(BaseOptions(baseUrl: 'https://hr-app-lswi.onrender.com'));
@@ -47,7 +54,7 @@ void main() {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         if (!options.path.contains('/auth/login')) {
-          final t = await tokenService.getToken();
+          final t = await tokenStorage.getToken();
           if (t != null && t.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $t';
           }
@@ -57,13 +64,14 @@ void main() {
       onError: (DioException error, handler) async {
         if (error.response?.statusCode == 401 &&
             !error.requestOptions.path.contains('/auth/login')) {
-          await tokenService.clearToken();
+          await tokenStorage.clearToken();
           sessionCubit.setAuthenticated(false);
         }
         return handler.next(error);
       },
     ));
 
+    getIt.registerSingleton<TokenStorage>(tokenStorage);
     getIt.registerSingleton<TokenService>(tokenService);
     getIt.registerSingleton<SessionCubit>(sessionCubit);
     getIt.registerSingleton<Dio>(dio);
@@ -94,7 +102,7 @@ void main() {
       sessionCubit.setAuthenticated(true);
 
       expect(await tokenService.getToken(), equals('valid_jwt_token'));
-      expect(sessionCubit.state, isTrue);
+      expect(sessionCubit.state.isAuthenticated, isTrue);
     });
 
     test('Failed login (401) does NOT store token and retains unauthenticated state', () async {
@@ -119,7 +127,7 @@ void main() {
       }
 
       expect(await tokenService.getToken(), isNull);
-      expect(sessionCubit.state, isFalse);
+      expect(sessionCubit.state.isAuthenticated, isFalse);
     });
 
     test('401 response on protected endpoint clears token and resets session', () async {
@@ -142,7 +150,7 @@ void main() {
       } catch (_) {}
 
       expect(await tokenService.getToken(), isNull);
-      expect(sessionCubit.state, isFalse);
+      expect(sessionCubit.state.isAuthenticated, isFalse);
     });
 
     test('Logout clears token and resets session state', () async {
@@ -152,7 +160,7 @@ void main() {
       await sessionCubit.logout();
 
       expect(await tokenService.getToken(), isNull);
-      expect(sessionCubit.state, isFalse);
+      expect(sessionCubit.state.isAuthenticated, isFalse);
     });
   });
 

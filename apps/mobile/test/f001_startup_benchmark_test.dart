@@ -20,7 +20,7 @@ void main() {
     final swDi = Stopwatch()..start();
     final getIt = GetIt.instance;
     await getIt.reset();
-    await initDI();
+    await initDI(overrideBaseUrl: 'http://localhost:3000');
     swDi.stop();
 
     swTotal.stop();

@@ -1,79 +1,20 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../di/injection.dart';
+import 'package:hr_core/core/services/token_storage.dart';
 
 class TokenService {
-  final FlutterSecureStorage _storage;
-  String? _inMemoryToken;
+  final TokenStorage _storage;
 
-  TokenService({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
-
-  static const _tokenKey = 'jwt_token';
-  static const _userKey = 'authenticated_user';
+  TokenService({TokenStorage? storage})
+      : _storage = storage ?? SecureTokenStorage();
 
   Future<void> saveToken(String token) async {
-    _inMemoryToken = token;
-    try {
-      await _storage.write(key: _tokenKey, value: token);
-    } catch (_) {}
-    try {
-      if (getIt.isRegistered<SharedPreferences>()) {
-        final prefs = getIt<SharedPreferences>();
-        await prefs.setString(_tokenKey, token);
-      }
-    } catch (_) {}
+    await _storage.saveToken(token);
   }
 
   Future<String?> getToken() async {
-    if (_inMemoryToken != null) return _inMemoryToken;
-    try {
-      final token = await _storage.read(key: _tokenKey);
-      if (token != null && token.isNotEmpty) {
-        _inMemoryToken = token;
-        return token;
-      }
-    } catch (_) {}
-
-    try {
-      if (getIt.isRegistered<SharedPreferences>()) {
-        final prefs = getIt<SharedPreferences>();
-        final token = prefs.getString(_tokenKey);
-        if (token != null && token.isNotEmpty) {
-          _inMemoryToken = token;
-          return token;
-        }
-      }
-    } catch (_) {}
-
-    return _inMemoryToken;
-  }
-
-  Future<void> saveUserRaw(String userJson) async {
-    try {
-      await _storage.write(key: _userKey, value: userJson);
-    } catch (_) {}
-  }
-
-  Future<String?> getUserRaw() async {
-    try {
-      return await _storage.read(key: _userKey);
-    } catch (_) {
-      return null;
-    }
+    return await _storage.getToken();
   }
 
   Future<void> clearToken() async {
-    _inMemoryToken = null;
-    try {
-      await _storage.delete(key: _tokenKey);
-      await _storage.delete(key: _userKey);
-    } catch (_) {}
-    try {
-      if (getIt.isRegistered<SharedPreferences>()) {
-        final prefs = getIt<SharedPreferences>();
-        await prefs.remove(_tokenKey);
-      }
-    } catch (_) {}
+    await _storage.clearToken();
   }
 }

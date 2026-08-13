@@ -1,28 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:get_it/get_it.dart';
+import 'package:hr_core/core/services/token_storage.dart';
 import 'package:hr_app_demo/core/bloc/session_cubit.dart';
+
+class TestTokenStorage implements TokenStorage {
+  String? _token;
+  TestTokenStorage(this._token);
+
+  @override
+  Future<void> saveToken(String token) async => _token = token;
+  @override
+  Future<String?> getToken() async => _token;
+  @override
+  Future<void> clearToken() async => _token = null;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('F-002 Session Test: checkStoredSession returns true if token exists and false if null', () async {
-    SharedPreferences.setMockInitialValues({'jwt_token': 'sample_jwt_123'});
-    final prefsInstance = await SharedPreferences.getInstance();
-
+  test(
+      'F-002 Session Test: checkStoredSession returns SessionState correctly based on token & storage',
+      () async {
+    final tokenStorage = TestTokenStorage('sample_jwt_123');
     final getIt = GetIt.instance;
     await getIt.reset();
-    getIt.registerLazySingleton<SharedPreferences>(() => prefsInstance);
+    getIt.registerSingleton<TokenStorage>(tokenStorage);
 
-    final sessionCubit = SessionCubit();
-    final auth1 = await sessionCubit.checkStoredSession();
-    expect(auth1, isTrue);
-    expect(sessionCubit.state, isTrue);
+    final sessionCubit = SessionCubit(tokenStorage: tokenStorage);
 
-    // Clear token
-    await prefsInstance.remove('jwt_token');
-    final auth2 = await sessionCubit.checkStoredSession();
-    expect(auth2, isFalse);
-    expect(sessionCubit.state, isFalse);
+    final state1 = await sessionCubit.checkStoredSession();
+    expect(state1.status, equals(SessionStatus.sessionUnknown));
+
+    await tokenStorage.clearToken();
+    final state2 = await sessionCubit.checkStoredSession();
+    expect(state2.status, equals(SessionStatus.unauthenticated));
+    expect(sessionCubit.state.isAuthenticated, isFalse);
   });
 }

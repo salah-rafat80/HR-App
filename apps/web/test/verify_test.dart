@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
-    await di.initDI();
+    await di.initDI(overrideBaseUrl: 'http://localhost:3000');
   });
 
   test('Check 1: Recruitment persistence', () async {

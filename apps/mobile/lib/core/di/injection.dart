@@ -47,20 +47,23 @@ import 'package:hr_core/features/admin/data/datasources/fake_system_config_datas
 import 'package:hr_core/features/admin/data/datasources/api_system_config_datasource.dart';
 import 'package:hr_core/features/admin/domain/repositories/system_config_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/system_config_repository_impl.dart';
+import 'package:hr_core/core/services/token_storage.dart';
 import '../services/token_service.dart';
 import '../bloc/session_cubit.dart';
 import '../utils/crash_reporter.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> initDI() async {
+Future<void> initDI({String? overrideBaseUrl}) async {
   // Utils
   getIt.registerLazySingleton<CrashReporter>(() => ConsoleCrashReporter());
 
   // Core
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
-  getIt.registerLazySingleton<TokenService>(() => TokenService());
+  getIt.registerLazySingleton<TokenStorage>(() => SecureTokenStorage());
+  getIt.registerLazySingleton<TokenService>(
+      () => TokenService(storage: getIt<TokenStorage>()));
   getIt.registerLazySingleton(() => SessionCubit());
   getIt.registerLazySingleton(() => ThemeCubit());
 
@@ -70,9 +73,18 @@ Future<void> initDI() async {
   /// - Android emulator local backend: --dart-define=API_BASE_URL=http://10.0.2.2:3000
   /// - Local LAN / real device: --dart-define=API_BASE_URL=http://192.168.1.50:3000
   /// - Render production backend: --dart-define=API_BASE_URL=https://hr-app-lswi.onrender.com
-  const String defaultBaseUrl = 'https://hr-app-lswi.onrender.com';
-  const String baseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: defaultBaseUrl);
+  final String baseUrl =
+      overrideBaseUrl ?? const String.fromEnvironment('API_BASE_URL');
+  if (baseUrl.isEmpty) {
+    throw StateError(
+      'CRITICAL CONFIGURATION ERROR: API_BASE_URL dart-define parameter is missing!\n'
+      'You must supply --dart-define=API_BASE_URL=<url> when running the application.\n'
+      'Examples:\n'
+      '  - Android Emulator: --dart-define=API_BASE_URL=http://10.0.2.2:3000\n'
+      '  - Physical LAN Device: --dart-define=API_BASE_URL=http://192.168.1.50:3000\n'
+      '  - Render Production: --dart-define=API_BASE_URL=https://hr-app-lswi.onrender.com',
+    );
+  }
 
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,
@@ -83,8 +95,8 @@ Future<void> initDI() async {
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {
       if (!options.path.contains('/auth/login')) {
-        final tokenService = getIt<TokenService>();
-        final token = await tokenService.getToken();
+        final tokenStorage = getIt<TokenStorage>();
+        final token = await tokenStorage.getToken();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -94,8 +106,8 @@ Future<void> initDI() async {
     onError: (DioException error, handler) async {
       if (error.response?.statusCode == 401 &&
           !error.requestOptions.path.contains('/auth/login')) {
-        final tokenService = getIt<TokenService>();
-        await tokenService.clearToken();
+        final tokenStorage = getIt<TokenStorage>();
+        await tokenStorage.clearToken();
         getIt<SessionCubit>().setAuthenticated(false);
       }
       return handler.next(error);

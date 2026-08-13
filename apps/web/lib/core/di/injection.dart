@@ -21,6 +21,7 @@ import 'package:hr_core/features/admin/data/datasources/api_system_config_dataso
 import 'package:hr_core/features/admin/data/datasources/fake_offboarding_datasource.dart';
 import 'package:hr_core/features/executive/data/datasources/fake_executive_datasource.dart';
 import 'package:hr_core/features/engagement/data/datasources/fake_engagement_datasource.dart';
+import 'package:hr_core/features/admin/data/datasources/fake_admin_payroll_datasource.dart';
 import 'package:hr_core/features/admin/data/repositories/recruitment_repository_impl.dart';
 import 'package:hr_core/features/admin/domain/repositories/recruitment_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/system_config_repository_impl.dart';
@@ -32,34 +33,57 @@ import 'package:hr_core/features/executive/domain/repositories/executive_reposit
 import 'package:hr_core/features/engagement/data/repositories/engagement_repository_impl.dart';
 import 'package:hr_core/features/engagement/domain/repositories/engagement_repository.dart';
 
+import 'package:hr_core/core/services/token_storage.dart';
 import '../bloc/session_cubit.dart';
 import '../utils/crash_reporter.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> initDI() async {
+Future<void> initDI({String? overrideBaseUrl}) async {
   // Utils
   getIt.registerLazySingleton<CrashReporter>(() => ConsoleCrashReporter());
 
   // Core
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+  getIt.registerLazySingleton<TokenStorage>(() => SecureTokenStorage());
   getIt.registerLazySingleton(() => SessionCubit());
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  final String baseUrl = 'https://hr-app-lswi.onrender.com';
-  
+  final String baseUrl =
+      overrideBaseUrl ?? const String.fromEnvironment('API_BASE_URL');
+  if (baseUrl.isEmpty) {
+    throw StateError(
+      'CRITICAL CONFIGURATION ERROR: API_BASE_URL dart-define parameter is missing!\n'
+      'You must supply --dart-define=API_BASE_URL=<url> when running the web application.\n'
+      'Examples:\n'
+      '  - Local backend: --dart-define=API_BASE_URL=http://localhost:3000\n'
+      '  - Render Production: --dart-define=API_BASE_URL=https://hr-app-lswi.onrender.com',
+    );
+  }
+
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {
-      final prefs = getIt<SharedPreferences>();
-      final token = prefs.getString('jwt_token');
-      if (token != null) {
-        options.headers['Authorization'] = 'Bearer $token';
+      if (!options.path.contains('/auth/login')) {
+        final tokenStorage = getIt<TokenStorage>();
+        final token = await tokenStorage.getToken();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
       }
       return handler.next(options);
+    },
+    onError: (DioException error, handler) async {
+      if (error.response?.statusCode == 401 &&
+          !error.requestOptions.path.contains('/auth/login')) {
+        final tokenStorage = getIt<TokenStorage>();
+        await tokenStorage.clearToken();
+        getIt<SessionCubit>().logout();
+      }
+      return handler.next(error);
     },
   ));
 
@@ -80,6 +104,7 @@ Future<void> initDI() async {
 
   // Data Sources (Singletons for state sync within web app)
   getIt.registerLazySingleton(() => FakeRecruitmentDataSource());
+  getIt.registerLazySingleton(() => FakeAdminPayrollDataSource());
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
   getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
   getIt.registerLazySingleton(() => FakeOffboardingDataSource());

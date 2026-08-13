@@ -43,18 +43,17 @@ class AppRouter {
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.login,
     redirect: (context, state) {
-      final session = context.read<SessionCubit>();
-      final role = session.state;
+      final sessionState = context.read<SessionCubit>().state;
       final isLogin = state.matchedLocation == AppRoutes.login;
 
       // If not logged in and trying to access protected route, redirect to login
-      if (role == null && !isLogin) {
+      if (!sessionState.isAuthenticated && !isLogin) {
         return AppRoutes.login;
       }
 
       // If logged in and on login page, redirect to role-appropriate first section
-      if (role != null && isLogin) {
-        return _firstRouteForRole(role);
+      if (sessionState.isAuthenticated && isLogin) {
+        return _firstRouteForRole(sessionState.role ?? UserRole.employee);
       }
 
       return null;

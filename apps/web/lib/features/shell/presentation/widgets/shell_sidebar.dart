@@ -12,8 +12,9 @@ class Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final role = context.watch<SessionCubit>().state;
-    if (role == null) return const SizedBox.shrink();
+    final sessionState = context.watch<SessionCubit>().state;
+    if (!sessionState.isAuthenticated) return const SizedBox.shrink();
+    final role = sessionState.role;
 
     final isWide = MediaQuery.of(context).size.width > 900;
     final width = isWide ? 260.0 : 88.0;

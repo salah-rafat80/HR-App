@@ -21,14 +21,25 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initStartupRouting() async {
-    final isAuthenticated = await context.read<SessionCubit>().checkStoredSession();
+    final sessionState =
+        await context.read<SessionCubit>().checkStoredSession();
     if (!mounted) return;
 
-    if (isAuthenticated) {
-      final notificationConsumed = await FcmService.instance.consumePendingNotification(context);
+    if (sessionState.status == SessionStatus.authenticated) {
+      final notificationConsumed =
+          await FcmService.instance.consumePendingNotification(context);
       if (!notificationConsumed && mounted) {
         context.go(AppRoutes.home);
       }
+    } else if (sessionState.status == SessionStatus.sessionUnknown) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(sessionState.errorMessage ??
+              'Server unavailable. Please sign in again.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      context.go(AppRoutes.login);
     } else {
       context.go(AppRoutes.login);
     }

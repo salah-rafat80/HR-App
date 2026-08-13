@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hr_core/core/enums/role_enums.dart';
+import 'package:dio/dio.dart';
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:iconsax_flutter/iconsax_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:hr_core/core/enums/role_enums.dart';
+import 'package:hr_core/core/services/token_storage.dart';
 import '../../../../core/bloc/session_cubit.dart';
 import '../../../../core/router/app_routes.dart';
-import 'package:dio/dio.dart';
 import '../../../../core/di/injection.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as io;
-
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -20,13 +18,16 @@ class LoginScreen extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
-          // Left branding panel
           Expanded(
             flex: 5,
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF063B36), Color(0xFF0B6E64), Color(0xFF168F83)],
+                  colors: [
+                    Color(0xFF063B36),
+                    Color(0xFF0B6E64),
+                    Color(0xFF168F83)
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -41,38 +42,29 @@ class LoginScreen extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Icon(Iconsax.activity, size: 64, color: Colors.white),
+                      child: const Icon(Iconsax.activity,
+                          size: 64, color: Colors.white),
                     ),
                     const SizedBox(height: 32),
                     const Text(
                       'HR Admin Portal',
-                      style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Manage your organization at scale',
-                      style: TextStyle(fontSize: 16, color: Colors.white.withValues(alpha: 0.7)),
-                    ),
-                    const SizedBox(height: 48),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 48),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildStat('142', 'Employees'),
-                          const SizedBox(width: 40),
-                          _buildStat('5', 'Departments'),
-                          const SizedBox(width: 40),
-                          _buildStat('98%', 'Uptime'),
-                        ],
-                      ),
+                      'Single-Company Enterprise HR Portal',
+                      style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withValues(alpha: 0.7)),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-          // Right login panel
           Expanded(
             flex: 4,
             child: Scaffold(
@@ -80,9 +72,9 @@ class LoginScreen extends StatelessWidget {
               body: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: _LoginForm(),
+                  child: const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: WebLoginForm(),
                   ),
                 ),
               ),
@@ -92,168 +84,179 @@ class LoginScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildStat(String value, String label) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7))),
-      ],
-    );
+class WebLoginForm extends StatefulWidget {
+  const WebLoginForm({super.key});
+
+  @override
+  State<WebLoginForm> createState() => _WebLoginFormState();
+}
+
+class _WebLoginFormState extends State<WebLoginForm> {
+  final _employeeCodeController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _employeeCodeController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
-}
 
-class _LoginForm extends StatelessWidget {
-  _LoginForm();
-
-  final List<Map<String, dynamic>> roles = [
-    {'role': UserRole.teamLead, 'label': 'Team Lead', 'icon': Iconsax.people, 'subtitle': 'Manage your team'},
-    {'role': UserRole.manager, 'label': 'Manager', 'icon': Iconsax.user_edit, 'subtitle': 'Department oversight'},
-    {'role': UserRole.hrAdmin, 'label': 'HR Admin', 'icon': Iconsax.security_user, 'subtitle': 'Full HR operations'},
-    {'role': UserRole.superAdmin, 'label': 'Super Admin', 'icon': Iconsax.shield_tick, 'subtitle': 'System configuration'},
-    {'role': UserRole.cLevel, 'label': 'C-Level Executive', 'icon': Iconsax.chart_square, 'subtitle': 'Analytics & insights'},
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Welcome back', style: Theme.of(context).textTheme.displaySmall),
-        const SizedBox(height: 8),
-        Text('Select your role to continue', style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15)),
-        const SizedBox(height: 40),
-        ...roles.map((r) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _RoleButton(
-            role: r['role'] as UserRole,
-            label: r['label'] as String,
-            subtitle: r['subtitle'] as String,
-            icon: r['icon'] as IconData,
-          ),
-        )),
-      ],
-    );
+  UserRole _parseRole(String? roleStr) {
+    if (roleStr == null) return UserRole.employee;
+    switch (roleStr.toLowerCase()) {
+      case 'team_lead':
+      case 'teamlead':
+        return UserRole.teamLead;
+      case 'manager':
+        return UserRole.manager;
+      case 'hr_admin':
+      case 'hradmin':
+      case 'hr':
+        return UserRole.hrAdmin;
+      case 'super_admin':
+      case 'superadmin':
+      case 'admin':
+        return UserRole.superAdmin;
+      case 'c_level':
+      case 'clevel':
+        return UserRole.cLevel;
+      default:
+        return UserRole.employee;
+    }
   }
-}
 
-class _RoleButton extends StatefulWidget {
-  final UserRole role;
-  final String label;
-  final String subtitle;
-  final IconData icon;
-  const _RoleButton({required this.role, required this.label, required this.subtitle, required this.icon});
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  @override
-  State<_RoleButton> createState() => _RoleButtonState();
-}
+    setState(() => _isLoading = true);
 
-class _RoleButtonState extends State<_RoleButton> {
-  bool _hovered = false;
-  bool _loading = false;
+    final employeeCode = _employeeCodeController.text.trim();
+    final password = _passwordController.text;
 
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    try {
+      final dio = getIt<Dio>();
+      final response = await dio.post('/auth/login', data: {
+        'employeeCode': employeeCode,
+        'password': password,
+      });
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = !_loading && true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: _loading ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          color: _hovered ? AppColors.primary.withValues(alpha: 0.06) : Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _hovered ? AppColors.primary.withValues(alpha: 0.5) : cs.outlineVariant,
-            width: _hovered ? 1.5 : 1,
-          ),
-          boxShadow: _hovered ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))] : [],
+      final token = response.data['access_token'] as String?;
+      if (token == null || token.isEmpty) {
+        throw Exception('Invalid authentication response');
+      }
+
+      final tokenStorage = getIt<TokenStorage>();
+      await tokenStorage.saveToken(token);
+
+      final roleStr = response.data['user']?['role'] as String?;
+      final userRole = _parseRole(roleStr);
+
+      try {
+        final socket = getIt<io.Socket>();
+        socket.connect();
+      } catch (_) {}
+
+      if (!mounted) return;
+      context.read<SessionCubit>().setAuthenticatedRole(userRole);
+      context.go(AppRoutes.dashboard);
+    } catch (e) {
+      if (!mounted) return;
+      String errorMsg = 'Invalid employee code or password';
+      if (e is DioException) {
+        if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+          errorMsg = 'Invalid employee code or password';
+        } else if (e.response?.statusCode != null &&
+            e.response!.statusCode! >= 500) {
+          errorMsg = 'Server connection failed. Try again later.';
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Colors.red,
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(14),
-            onTap: _loading ? null : () async {
-              setState(() => _loading = true);
-              try {
-                String email = 'employee@demo.com';
-                if (widget.role == UserRole.teamLead) email = 'teamlead@demo.com';
-                if (widget.role == UserRole.manager) email = 'manager@demo.com';
-                if (widget.role == UserRole.hrAdmin || widget.role == UserRole.superAdmin) email = 'hr@demo.com';
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
-                final dio = getIt<Dio>();
-                final response = await dio.post('/auth/login', data: {
-                  'email': email,
-                  'password': 'password123',
-                });
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
 
-                final token = response.data['access_token'];
-                final prefs = getIt<SharedPreferences>();
-                await prefs.setString('jwt_token', token);
-                await prefs.setString('user_id', response.data['user']['id']);
-                await prefs.setString('user_role', response.data['user']['role']);
-                
-                try {
-                  final socket = getIt<io.Socket>();
-                  socket.connect();
-                } catch (_) {}
-
-                if (!context.mounted) return;
-                context.read<SessionCubit>().setRole(widget.role);
-                context.go(AppRoutes.dashboard);
-              } catch (e) {
-                if (!context.mounted) return;
-                setState(() => _loading = false);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed')));
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Welcome back',
+              style: Theme.of(context).textTheme.displaySmall),
+          const SizedBox(height: 8),
+          Text('Sign in with your employee code',
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15)),
+          const SizedBox(height: 32),
+          TextFormField(
+            key: const Key('webEmployeeCodeField'),
+            controller: _employeeCodeController,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: 'Employee Code',
+              prefixIcon: const Icon(Iconsax.personalcard),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            validator: (val) {
+              if (val == null || val.trim().isEmpty) {
+                return 'Please enter your employee code';
               }
+              return null;
             },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _hovered ? AppColors.primary.withValues(alpha: 0.15) : cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(widget.icon, size: 20, color: _hovered ? AppColors.primary : cs.onSurfaceVariant),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        const SizedBox(height: 2),
-                        Text(widget.subtitle, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  _loading
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              _hovered ? AppColors.primary : cs.onSurfaceVariant,
-                            ),
-                          ),
-                        )
-                      : Icon(Iconsax.arrow_right_3, size: 18, color: _hovered ? AppColors.primary : cs.onSurfaceVariant),
-                ],
-              ),
+          ),
+          const SizedBox(height: 20),
+          TextFormField(
+            key: const Key('webPasswordField'),
+            controller: _passwordController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              prefixIcon: const Icon(Iconsax.lock_1),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            validator: (val) {
+              if (val == null || val.isEmpty) {
+                return 'Please enter your password';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              key: const Key('webLoginButton'),
+              onPressed: _isLoading ? null : _handleLogin,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Sign In',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
