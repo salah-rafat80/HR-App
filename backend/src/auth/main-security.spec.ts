@@ -119,7 +119,16 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
   });
 
-  it('4. Request payload > 100KB is rejected with 413 Payload Too Large', async () => {
+  it('4. Native clients without an Origin header are accepted', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ employeeCode: 'EMP-001', password: 'Password123!' });
+
+    expect(res.status).not.toBe(500);
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('5. Request payload > 100KB is rejected with 413 Payload Too Large', async () => {
     const oversizedPayload = {
       employeeCode: 'EMP-001',
       password: 'A'.repeat(105 * 1024),
@@ -131,7 +140,7 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
     expect(res.status).toBe(413);
   });
 
-  it('5. Request with unknown DTO field is rejected with 400 Bad Request', async () => {
+  it('6. Request with unknown DTO field is rejected with 400 Bad Request', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/login')
       .send({

@@ -12,13 +12,15 @@ export async function bootstrap() {
     .map((o) => o.trim())
     .filter(Boolean);
 
-  if (isProduction) {
-    if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
-      throw new Error(
-        'FATAL: CORS_ALLOWED_ORIGINS must be explicitly configured in production and cannot be empty or contain "*"',
-      );
-    }
+  if (isProduction && allowedOrigins.includes('*')) {
+    throw new Error(
+      'FATAL: CORS_ALLOWED_ORIGINS cannot contain "*" in production',
+    );
   }
+
+  // A native mobile client sends no Origin header. When no web client is deployed,
+  // production starts with an empty browser allowlist and permits only no-origin requests.
+  // Add the exact web origins to CORS_ALLOWED_ORIGINS before deploying Flutter Web.
 
   // Create Nest app with default body parser disabled to enforce 100kb limit
   const app = await NestFactory.create(AppModule, { bodyParser: false });
