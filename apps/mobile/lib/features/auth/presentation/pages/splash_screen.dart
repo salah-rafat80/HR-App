@@ -21,35 +21,67 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initStartupRouting() async {
-    final sessionState =
-        await context.read<SessionCubit>().checkStoredSession();
-    if (!mounted) return;
+    try {
+      final sessionState = await context
+          .read<SessionCubit>()
+          .checkStoredSession()
+          .timeout(const Duration(seconds: 3), onTimeout: () {
+        return const SessionState(
+          status: SessionStatus.sessionUnknown,
+          errorMessage: 'Server connection timeout. Navigating to login.',
+        );
+      });
 
-    if (sessionState.status == SessionStatus.authenticated) {
-      final notificationConsumed =
-          await FcmService.instance.consumePendingNotification(context);
-      if (!notificationConsumed && mounted) {
-        context.go(AppRoutes.home);
+      if (!mounted) return;
+
+      if (sessionState.status == SessionStatus.authenticated) {
+        final notificationConsumed =
+            await FcmService.instance.consumePendingNotification(context);
+        if (!notificationConsumed && mounted) {
+          context.go(AppRoutes.home);
+        }
+      } else if (sessionState.status == SessionStatus.sessionUnknown) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(sessionState.errorMessage ??
+                  'Server unavailable. Please sign in again.'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          context.go(AppRoutes.login);
+        }
+      } else {
+        context.go(AppRoutes.login);
       }
-    } else if (sessionState.status == SessionStatus.sessionUnknown) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(sessionState.errorMessage ??
-              'Server unavailable. Please sign in again.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      context.go(AppRoutes.login);
-    } else {
-      context.go(AppRoutes.login);
+    } catch (_) {
+      if (mounted) {
+        context.go(AppRoutes.login);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    final theme = Theme.of(context);
+    return Scaffold(
       body: Center(
-        child: SplashLogo(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SplashLogo(),
+            const SizedBox(height: 36),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

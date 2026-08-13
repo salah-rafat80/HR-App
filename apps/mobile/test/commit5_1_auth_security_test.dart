@@ -96,7 +96,7 @@ void main() {
 
     test('4. Missing API_BASE_URL throws StateError and CANNOT call Render silently', () async {
       await getIt.reset();
-      expect(() => initDI(), throwsA(isA<StateError>()));
+      expect(() => initDI(fallbackToDefaultUrl: false), throwsA(isA<StateError>()));
     });
   });
 }
