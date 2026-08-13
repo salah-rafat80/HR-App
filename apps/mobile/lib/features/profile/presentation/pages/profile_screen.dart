@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/theme_cubit.dart';
+import '../../../../core/bloc/session_cubit.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -69,7 +70,9 @@ class ProfileScreen extends StatelessWidget {
               ListTile(
                 leading: Icon(AppIcons.back, color: AppColors.error),
                 title: Text('logout'.tr(), style: TextStyle(color: AppColors.error)),
-                onTap: () {
+                onTap: () async {
+                  await context.read<SessionCubit>().logout();
+                  if (!context.mounted) return;
                   context.go(AppRoutes.login);
                 },
               ),

@@ -47,6 +47,7 @@ import 'package:hr_core/features/admin/data/datasources/fake_system_config_datas
 import 'package:hr_core/features/admin/data/datasources/api_system_config_datasource.dart';
 import 'package:hr_core/features/admin/domain/repositories/system_config_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/system_config_repository_impl.dart';
+import '../services/token_service.dart';
 import '../bloc/session_cubit.dart';
 import '../utils/crash_reporter.dart';
 
@@ -59,27 +60,45 @@ Future<void> initDI() async {
   // Core
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+  getIt.registerLazySingleton<TokenService>(() => TokenService());
   getIt.registerLazySingleton(() => SessionCubit());
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  // Connected to live backend on Render
-  final String baseUrl = 'https://hr-app-lswi.onrender.com';
-  
+  /// API Base URL Configuration via --dart-define
+  /// Development Examples:
+  /// - Android emulator local backend: --dart-define=API_BASE_URL=http://10.0.2.2:3000
+  /// - Local LAN / real device: --dart-define=API_BASE_URL=http://192.168.1.50:3000
+  /// - Render production backend: --dart-define=API_BASE_URL=https://hr-app-lswi.onrender.com
+  const String defaultBaseUrl = 'https://hr-app-lswi.onrender.com';
+  const String baseUrl =
+      String.fromEnvironment('API_BASE_URL', defaultValue: defaultBaseUrl);
+
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 5),
     receiveTimeout: const Duration(seconds: 10),
   ));
-  
+
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {
-      final prefs = getIt<SharedPreferences>();
-      final token = prefs.getString('jwt_token');
-      if (token != null) {
-        options.headers['Authorization'] = 'Bearer $token';
+      if (!options.path.contains('/auth/login')) {
+        final tokenService = getIt<TokenService>();
+        final token = await tokenService.getToken();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
       }
       return handler.next(options);
+    },
+    onError: (DioException error, handler) async {
+      if (error.response?.statusCode == 401 &&
+          !error.requestOptions.path.contains('/auth/login')) {
+        final tokenService = getIt<TokenService>();
+        await tokenService.clearToken();
+        getIt<SessionCubit>().setAuthenticated(false);
+      }
+      return handler.next(error);
     },
   ));
 

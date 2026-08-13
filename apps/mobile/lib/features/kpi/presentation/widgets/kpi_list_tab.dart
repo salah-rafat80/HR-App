@@ -8,6 +8,7 @@ import 'package:hr_core/features/kpi/domain/entities/kpi_entities.dart';
 import '../bloc/kpi_cubit.dart';
 import '../bloc/kpi_state.dart';
 import 'kpi_detail_modal.dart';
+import 'package:hr_app_demo/core/widgets/error_state_widget.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
 import '../../../../core/widgets/app_card.dart';
 
@@ -19,6 +20,12 @@ class KpiListTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<KpiCubit, KpiState>(
       builder: (context, state) {
+        if (state is KpiError) {
+          return ErrorStateWidget(
+            message: state.message,
+            onRetry: () => context.read<KpiCubit>().loadData(),
+          );
+        }
         if (state is! KpiLoaded) return const AppLoader();
         if (state.kpis.isEmpty) return const EmptyStateWidget(icon: AppIcons.modules, message: 'no_data_found');
         return ListView.builder(

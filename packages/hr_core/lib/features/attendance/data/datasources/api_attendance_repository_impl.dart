@@ -7,26 +7,20 @@ import '../../domain/repositories/attendance_repository.dart';
 
 class ApiAttendanceRepositoryImpl implements AttendanceRepository {
   final Dio dio;
-  AttendanceRecord? _localTodayStatus;
 
   ApiAttendanceRepositoryImpl({required this.dio});
 
   @override
   Future<AttendanceRecord> getTodayStatus() async {
-    try {
-      final response = await dio.get('/attendance/today');
-      final record = AttendanceRecord.fromJson(response.data);
-      if (record.clockInTime != null) {
-        _localTodayStatus = record;
-      }
-      return record;
-    } catch (_) {
-      return _localTodayStatus ?? AttendanceRecord(
+    final response = await dio.get('/attendance/today');
+    if (response.data == null || response.data is! Map) {
+      return AttendanceRecord(
         date: DateTime.now(),
         status: AttendanceStatus.none,
         locationLabel: 'none',
       );
     }
+    return AttendanceRecord.fromJson(response.data);
   }
 
   @override
@@ -37,94 +31,42 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
     double? lng,
     double? accuracy,
   }) async {
-    final now = DateTime.now();
-    _localTodayStatus = AttendanceRecord(
-      date: now,
-      clockInTime: now,
-      status: mode,
-      locationLabel: locationLabel,
-    );
-
-    try {
-      final response = await dio.post('/attendance/clock-in', data: {
-        'locationLabel': locationLabel,
-        'mode': mode.name,
-        'lat': lat,
-        'lng': lng,
-        'accuracy': accuracy,
-      });
-      if (response.data != null) {
-        _localTodayStatus = AttendanceRecord.fromJson(response.data);
-      }
-    } catch (_) {
-      // Keep local in-memory record if Dio fails
-    }
+    await dio.post('/attendance/clock-in', data: {
+      'locationLabel': locationLabel,
+      'mode': mode.name,
+      'lat': lat,
+      'lng': lng,
+      'accuracy': accuracy,
+    });
   }
 
   @override
   Future<void> clockOut() async {
-    final now = DateTime.now();
-    if (_localTodayStatus != null) {
-      _localTodayStatus = _localTodayStatus!.copyWith(clockOutTime: now);
-    } else {
-      _localTodayStatus = AttendanceRecord(
-        date: now,
-        clockInTime: now,
-        clockOutTime: now,
-        status: AttendanceStatus.present,
-        locationLabel: 'Main Office',
-      );
-    }
-
-    try {
-      await dio.post('/attendance/clock-out');
-    } catch (_) {
-      // Keep local in-memory record if Dio fails
-    }
+    await dio.post('/attendance/clock-out');
   }
 
-
   @override
-  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng}) async {
+  Future<GeofenceStatus> getGeofenceStatus({
+    required double lat,
+    required double lng,
+  }) async {
     final response = await dio.get('/attendance/geofence-status', queryParameters: {
       'lat': lat,
       'lng': lng,
     });
     return GeofenceStatus(
-      withinRange: response.data['withinRange'],
-      distanceMeters: response.data['distanceMeters']?.toDouble() ?? 0.0,
-      allowedRadiusMeters: response.data['allowedRadiusMeters']?.toDouble() ?? 200.0,
+      withinRange: response.data['withinRange'] ?? false,
+      distanceMeters: (response.data['distanceMeters'] as num?)?.toDouble() ?? 0.0,
+      allowedRadiusMeters:
+          (response.data['allowedRadiusMeters'] as num?)?.toDouble() ?? 200.0,
     );
   }
 
-
-
   @override
   Future<List<AttendanceRecord>> getHistory() async {
-    List<AttendanceRecord> list = [];
-    try {
-      final response = await dio.get('/attendance/history');
-      list = (response.data as List).map((e) => AttendanceRecord.fromJson(e)).toList();
-    } catch (_) {}
-
-    if (_localTodayStatus != null && _localTodayStatus!.clockInTime != null) {
-      final hasToday = list.any((r) =>
-          r.date.year == _localTodayStatus!.date.year &&
-          r.date.month == _localTodayStatus!.date.month &&
-          r.date.day == _localTodayStatus!.date.day);
-      if (hasToday) {
-        final index = list.indexWhere((r) =>
-            r.date.year == _localTodayStatus!.date.year &&
-            r.date.month == _localTodayStatus!.date.month &&
-            r.date.day == _localTodayStatus!.date.day);
-        list[index] = _localTodayStatus!;
-      } else {
-        list.insert(0, _localTodayStatus!);
-      }
-    }
-    return list;
+    final response = await dio.get('/attendance/history');
+    return (response.data as List).map((e) => AttendanceRecord.fromJson(e)).toList();
   }
-
 
   @override
   Future<ShiftInfo> getShift() async {
@@ -142,14 +84,10 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
 
   @override
   Future<List<OvertimeRequest>> getOvertimeRequests() async {
-    try {
-      final response = await dio.get('/attendance/overtime');
-      return (response.data as List)
-          .map((e) => OvertimeRequest.fromJson(e))
-          .toList();
-    } catch (_) {
-      return [];
-    }
+    final response = await dio.get('/attendance/overtime');
+    return (response.data as List)
+        .map((e) => OvertimeRequest.fromJson(e))
+        .toList();
   }
 
   @override

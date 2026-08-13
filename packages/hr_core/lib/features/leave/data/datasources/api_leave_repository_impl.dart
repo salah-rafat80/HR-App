@@ -13,26 +13,14 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
 
   @override
   Future<List<LeaveBalance>> getBalances() async {
-    try {
-      final response = await dio.get('/leave/balances');
-      return (response.data as List).map((e) => LeaveBalance.fromJson(e)).toList();
-    } catch (_) {
-      return const [
-        LeaveBalance(type: LeaveType.annual, daysUsed: 6, daysTotal: 21),
-        LeaveBalance(type: LeaveType.sick, daysUsed: 4, daysTotal: 14),
-        LeaveBalance(type: LeaveType.emergency, daysUsed: 1, daysTotal: 3),
-      ];
-    }
+    final response = await dio.get('/leave/balances');
+    return (response.data as List).map((e) => LeaveBalance.fromJson(e)).toList();
   }
 
   @override
   Future<List<LeaveRequest>> getMyRequests() async {
-    try {
-      final response = await dio.get('/leave/my-requests');
-      return (response.data as List).map((e) => LeaveRequest.fromJson(e)).toList();
-    } catch (_) {
-      return const [];
-    }
+    final response = await dio.get('/leave/my-requests');
+    return (response.data as List).map((e) => LeaveRequest.fromJson(e)).toList();
   }
 
   @override
@@ -51,24 +39,17 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
 
   @override
   Future<List<TeamLeaveEntry>> getTeamCalendar() async {
-    try {
-      final response = await dio.get('/leave/team-calendar');
-      return (response.data as List).map((e) => TeamLeaveEntry.fromJson(e)).toList();
-    } catch (_) {
-      return const [];
-    }
+    final response = await dio.get('/leave/team-calendar');
+    return (response.data as List).map((e) => TeamLeaveEntry.fromJson(e)).toList();
   }
 
   @override
   Future<void> requestEncashment(LeaveType type, int days) async {
-    // Implement if needed in backend
     throw UnimplementedError('requestEncashment not implemented on API yet');
   }
 
   @override
   Future<void> advanceApprovalStep(String requestId) async {
-    // The Nest backend has separate approve/reject endpoints, not advanceApprovalStep
-    // This is probably called by a fake data source, but for API, we'll map it to approve
     await approveRequest(requestId);
   }
 

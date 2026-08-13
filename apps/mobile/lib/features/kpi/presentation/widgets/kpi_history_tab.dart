@@ -7,6 +7,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/kpi_cubit.dart';
 import '../bloc/kpi_state.dart';
+import 'package:hr_app_demo/core/widgets/error_state_widget.dart';
+import 'package:hr_app_demo/core/widgets/empty_state_widget.dart';
+import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:hr_app_demo/core/widgets/app_loader.dart';
 
 
@@ -17,8 +20,14 @@ class KpiHistoryTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<KpiCubit, KpiState>(
       builder: (context, state) {
+        if (state is KpiError) {
+          return ErrorStateWidget(
+            message: state.message,
+            onRetry: () => context.read<KpiCubit>().loadData(),
+          );
+        }
         if (state is! KpiLoaded) return const AppLoader();
-        if (state.history.isEmpty) return const SizedBox.shrink();
+        if (state.history.isEmpty) return const EmptyStateWidget(icon: AppIcons.modules, message: 'no_data_found');
 
         final maxY = 100.0;
         final spots = state.history.asMap().entries.map((e) {
