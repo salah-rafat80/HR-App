@@ -3,30 +3,36 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import helmet from 'helmet';
 import * as express from 'express';
+import type { Server } from 'node:http';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
 
 describe('Real Application Security & Bootstrap Configuration Suite', () => {
   let app: INestApplication;
+  let httpServer: Server;
   const allowedOrigin = 'https://trusted.hr-app.com';
 
   const mockPrisma = {
     user: {
-      findUnique: jest.fn().mockImplementation(({ where }) => {
-        if (where.employeeCode === 'EMP-001') {
-          return Promise.resolve({
-            id: 'user-uuid-1234',
-            employeeCode: 'EMP-001',
-            email: 'employee@company.com',
-            password:
-              '$2b$10$e8w8mX8hJ.1zX8zX8zX8zO1zX8zX8zX8zX8zX8zX8zX8zX8zX8zX8',
-            name: 'John Doe',
-            role: 'employee',
-            isActive: true,
-          });
-        }
-        return Promise.resolve(null);
-      }),
+      findUnique: jest
+        .fn()
+        .mockImplementation(
+          ({ where }: { where?: { employeeCode?: string } }) => {
+            if (where?.employeeCode === 'EMP-001') {
+              return Promise.resolve({
+                id: 'user-uuid-1234',
+                employeeCode: 'EMP-001',
+                email: 'employee@company.com',
+                password:
+                  '$2b$10$e8w8mX8hJ.1zX8zX8zX8zO1zX8zX8zX8zX8zX8zX8zX8zX8zX8zX8',
+                name: 'John Doe',
+                role: 'employee',
+                isActive: true,
+              });
+            }
+            return Promise.resolve(null);
+          },
+        ),
       update: jest.fn().mockResolvedValue({ id: 'user-uuid-1234' }),
     },
   };
@@ -87,6 +93,7 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
     });
 
     await app.init();
+    httpServer = app.getHttpServer() as Server;
   });
 
   afterAll(async () => {
@@ -94,13 +101,13 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
   });
 
   it('1. Helmet headers set & x-powered-by header disabled', async () => {
-    const res = await request(app.getHttpServer()).get('/auth/login');
+    const res = await request(httpServer).get('/auth/login');
     expect(res.headers['x-powered-by']).toBeUndefined();
     expect(res.headers['x-content-type-options']).toBe('nosniff');
   });
 
   it('2. Allowed origin receives CORS permission header', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer)
       .post('/auth/login')
       .set('Origin', allowedOrigin)
       .send({ employeeCode: 'EMP-001', password: 'Password123!' });
@@ -110,7 +117,7 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
   });
 
   it('3. Unallowed origin gets standard non-500 response without CORS header', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer)
       .post('/auth/login')
       .set('Origin', 'https://untrusted-hacker.com')
       .send({ employeeCode: 'EMP-001', password: 'Password123!' });
@@ -120,7 +127,7 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
   });
 
   it('4. Native clients without an Origin header are accepted', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer)
       .post('/auth/login')
       .send({ employeeCode: 'EMP-001', password: 'Password123!' });
 
@@ -133,7 +140,7 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
       employeeCode: 'EMP-001',
       password: 'A'.repeat(105 * 1024),
     };
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer)
       .post('/auth/login')
       .send(oversizedPayload);
 
@@ -141,13 +148,11 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
   });
 
   it('6. Request with unknown DTO field is rejected with 400 Bad Request', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        employeeCode: 'EMP-001',
-        password: 'Password123!',
-        unsupportedExtraParam: 'hackedPayload',
-      });
+    const res = await request(httpServer).post('/auth/login').send({
+      employeeCode: 'EMP-001',
+      password: 'Password123!',
+      unsupportedExtraParam: 'hackedPayload',
+    });
 
     expect(res.status).toBe(400);
     expect(JSON.stringify(res.body)).toContain(
