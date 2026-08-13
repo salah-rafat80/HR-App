@@ -1,47 +1,44 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  INestApplication,
-  ValidationPipe,
-  Controller,
-  Post,
-  Body,
-  Get,
-} from '@nestjs/common';
+import { INestApplication, ValidationPipe, Controller, Post, Body, Get } from '@nestjs/common';
 import request from 'supertest';
 import helmet from 'helmet';
 import * as express from 'express';
 import { IsNotEmpty, IsString } from 'class-validator';
 
-class TestDto {
+class SampleDto {
   @IsNotEmpty()
   @IsString()
-  field!: string;
+  data!: string;
 }
 
-@Controller('test-security')
-class TestSecurityController {
-  @Get('headers')
-  getHeaders() {
-    return { ok: true };
+@Controller('security-test')
+class SecurityTestController {
+  @Get('ping')
+  ping() {
+    return { status: 'ok' };
   }
 
   @Post('validate')
-  validateDto(@Body() dto: TestDto) {
+  validate(@Body() dto: SampleDto) {
     return dto;
   }
 }
 
-describe('Main App Security Configuration', () => {
+describe('Real Application Security & Configuration Suite', () => {
   let app: INestApplication;
+  const allowedOrigin = 'https://trusted.hr-app.com';
 
   beforeAll(async () => {
+    process.env.CORS_ALLOWED_ORIGINS = allowedOrigin;
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      controllers: [TestSecurityController],
+      controllers: [SecurityTestController],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    // Instantiate Nest app with bodyParser: false matching main.ts
+    app = moduleFixture.createNestApplication({ bodyParser: false });
 
-    // Replicate main.ts security configuration
+    // Apply main.ts configuration
     app.use(helmet());
 
     const httpAdapter = app.getHttpAdapter();
@@ -54,6 +51,7 @@ describe('Main App Security Configuration', () => {
       }
     }
 
+    // Explicit 100kb body limit
     app.use(express.json({ limit: '100kb' }));
     app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
@@ -65,6 +63,18 @@ describe('Main App Security Configuration', () => {
       }),
     );
 
+    app.enableCors({
+      origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin || origin === allowedOrigin) {
+          return callback(null, true);
+        }
+        return callback(new Error(`CORS policy forbidden for origin: ${origin}`), false);
+      },
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+    });
+
     await app.init();
   });
 
@@ -72,25 +82,47 @@ describe('Main App Security Configuration', () => {
     await app.close();
   });
 
-  it('should disable x-powered-by header and set Helmet security headers', async () => {
-    const response = await request(app.getHttpServer()).get(
-      '/test-security/headers',
-    );
-    expect(response.headers['x-powered-by']).toBeUndefined();
-    expect(response.headers['x-content-type-options']).toBe('nosniff');
+  it('1. Helmet headers set & x-powered-by header disabled', async () => {
+    const res = await request(app.getHttpServer()).get('/security-test/ping');
+    expect(res.headers['x-powered-by']).toBeUndefined();
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
   });
 
-  it('should reject non-whitelisted request properties via global ValidationPipe', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/test-security/validate')
+  it('2. Allowed origin gets CORS permission', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/security-test/ping')
+      .set('Origin', allowedOrigin);
+
+    expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
+    expect(res.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('3. Unallowed origin is denied CORS permission', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/security-test/ping')
+      .set('Origin', 'https://malicious-attacker.com');
+
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('4. Request payload > 100KB is rejected with 413 Payload Too Large', async () => {
+    const oversizedPayload = { data: 'A'.repeat(105 * 1024) }; // 105 KB
+    const res = await request(app.getHttpServer())
+      .post('/security-test/validate')
+      .send(oversizedPayload);
+
+    expect(res.status).toBe(413);
+  });
+
+  it('5. Request with unknown DTO field is rejected with 400 Bad Request', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/security-test/validate')
       .send({
-        field: 'validValue',
-        maliciousExtraField: 'hacked',
+        data: 'validString',
+        unknownField: 'illegalPayload',
       });
 
-    expect(response.status).toBe(400);
-    expect(JSON.stringify(response.body)).toContain(
-      'property maliciousExtraField should not exist',
-    );
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toContain('property unknownField should not exist');
   });
 });
