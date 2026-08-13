@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { AssignKpiDto } from './dto/kpi.dto';
@@ -28,7 +32,9 @@ export class KpiService {
     const kpi = await this.prisma.kpi.findUnique({ where: { id: kpiId } });
     if (!kpi) throw new NotFoundException('KPI not found');
     if (kpi.userId !== userId) {
-      throw new ForbiddenException('You can only submit self-assessment for your own KPIs');
+      throw new ForbiddenException(
+        'You can only submit self-assessment for your own KPIs',
+      );
     }
 
     // Bump current value by 5% of target as a demo touch
@@ -53,7 +59,9 @@ export class KpiService {
     const kpi = await this.prisma.kpi.findUnique({ where: { id: kpiId } });
     if (!kpi) throw new NotFoundException('KPI not found');
     if (kpi.userId !== userId) {
-      throw new ForbiddenException('You can only attach evidence to your own KPIs');
+      throw new ForbiddenException(
+        'You can only attach evidence to your own KPIs',
+      );
     }
 
     const updated = await this.prisma.kpi.update({
@@ -100,8 +108,19 @@ export class KpiService {
     });
     if (activeLeave) return 'onLeave';
 
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const endOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+    );
 
     const wfhRecord = await this.prisma.attendanceRecord.findFirst({
       where: {
@@ -119,28 +138,27 @@ export class KpiService {
   }
 
   async getTeamKpis(actorUserId: string, actorRole: string) {
-    let users: any[] = [];
-    if (actorRole === 'hr' || actorRole === 'hrAdmin') {
-      users = await this.prisma.user.findMany({
-        where: { role: 'employee' },
-        include: { kpis: true },
-      });
-    } else {
-      const managedIds = await this.getManagedUserIds(actorUserId);
-      users = await this.prisma.user.findMany({
-        where: { id: { in: managedIds }, role: 'employee' },
-        include: { kpis: true },
-      });
-    }
+    const whereCondition =
+      actorRole === 'hr' || actorRole === 'hrAdmin'
+        ? { role: 'employee' }
+        : {
+            id: { in: await this.getManagedUserIds(actorUserId) },
+            role: 'employee',
+          };
 
-    const teamMembers: any[] = [];
+    const users = await this.prisma.user.findMany({
+      where: whereCondition,
+      include: { kpis: true },
+    });
+
+    const teamMembers = [];
     const today = new Date();
 
     for (const u of users) {
       const kpis = u.kpis;
       let kpiScorePercent = 0.0;
       if (kpis.length > 0) {
-        const totalProgress = kpis.reduce((sum, k) => {
+        const totalProgress = kpis.reduce((sum: number, k) => {
           const p = k.targetValue > 0 ? k.currentValue / k.targetValue : 0;
           return sum + (p > 1.0 ? 1.0 : p);
         }, 0);
@@ -173,7 +191,9 @@ export class KpiService {
     if (actorRole !== 'hr' && actorRole !== 'hrAdmin') {
       const managedIds = await this.getManagedUserIds(actorUserId);
       if (!managedIds.includes(data.memberId)) {
-        throw new ForbiddenException('You can only assign KPIs to employees in your reporting chain');
+        throw new ForbiddenException(
+          'You can only assign KPIs to employees in your reporting chain',
+        );
       }
     }
 
@@ -182,7 +202,8 @@ export class KpiService {
         userId: data.memberId,
         title: data.title,
         description: data.description || 'Newly assigned KPI',
-        departmentObjective: data.departmentObjective || 'Improve overall team output',
+        departmentObjective:
+          data.departmentObjective || 'Improve overall team output',
         targetValue: data.targetValue || 100,
         currentValue: 0,
       },
