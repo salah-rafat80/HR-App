@@ -7,6 +7,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { AssignKpiDto } from './dto/kpi.dto';
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  title: string;
+  department: string;
+  kpiScorePercent: number;
+  leaveStatus: string;
+}
+
 @Injectable()
 export class KpiService {
   constructor(
@@ -137,7 +146,10 @@ export class KpiService {
     return 'present';
   }
 
-  async getTeamKpis(actorUserId: string, actorRole: string) {
+  async getTeamKpis(
+    actorUserId: string,
+    actorRole: string,
+  ): Promise<TeamMember[]> {
     const whereCondition =
       actorRole === 'hr' || actorRole === 'hrAdmin'
         ? { role: 'employee' }
@@ -151,14 +163,7 @@ export class KpiService {
       include: { kpis: true },
     });
 
-    const teamMembers: Array<{
-      id: string;
-      name: string;
-      title: string;
-      department: string;
-      kpiScorePercent: number;
-      leaveStatus: string;
-    }> = [];
+    const teamMembers: TeamMember[] = [];
     const today = new Date();
 
     for (const u of users) {

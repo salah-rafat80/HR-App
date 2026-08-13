@@ -26,7 +26,9 @@ try {
   }).trim();
   const currentDir = process.cwd();
   const files = fileList
-    .map((file) => path.relative(currentDir, path.join(repoRoot, file)))
+    .map((file) =>
+      path.relative(currentDir, path.join(repoRoot, file)).replaceAll('\\', '/'),
+    )
     .filter((file) => fs.existsSync(file));
 
   if (files.length === 0) {
@@ -36,9 +38,23 @@ try {
 
   console.log(`Linting ${files.length} changed TypeScript file(s):`);
   files.forEach((file) => console.log(`  - ${file}`));
-  execFileSync('npx', ['eslint', ...files], { stdio: 'inherit' });
+  const eslintBin = path.join(
+    repoRoot,
+    'backend',
+    'node_modules',
+    'eslint',
+    'bin',
+    'eslint.js',
+  );
+  const eslintPath = fs.existsSync(eslintBin)
+    ? eslintBin
+    : require.resolve('eslint/bin/eslint.js');
+  execFileSync(process.execPath, [eslintPath, ...files], { stdio: 'inherit' });
   console.log('Changed files passed ESLint checks.');
 } catch (error) {
+  if (error && error.message) {
+    console.error(error.message);
+  }
   console.error('Blocking Changed-Files Lint Gate failed.');
   process.exit(1);
 }
