@@ -11,7 +11,6 @@ import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
 import { AttendanceStatus, OfficeBranch } from '@prisma/client';
 import { ClockInDto } from './dto/clock-in.dto';
-import { RequestOvertimeDto } from './dto/request-overtime.dto';
 
 const MAX_ACCURACY_METRES = 50;
 
@@ -326,21 +325,6 @@ export class AttendanceService {
   async getShift(userId: string) {
     return this.prisma.shiftInfo.findFirst({
       where: { userId },
-    });
-  }
-
-  async requestOvertime(userId: string, data: RequestOvertimeDto) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return this.prisma.overtimeRequest.create({
-      data: {
-        userId,
-        date: today,
-        hoursRequested: data.hoursRequested,
-        reason: data.reason,
-        status: 'pending',
-      },
     });
   }
 

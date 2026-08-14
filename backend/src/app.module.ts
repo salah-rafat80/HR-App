@@ -12,6 +12,7 @@ import { CompanySettingsModule } from './company-settings/company-settings.modul
 import { KpiModule } from './kpi/kpi.module';
 import { AppraisalModule } from './appraisal/appraisal.module';
 import { PayrollModule } from './payroll/payroll.module';
+import { OvertimeModule } from './overtime/overtime.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PayrollModule } from './payroll/payroll.module';
     KpiModule,
     AppraisalModule,
     PayrollModule,
+    OvertimeModule,
   ],
   controllers: [AppController],
   providers: [

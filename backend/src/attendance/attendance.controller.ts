@@ -12,7 +12,6 @@ import {
 import { Request } from 'express';
 import { AttendanceService } from './attendance.service';
 import { ClockInDto } from './dto/clock-in.dto';
-import { RequestOvertimeDto } from './dto/request-overtime.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 interface AuthenticatedRequest extends Request {
@@ -67,14 +66,6 @@ export class AttendanceController {
   @Get('shift')
   getShift(@Req() req: AuthenticatedRequest) {
     return this.attendanceService.getShift(req.user.userId);
-  }
-
-  @Post('overtime')
-  requestOvertime(
-    @Req() req: AuthenticatedRequest,
-    @Body() data: RequestOvertimeDto,
-  ) {
-    return this.attendanceService.requestOvertime(req.user.userId, data);
   }
 
   @Post('break/start')
