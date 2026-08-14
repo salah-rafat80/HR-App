@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 
 export async function bootstrap() {
@@ -42,6 +43,23 @@ export async function bootstrap() {
   // Explicit Request Body Size Limits (100kb max)
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+  // Convert body-parser's PayloadTooLargeError (err.status=413) to a clean HTTP 413 response.
+  // NestJS BaseExceptionFilter treats non-HttpException errors as 500; this middleware intercepts first.
+  app.use(
+    (
+      err: { status?: number },
+      _req: Request,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      if (err?.status === 413) {
+        res.status(413).json({ statusCode: 413, message: 'Payload Too Large' });
+        return;
+      }
+      next(err);
+    },
+  );
 
   // Strict Global Validation Pipe
   app.useGlobalPipes(

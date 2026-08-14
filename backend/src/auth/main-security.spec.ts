@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import helmet from 'helmet';
 import * as express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import type { Server } from 'node:http';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
@@ -67,6 +68,25 @@ describe('Real Application Security & Bootstrap Configuration Suite', () => {
 
     app.use(express.json({ limit: '100kb' }));
     app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+    // Mirror main.ts: convert body-parser's PayloadTooLargeError (status 413) to a clean HTTP 413.
+    // Without this, NestJS BaseExceptionFilter treats it as 500 and test 5 fails.
+    app.use(
+      (
+        err: { status?: number },
+        _req: Request,
+        res: Response,
+        next: NextFunction,
+      ) => {
+        if (err?.status === 413) {
+          res
+            .status(413)
+            .json({ statusCode: 413, message: 'Payload Too Large' });
+          return;
+        }
+        next(err);
+      },
+    );
 
     app.useGlobalPipes(
       new ValidationPipe({

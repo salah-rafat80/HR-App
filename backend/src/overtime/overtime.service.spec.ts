@@ -12,7 +12,10 @@ const teamLead = { userId: 'lead-1', role: Role.team_lead };
 const hr = { userId: 'hr-1', role: Role.hr };
 
 function nowRequestPayload() {
-  const start = new Date(Date.now() + 15 * 60 * 1000);
+  // Use noon of today (local time) to avoid midnight boundary issues in UTC CI.
+  // "+15 min from now" crosses midnight when CI runs at 23:45+ UTC → BadRequestException instead of ConflictException.
+  const d = new Date();
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
   return {
     requestedStartAt: start.toISOString(),
