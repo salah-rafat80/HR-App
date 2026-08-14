@@ -22,8 +22,8 @@ class HomeAnnouncementsSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('announcements'.tr(), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
-              TextButton(onPressed: () {}, child: Text('view_all'.tr())),
+              Text('announcements'.tr(), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              TextButton(onPressed: () {}, child: Text('view_all'.tr(), style: TextStyle(color: AppColors.primary))),
             ],
           ),
           ...announcements.map((a) => _AnnouncementCard(announcement: a)),
@@ -45,8 +45,8 @@ class _AnnouncementCard extends StatelessWidget {
       margin: EdgeInsets.only(bottom: 8.h),
       child: ListTile(
         leading: Icon(AppIcons.communication, color: AppColors.secondary, size: 32.w),
-        title: Text(announcement.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-        subtitle: Text(announcement.content, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.sp)),
+        title: Text(announcement.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp, color: AppColors.textPrimary)),
+        subtitle: Text(announcement.content, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)),
         trailing: Text(df.format(announcement.date), style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary)),
       ),
     );

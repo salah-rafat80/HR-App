@@ -1,71 +1,73 @@
-import { Injectable, InternalServerErrorException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
+import { NotificationService } from '../notifications/notification.service';
 import { AttendanceStatus, OfficeBranch } from '@prisma/client';
 import { ClockInDto } from './dto/clock-in.dto';
-import { RequestOvertimeDto } from './dto/request-overtime.dto';
+
+const MAX_ACCURACY_METRES = 50;
+
+export interface GeofenceResult {
+  withinRange: boolean;
+  distanceMeters: number;
+  allowedRadiusMeters: number;
+  nearestBranch: string;
+}
+
+export interface ClockInResponse {
+  id: string;
+  date: Date;
+  clockInTime: Date | null;
+  clockOutTime: Date | null;
+  status: AttendanceStatus;
+  locationLabel: string;
+  distanceMeters: number | null;
+}
 
 @Injectable()
 export class AttendanceService {
-  private inMemoryRecords: Map<string, any> = new Map();
-
-  private fallbackBranches: OfficeBranch[] = [
-    {
-      id: 'branch_main',
-      name: 'Main Office',
-      latitude: 30.286884,
-      longitude: 31.756905,
-      radiusMeters: 200,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ];
+  private readonly logger = new Logger(AttendanceService.name);
 
   constructor(
     private prisma: PrismaService,
     private events: EventsGateway,
+    private notifications: NotificationService,
   ) {}
 
   async getTodayStatus(userId: string) {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-      const activeLeaves = await this.prisma.leaveRequest.findMany({
-        where: {
-          userId,
-          overallStatus: 'approved',
-          startDate: { lte: new Date() },
-          endDate: { gte: new Date(today) },
-        },
-      });
+    const activeLeaves = await this.prisma.leaveRequest.findMany({
+      where: {
+        userId,
+        overallStatus: 'approved',
+        startDate: { lte: new Date() },
+        endDate: { gte: new Date(today) },
+      },
+    });
 
-      if (activeLeaves.length > 0) {
-        return {
-          date: new Date(),
-          status: AttendanceStatus.onLeave,
-          locationLabel: 'none',
-        };
-      }
-
-      let record = await this.prisma.attendanceRecord.findFirst({
-        where: {
-          userId,
-          date: today,
-        },
-      });
-
-      if (record) {
-        return record;
-      }
-    } catch (e) {
-      console.warn('Database offline, checking in-memory attendance records');
+    if (activeLeaves.length > 0) {
+      return {
+        date: new Date(),
+        status: AttendanceStatus.onLeave,
+        locationLabel: 'none',
+      };
     }
 
-    const inMem = this.inMemoryRecords.get(userId);
-    if (inMem) {
-      return inMem;
+    const record = await this.prisma.attendanceRecord.findFirst({
+      where: { userId, date: today },
+    });
+
+    if (record) {
+      return record;
     }
 
     return {
@@ -75,257 +77,262 @@ export class AttendanceService {
     };
   }
 
-  private getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
-    const R = 6371000; // Radius of the earth in m
+  private getDistanceFromLatLonInM(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const R = 6371000;
     const dLat = this.deg2rad(lat2 - lat1);
     const dLon = this.deg2rad(lon2 - lon1);
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(this.deg2rad(lat1)) *
+        Math.cos(this.deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in m
+    return R * c;
   }
 
-  private deg2rad(deg: number) {
+  private deg2rad(deg: number): number {
     return deg * (Math.PI / 180);
   }
 
-  async checkGeofence(lat: number, lng: number) {
-    let branches: OfficeBranch[] = [];
-    try {
-      branches = await this.prisma.officeBranch.findMany({
-        where: { isActive: true },
-      });
-    } catch (e) {
-      console.warn('Database offline, using fallback branches for geofence');
-      branches = this.fallbackBranches;
+  private assertCoordinatesValid(
+    lat: number,
+    lng: number,
+    accuracy: number,
+  ): void {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('lat and lng must be finite numbers');
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      throw new BadRequestException('lat or lng out of valid geographic range');
+    }
+    if (!Number.isFinite(accuracy) || accuracy <= 0) {
+      throw new BadRequestException(
+        'accuracy must be a positive finite number',
+      );
+    }
+    if (accuracy > MAX_ACCURACY_METRES) {
+      throw new BadRequestException(
+        `GPS accuracy too low (${accuracy}m). Must be ≤ ${MAX_ACCURACY_METRES}m.`,
+      );
+    }
+  }
+
+  async checkGeofence(
+    lat: number,
+    lng: number,
+    accuracy: number,
+  ): Promise<GeofenceResult> {
+    this.assertCoordinatesValid(lat, lng, accuracy);
+
+    const branches: OfficeBranch[] = await this.prisma.officeBranch.findMany({
+      where: { isActive: true },
+    });
+
+    const candidates = branches.map((branch) => ({
+      branch,
+      distanceMeters: this.getDistanceFromLatLonInM(
+        lat,
+        lng,
+        branch.latitude,
+        branch.longitude,
+      ),
+    }));
+
+    if (candidates.length === 0) {
+      return {
+        withinRange: false,
+        distanceMeters: 0,
+        allowedRadiusMeters: 200,
+        nearestBranch: 'Branch',
+      };
     }
 
-    if (branches.length === 0) {
-      branches = this.fallbackBranches;
+    const eligibleCandidates = candidates.filter(
+      (c) => c.distanceMeters + accuracy <= c.branch.radiusMeters,
+    );
+
+    if (eligibleCandidates.length > 0) {
+      eligibleCandidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
+      const matched = eligibleCandidates[0];
+      return {
+        withinRange: true,
+        distanceMeters: matched.distanceMeters,
+        allowedRadiusMeters: matched.branch.radiusMeters,
+        nearestBranch: matched.branch.name,
+      };
     }
 
-    let nearestBranch: OfficeBranch | null = null;
-    let minDistance = Infinity;
-    let withinRange = false;
-    let allowedRadiusMeters = 200;
-
-    for (const branch of branches) {
-      const distance = this.getDistanceFromLatLonInM(lat, lng, branch.latitude, branch.longitude);
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestBranch = branch;
-        allowedRadiusMeters = branch.radiusMeters;
-      }
-
-      if (distance <= branch.radiusMeters) {
-        withinRange = true;
-      }
-    }
-
+    candidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
+    const nearestPhysical = candidates[0];
     return {
-      withinRange,
-      distanceMeters: minDistance,
-      allowedRadiusMeters,
-      nearestBranch: nearestBranch ? nearestBranch.name : 'Main Office',
-      branches: branches.map(b => ({
-        id: b.id,
-        name: b.name,
-        latitude: b.latitude,
-        longitude: b.longitude,
-        radiusMeters: b.radiusMeters,
-      })),
+      withinRange: false,
+      distanceMeters: nearestPhysical.distanceMeters,
+      allowedRadiusMeters: nearestPhysical.branch.radiusMeters,
+      nearestBranch: nearestPhysical.branch.name,
     };
   }
 
-  async clockIn(userId: string, data: ClockInDto) {
+  async clockIn(userId: string, data: ClockInDto): Promise<ClockInResponse> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    let distanceMeters: number | undefined;
-    
-    // GPS validation if coords provided
-    if (data.lat !== undefined && data.lng !== undefined) {
-      if (data.accuracy && data.accuracy > 100) {
-        throw new ForbiddenException(`GPS accuracy too low (${data.accuracy}m). Please wait for a better signal.`);
+    let record = await this.prisma.attendanceRecord.findFirst({
+      where: { userId, date: today },
+    });
+
+    if (record) {
+      if (record.clockOutTime !== null) {
+        throw new ConflictException('Today attendance is closed');
       }
-      
-      const geofence = await this.checkGeofence(data.lat, data.lng);
-      if (!geofence.withinRange) {
-        throw new ForbiddenException(`You are ${Math.round(geofence.distanceMeters)}m from ${geofence.nearestBranch}, outside the allowed range.`);
+      if (record.clockInTime !== null) {
+        throw new ConflictException('Employee is already clocked in today');
       }
-      distanceMeters = geofence.distanceMeters;
-      data.locationLabel = geofence.nearestBranch || data.locationLabel;
     }
 
-    const clockInRecord = {
-      id: `att_${Date.now()}`,
-      userId,
-      date: today,
+    const geofence = await this.checkGeofence(
+      data.lat,
+      data.lng,
+      data.accuracy,
+    );
+    if (!geofence.withinRange) {
+      throw new ForbiddenException(
+        `You are ${Math.round(geofence.distanceMeters)}m from ${geofence.nearestBranch}, ` +
+          `outside the allowed range (${geofence.allowedRadiusMeters}m).`,
+      );
+    }
+
+    const locationLabel = geofence.nearestBranch;
+
+    const updateData = {
       clockInTime: new Date(),
-      clockOutTime: null,
       status: data.mode || AttendanceStatus.present,
-      locationLabel: data.locationLabel || 'Main Office',
+      locationLabel,
       clockInLat: data.lat,
       clockInLng: data.lng,
-      distanceMeters: distanceMeters,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      distanceMeters: geofence.distanceMeters,
     };
 
+    if (record) {
+      record = await this.prisma.attendanceRecord.update({
+        where: { id: record.id },
+        data: updateData,
+      });
+    } else {
+      record = await this.prisma.attendanceRecord.create({
+        data: {
+          userId,
+          date: today,
+          ...updateData,
+        },
+      });
+    }
+
+    this.events.emitToUser(userId, 'updated', {
+      type: 'AttendanceRecord',
+      data: record,
+    });
+
+    void this.sendAttendanceFcm(userId, record.id, record.clockInTime!);
+
+    return {
+      id: record.id,
+      date: record.date,
+      clockInTime: record.clockInTime,
+      clockOutTime: record.clockOutTime,
+      status: record.status,
+      locationLabel: record.locationLabel,
+      distanceMeters: record.distanceMeters,
+    };
+  }
+
+  private async sendAttendanceFcm(
+    userId: string,
+    recordId: string,
+    clockInTime: Date,
+  ): Promise<void> {
     try {
-      let record = await this.prisma.attendanceRecord.findFirst({
-        where: { userId, date: today },
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { fcmToken: true },
+      });
+      if (!user?.fcmToken) return;
+
+      const timeStr = clockInTime.toLocaleTimeString('ar-EG', {
+        hour: '2-digit',
+        minute: '2-digit',
       });
 
-      const updateData = {
-        clockInTime: new Date(),
-        status: data.mode || AttendanceStatus.present,
-        locationLabel: data.locationLabel || 'Main Office',
-        clockInLat: data.lat,
-        clockInLng: data.lng,
-        distanceMeters: distanceMeters,
-      };
-
-      if (record) {
-        record = await this.prisma.attendanceRecord.update({
-          where: { id: record.id },
-          data: updateData,
-        });
-      } else {
-        record = await this.prisma.attendanceRecord.create({
-          data: {
-            userId,
-            date: today,
-            ...updateData,
-          },
-        });
-      }
-
-      this.inMemoryRecords.set(userId, record);
-      this.events.emitToUser(userId, 'updated', { type: 'AttendanceRecord', data: record });
-      return record;
-    } catch (e) {
-      console.warn('Database offline, saving clock-in record in-memory');
-      this.inMemoryRecords.set(userId, clockInRecord);
-      this.events.emitToUser(userId, 'updated', { type: 'AttendanceRecord', data: clockInRecord });
-      return clockInRecord;
+      await this.notifications.sendToDevice({
+        token: user.fcmToken,
+        title: '✅ تم تسجيل حضورك',
+        body: `تم تسجيل حضورك اليوم الساعة ${timeStr}`,
+        data: { type: 'attendance_clock_in', id: recordId },
+      });
+    } catch (err) {
+      this.logger.error(
+        `FCM attendance notification failed for userId=${userId}: ${String(err)}`,
+      );
     }
   }
 
   async clockOut(userId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const now = new Date();
 
-    try {
-      const record = await this.prisma.attendanceRecord.findFirst({
-        where: { userId, date: today },
-      });
+    const record = await this.prisma.attendanceRecord.findFirst({
+      where: { userId, date: today },
+    });
 
-      if (record) {
-        const updated = await this.prisma.attendanceRecord.update({
-          where: { id: record.id },
-          data: { clockOutTime: now },
-        });
-        this.inMemoryRecords.set(userId, updated);
-        this.events.emitToUser(userId, 'updated', { type: 'AttendanceRecord', data: updated });
-        return updated;
-      }
-    } catch (e) {
-      console.warn('Database offline, updating clock-out record in-memory');
+    if (!record) {
+      throw new NotFoundException('No clock-in record found for today');
     }
 
-    let existing = this.inMemoryRecords.get(userId);
-    if (existing) {
-      existing = { ...existing, clockOutTime: now, updatedAt: now };
-      this.inMemoryRecords.set(userId, existing);
-      this.events.emitToUser(userId, 'updated', { type: 'AttendanceRecord', data: existing });
-      return existing;
+    if (record.clockInTime === null) {
+      throw new ConflictException('No active clock-in exists today');
     }
 
-    const clockOutRecord = {
-      id: `att_${Date.now()}`,
-      userId,
-      date: today,
-      clockInTime: now,
-      clockOutTime: now,
-      status: AttendanceStatus.present,
-      locationLabel: 'Main Office',
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.inMemoryRecords.set(userId, clockOutRecord);
-    return clockOutRecord;
+    if (record.clockOutTime !== null) {
+      throw new ConflictException('Employee is already clocked out today');
+    }
+
+    const updated = await this.prisma.attendanceRecord.update({
+      where: { id: record.id },
+      data: { clockOutTime: now },
+    });
+
+    this.events.emitToUser(userId, 'updated', {
+      type: 'AttendanceRecord',
+      data: updated,
+    });
+    return updated;
   }
 
   async getHistory(userId: string) {
-    try {
-      return await this.prisma.attendanceRecord.findMany({
-        where: { userId },
-        orderBy: { date: 'desc' },
-        take: 30, // Last 30 days
-      });
-    } catch (e) {
-      console.warn('Database offline, returning fallback empty history');
-      return [];
-    }
+    return this.prisma.attendanceRecord.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+      take: 30,
+    });
   }
 
   async getShift(userId: string) {
-    try {
-      let shift = await this.prisma.shiftInfo.findFirst({
-        where: { userId },
-      });
-      if (shift) return shift;
-    } catch (e) {
-      console.warn('Database offline, returning default shift info');
-    }
-
-    const today = new Date();
-    const startTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0);
-    const endTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 17, 0, 0);
-    
-    return {
-      id: 'default',
-      userId,
-      shiftName: 'Default Morning Shift',
-      startTime,
-      endTime,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    return this.prisma.shiftInfo.findFirst({
+      where: { userId },
+    });
   }
 
-  async requestOvertime(userId: string, data: RequestOvertimeDto) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    try {
-      const req = await this.prisma.overtimeRequest.create({
-        data: {
-          userId,
-          date: today,
-          hoursRequested: data.hoursRequested,
-          reason: data.reason,
-          status: 'pending',
-        },
-      });
-      return req;
-    } catch (e) {
-      return { status: 'pending', hoursRequested: data.hoursRequested, reason: data.reason };
-    }
+  startBreak(userId: string) {
+    return { status: 'Break started', userId };
   }
 
-  async startBreak(userId: string) {
-    return { status: 'Break started' };
-  }
-
-  async endBreak(userId: string) {
-    return { status: 'Break ended' };
+  endBreak(userId: string) {
+    return { status: 'Break ended', userId };
   }
 }
-

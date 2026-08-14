@@ -5,28 +5,68 @@ import '../entities/shift_info.dart';
 
 abstract class AttendanceRepository {
   Future<AttendanceRecord> getTodayStatus();
-  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng});
-  Future<void> clockIn({
-    required String locationLabel,
-    required AttendanceStatus mode,
-    double? lat,
-    double? lng,
-    double? accuracy,
+
+  Future<GeofenceStatus> preflightGeofence({
+    required double lat,
+    required double lng,
+    required double accuracy,
   });
+
+  Future<AttendanceRecord> clockIn({
+    required AttendanceStatus mode,
+    required double lat,
+    required double lng,
+    required double accuracy,
+  });
+
   Future<void> clockOut();
   Future<List<AttendanceRecord>> getHistory();
   Future<ShiftInfo> getShift();
 
-  /// Submit a new overtime request and return its persisted form.
-  Future<void> requestOvertime(double hours, String reason);
+  Future<OvertimeRequest> requestOvertime({
+    required DateTime requestedStartAt,
+    required DateTime requestedEndAt,
+    required String reason,
+  });
 
-  /// Fetch all overtime requests submitted by the current user.
-  Future<List<OvertimeRequest>> getOvertimeRequests();
+  Future<List<OvertimeRequest>> getMyOvertimeRequests();
+  Future<List<OvertimeRequest>> getPendingOvertimeApprovals();
 
-  /// Patch only the mode/status of today's existing record.
-  /// Used by WFH toggle — does NOT create a new clock-in record.
+  Future<OvertimeRequest> approveOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  });
+
+  Future<OvertimeRequest> rejectOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  });
+
+  Future<OvertimeRequest> approveOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  });
+
+  Future<OvertimeRequest> rejectOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  });
+
+  Future<OvertimeSession> startOvertimeSession(
+    String requestId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  });
+
+  Future<OvertimeSession> endOvertimeSession(
+    String sessionId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  });
+
   Future<void> updateTodayMode(AttendanceStatus mode);
-
   Future<void> startBreak();
   Future<void> endBreak();
 }

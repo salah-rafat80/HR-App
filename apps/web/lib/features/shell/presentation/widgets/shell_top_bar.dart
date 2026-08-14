@@ -11,7 +11,7 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final role = context.watch<SessionCubit>().state;
+    final sessionState = context.watch<SessionCubit>().state;
     final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
     final colorScheme = Theme.of(context).colorScheme;
     
@@ -39,7 +39,7 @@ class TopBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  role?.name.toUpperCase() ?? '',
+                  sessionState.role?.name.toUpperCase() ?? '',
                   style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 12),
                 ),
               ),

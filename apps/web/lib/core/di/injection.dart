@@ -1,3 +1,4 @@
+import 'package:hr_core/core/network/auth_interceptor.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/theme_cubit.dart';
@@ -21,6 +22,7 @@ import 'package:hr_core/features/admin/data/datasources/api_system_config_dataso
 import 'package:hr_core/features/admin/data/datasources/fake_offboarding_datasource.dart';
 import 'package:hr_core/features/executive/data/datasources/fake_executive_datasource.dart';
 import 'package:hr_core/features/engagement/data/datasources/fake_engagement_datasource.dart';
+import 'package:hr_core/features/admin/data/datasources/fake_admin_payroll_datasource.dart';
 import 'package:hr_core/features/admin/data/repositories/recruitment_repository_impl.dart';
 import 'package:hr_core/features/admin/domain/repositories/recruitment_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/system_config_repository_impl.dart';
@@ -31,35 +33,46 @@ import 'package:hr_core/features/executive/data/repositories/executive_repositor
 import 'package:hr_core/features/executive/domain/repositories/executive_repository.dart';
 import 'package:hr_core/features/engagement/data/repositories/engagement_repository_impl.dart';
 import 'package:hr_core/features/engagement/domain/repositories/engagement_repository.dart';
+import 'package:hr_core/features/admin/domain/repositories/hr_report_repository.dart';
+import 'package:hr_core/features/admin/data/repositories/hr_report_repository_impl.dart';
 
+import 'package:hr_core/core/services/token_storage.dart';
 import '../bloc/session_cubit.dart';
 import '../utils/crash_reporter.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> initDI() async {
+Future<void> initDI({String? overrideBaseUrl}) async {
   // Utils
   getIt.registerLazySingleton<CrashReporter>(() => ConsoleCrashReporter());
 
   // Core
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+  getIt.registerLazySingleton<TokenStorage>(() => SecureTokenStorage());
   getIt.registerLazySingleton(() => SessionCubit());
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  final String baseUrl = 'https://hr-app-lswi.onrender.com';
-  
+  final String rawEnv = const String.fromEnvironment('API_BASE_URL');
+  final String baseUrl = (overrideBaseUrl ?? rawEnv).trim();
+  if (baseUrl.isEmpty) {
+    throw StateError(
+      'CRITICAL CONFIGURATION ERROR: API_BASE_URL is missing or blank.\n'
+      'You must supply --dart-define=API_BASE_URL=<url> when running the web application.\n'
+      'Examples:\n'
+      '  - Local backend: --dart-define=API_BASE_URL=http://localhost:3000\n'
+      '  - Production Server: --dart-define=API_BASE_URL=https://api.yourdomain.com',
+    );
+  }
+
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
 
-  dio.interceptors.add(InterceptorsWrapper(
-    onRequest: (options, handler) async {
-      final prefs = getIt<SharedPreferences>();
-      final token = prefs.getString('jwt_token');
-      if (token != null) {
-        options.headers['Authorization'] = 'Bearer $token';
-      }
-      return handler.next(options);
+  dio.interceptors.add(SingleFlightAuthInterceptor(
+    dio: dio,
+    tokenStorage: getIt<TokenStorage>(),
+    onUnauthenticated: () async {
+      getIt<SessionCubit>().logout();
     },
   ));
 
@@ -80,6 +93,7 @@ Future<void> initDI() async {
 
   // Data Sources (Singletons for state sync within web app)
   getIt.registerLazySingleton(() => FakeRecruitmentDataSource());
+  getIt.registerLazySingleton(() => FakeAdminPayrollDataSource());
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
   getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
   getIt.registerLazySingleton(() => FakeOffboardingDataSource());
@@ -96,6 +110,7 @@ Future<void> initDI() async {
   getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
   getIt.registerLazySingleton<OffboardingRepository>(() => OffboardingRepositoryImpl(getIt<FakeOffboardingDataSource>()));
   getIt.registerLazySingleton<EngagementRepository>(() => EngagementRepositoryImpl(getIt<FakeEngagementDataSource>()));
+  getIt.registerLazySingleton<HrReportRepository>(() => ApiHrReportRepositoryImpl(getIt<Dio>()));
   
   // Executive Repo requires multiple data sources
   getIt.registerLazySingleton<ExecutiveRepository>(() => ExecutiveRepositoryImpl(

@@ -1,6 +1,9 @@
+import 'package:hr_core/core/network/auth_interceptor.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/theme_cubit.dart';
+import '../services/biometric_service.dart';
+import '../services/location_service.dart';
 
 import 'package:hr_core/features/attendance/data/datasources/api_attendance_repository_impl.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
@@ -47,39 +50,51 @@ import 'package:hr_core/features/admin/data/datasources/fake_system_config_datas
 import 'package:hr_core/features/admin/data/datasources/api_system_config_datasource.dart';
 import 'package:hr_core/features/admin/domain/repositories/system_config_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/system_config_repository_impl.dart';
+import 'package:hr_core/core/services/token_storage.dart';
+import '../services/token_service.dart';
 import '../bloc/session_cubit.dart';
 import '../utils/crash_reporter.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> initDI() async {
+Future<void> initDI({String? overrideBaseUrl}) async {
   // Utils
   getIt.registerLazySingleton<CrashReporter>(() => ConsoleCrashReporter());
 
   // Core
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+  getIt.registerLazySingleton<TokenStorage>(() => SecureTokenStorage());
+  getIt.registerLazySingleton<TokenService>(
+      () => TokenService(storage: getIt<TokenStorage>()));
   getIt.registerLazySingleton(() => SessionCubit());
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  // Connected to live backend on Render
-  final String baseUrl = 'https://hr-app-lswi.onrender.com';
-  
+  final String rawEnv = const String.fromEnvironment('API_BASE_URL');
+  final String baseUrl = (overrideBaseUrl ?? rawEnv).trim();
+  if (baseUrl.isEmpty) {
+    throw StateError(
+      'CRITICAL CONFIGURATION ERROR: API_BASE_URL is missing or blank.\n'
+      'You must supply --dart-define=API_BASE_URL=<url> when running the application.\n'
+      'Examples:\n'
+      '  - Android Emulator: --dart-define=API_BASE_URL=http://10.0.2.2:3000\n'
+      '  - Physical LAN Device: --dart-define=API_BASE_URL=http://192.168.1.50:3000\n'
+      '  - Production Server: --dart-define=API_BASE_URL=https://api.yourdomain.com',
+    );
+  }
+
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 5),
-    receiveTimeout: const Duration(seconds: 10),
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
   ));
-  
-  dio.interceptors.add(InterceptorsWrapper(
-    onRequest: (options, handler) async {
-      final prefs = getIt<SharedPreferences>();
-      final token = prefs.getString('jwt_token');
-      if (token != null) {
-        options.headers['Authorization'] = 'Bearer $token';
-      }
-      return handler.next(options);
+
+  dio.interceptors.add(SingleFlightAuthInterceptor(
+    dio: dio,
+    tokenStorage: getIt<TokenStorage>(),
+    onUnauthenticated: () async {
+      getIt<SessionCubit>().setAuthenticated(false);
     },
   ));
 
@@ -106,6 +121,9 @@ Future<void> initDI() async {
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
   getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
 
+  getIt.registerLazySingleton<BiometricService>(() => BiometricServiceImpl());
+  getIt.registerLazySingleton<LocationService>(() => LocationServiceImpl());
+
   // Repositories
   getIt.registerLazySingleton<AttendanceRepository>(
       () => ApiAttendanceRepositoryImpl(dio: getIt<Dio>()));
@@ -129,7 +147,7 @@ Future<void> initDI() async {
       () => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
 
   // Cubits
-  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>(), getIt<SystemConfigRepository>()));
+  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => HomeCubit(
       getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
   getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<io.Socket>()));

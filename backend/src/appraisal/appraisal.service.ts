@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { SelfAppraisalAnswerItemDto } from './dto/appraisal.dto';
@@ -37,7 +42,7 @@ export class AppraisalService {
     };
   }
 
-  async getSelfAppraisalQuestions() {
+  getSelfAppraisalQuestions() {
     return [
       { id: 'q1', questionText: 'What were your key achievements this cycle?' },
       { id: 'q2', questionText: 'What challenges did you face?' },
@@ -47,7 +52,10 @@ export class AppraisalService {
     ];
   }
 
-  async submitSelfAppraisal(userId: string, answers: SelfAppraisalAnswerItemDto[]) {
+  async submitSelfAppraisal(
+    userId: string,
+    answers: SelfAppraisalAnswerItemDto[],
+  ) {
     const cycle = await this.prisma.appraisalCycle.findFirst({
       where: { status: 'inProgress' },
       orderBy: { createdAt: 'desc' },
@@ -79,7 +87,6 @@ export class AppraisalService {
       });
     }
 
-    // Fetch updated status to emit
     const updatedStatus = await this.getCurrentCycle(userId);
 
     this.events.emitEntityUpdated('AppraisalCycle', 'updated', updatedStatus);
@@ -98,20 +105,28 @@ export class AppraisalService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const peerFeedbacks: any[] = [];
+    const peerFeedbacks: Array<{
+      colleague: {
+        id: string;
+        name: string;
+        role: string;
+        avatarInitial: string;
+      };
+      feedbackText: string | null;
+      submitted: boolean;
+    }> = [];
     for (const col of colleagues) {
-      let feedback: any = null;
-      if (cycle) {
-        feedback = await this.prisma.peerFeedback.findUnique({
-          where: {
-            fromUserId_toUserId_cycleId: {
-              fromUserId: userId,
-              toUserId: col.id,
-              cycleId: cycle.id,
+      const feedback = cycle
+        ? await this.prisma.peerFeedback.findUnique({
+            where: {
+              fromUserId_toUserId_cycleId: {
+                fromUserId: userId,
+                toUserId: col.id,
+                cycleId: cycle.id,
+              },
             },
-          },
-        });
-      }
+          })
+        : null;
 
       peerFeedbacks.push({
         colleague: {
@@ -130,7 +145,9 @@ export class AppraisalService {
 
   async submitPeerFeedback(userId: string, colleagueId: string, text: string) {
     if (userId === colleagueId) {
-      throw new BadRequestException('You cannot submit peer feedback for yourself');
+      throw new BadRequestException(
+        'You cannot submit peer feedback for yourself',
+      );
     }
 
     const cycle = await this.prisma.appraisalCycle.findFirst({
@@ -177,21 +194,22 @@ export class AppraisalService {
       orderBy: { createdAt: 'desc' },
     });
 
-    let ratings = cycle ? await this.prisma.appraisalCategoryRating.findMany({
-      where: { userId, cycleId: cycle.id },
-    }) : [];
+    const ratings = cycle
+      ? await this.prisma.appraisalCategoryRating.findMany({
+          where: { userId, cycleId: cycle.id },
+        })
+      : [];
 
     if (ratings.length === 0) {
-      // Default fallback categories matches the fake implementation
-      ratings = [
-        { categoryName: 'Communication', score: 4.5, managerComment: 'Clear and proactive.' },
-        { categoryName: 'Technical Skill', score: 4.0, managerComment: 'Solid performance.' },
-        { categoryName: 'Teamwork', score: 4.8, managerComment: 'Excellent collaboration.' },
-        { categoryName: 'Ownership', score: 3.5, managerComment: 'Good, but needs more initiative.' },
-      ] as any;
+      return {
+        overallRating: 0.0,
+        categoryRatings: [],
+        managerSummary: 'No appraisal ratings recorded for this cycle yet.',
+      };
     }
 
-    const overallRating = ratings.reduce((sum, r) => sum + r.score, 0) / ratings.length;
+    const overallRating =
+      ratings.reduce((sum, r) => sum + r.score, 0) / ratings.length;
 
     return {
       overallRating: parseFloat(overallRating.toFixed(1)),
@@ -200,36 +218,15 @@ export class AppraisalService {
         score: r.score,
         managerComment: r.managerComment,
       })),
-      managerSummary: 'A very strong quarter. Keep up the good work and focus on taking more ownership of end-to-end features.',
+      managerSummary: 'Appraisal cycle ratings completed.',
     };
   }
 
   async getDevelopmentPlan(userId: string) {
-    let goals = await this.prisma.developmentGoal.findMany({
+    const goals = await this.prisma.developmentGoal.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
     });
-
-    if (goals.length === 0) {
-      const defaultGoals = [
-        { title: 'Master Flutter Animations', progressPercent: 0.6 },
-        { title: 'Lead a technical deep-dive', progressPercent: 0.2 },
-        { title: 'Improve test coverage in core module', progressPercent: 0.9 },
-      ];
-      for (const g of defaultGoals) {
-        await this.prisma.developmentGoal.create({
-          data: {
-            userId,
-            title: g.title,
-            progressPercent: g.progressPercent,
-          },
-        });
-      }
-      goals = await this.prisma.developmentGoal.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'asc' },
-      });
-    }
 
     return goals.map((g) => ({
       title: g.title,
@@ -238,34 +235,10 @@ export class AppraisalService {
   }
 
   async getCareerPath(userId: string) {
-    let steps = await this.prisma.careerStep.findMany({
+    const steps = await this.prisma.careerStep.findMany({
       where: { userId },
       orderBy: { order: 'asc' },
     });
-
-    if (steps.length === 0) {
-      const defaultSteps = [
-        { roleTitle: 'Junior Developer', status: 'completed', order: 1 },
-        { roleTitle: 'Mid-Level Developer', status: 'completed', order: 2 },
-        { roleTitle: 'Senior Developer', status: 'current', order: 3 },
-        { roleTitle: 'Tech Lead', status: 'upcoming', order: 4 },
-        { roleTitle: 'Engineering Manager', status: 'upcoming', order: 5 },
-      ];
-      for (const s of defaultSteps) {
-        await this.prisma.careerStep.create({
-          data: {
-            userId,
-            roleTitle: s.roleTitle,
-            status: s.status as any,
-            order: s.order,
-          },
-        });
-      }
-      steps = await this.prisma.careerStep.findMany({
-        where: { userId },
-        orderBy: { order: 'asc' },
-      });
-    }
 
     return steps.map((s) => ({
       roleTitle: s.roleTitle,
@@ -273,11 +246,21 @@ export class AppraisalService {
     }));
   }
 
-  async startNewCycle(userId: string, userRole: string, label: string, dueDate: Date) {
-    // Explicit server-side role check
+  async startNewCycle(
+    userId: string,
+    userRole: string,
+    label: string,
+    dueDate: Date,
+  ) {
     const normalizedRole = userRole.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (normalizedRole !== 'hradmin' && normalizedRole !== 'superadmin' && normalizedRole !== 'hr') {
-      throw new ForbiddenException('Only HR Admins can initialize a new appraisal cycle');
+    if (
+      normalizedRole !== 'hradmin' &&
+      normalizedRole !== 'superadmin' &&
+      normalizedRole !== 'hr'
+    ) {
+      throw new ForbiddenException(
+        'Only HR Admins can initialize a new appraisal cycle',
+      );
     }
 
     await this.prisma.appraisalCycle.updateMany({

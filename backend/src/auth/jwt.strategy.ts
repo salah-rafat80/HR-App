@@ -1,6 +1,17 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { getJwtSecret } from './jwt-secret.helper';
+
+export interface JwtPayload {
+  sub: string;
+  employeeCode?: string;
+  role: string;
+  tokenType?: string;
+  aud?: string;
+  iss?: string;
+  iat?: number;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -8,11 +19,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'super-secret-jwt-key-hr-app-demo-phase-22',
+      secretOrKey: getJwtSecret(),
+      audience: 'hr-app-access',
+      issuer: 'hr-app-api',
     });
   }
 
-  async validate(payload: any) {
-    return { userId: payload.sub, email: payload.email, role: payload.role };
+  validate(payload: JwtPayload) {
+    if (
+      !payload ||
+      !payload.sub ||
+      payload.tokenType !== 'access' ||
+      payload.aud !== 'hr-app-access' ||
+      payload.iss !== 'hr-app-api'
+    ) {
+      throw new UnauthorizedException('Invalid access token claims');
+    }
+    return {
+      userId: payload.sub,
+      employeeCode: payload.employeeCode,
+      role: payload.role,
+    };
   }
 }

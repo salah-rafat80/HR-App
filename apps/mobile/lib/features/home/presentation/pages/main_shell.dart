@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/theme_cubit.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/floating_nav_bar.dart';
 import '../../../../core/services/fcm_service.dart';
 
@@ -39,19 +40,21 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, theme) {
-        return Scaffold(
-          body: widget.navigationShell,
-          bottomNavigationBar: SafeArea(
-            child: FloatingNavBar(
-              items: _getNavItems(context),
-              selectedIndex: widget.navigationShell.currentIndex,
-              onItemSelected: (index) => _onItemTapped(index),
-            ),
-          ),
-        );
-      },
+    context.watch<ThemeCubit>();
+    final locale = context.locale;
+
+    return Scaffold(
+      body: KeyedSubtree(
+        key: ValueKey('${AppColors.isDarkMode}_${locale.languageCode}'),
+        child: widget.navigationShell,
+      ),
+      bottomNavigationBar: SafeArea(
+        child: FloatingNavBar(
+          items: _getNavItems(context),
+          selectedIndex: widget.navigationShell.currentIndex,
+          onItemSelected: (index) => _onItemTapped(index),
+        ),
+      ),
     );
   }
 

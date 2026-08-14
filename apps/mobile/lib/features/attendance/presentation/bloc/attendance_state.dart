@@ -28,6 +28,11 @@ class AttendanceLoaded extends AttendanceState {
   // P1 — Overtime form state
   final bool isSubmittingOvertime;
 
+  /// True while the full clock-in sequence is in-flight
+  /// (GPS → server preflight → biometric → POST /clock-in).
+  /// Prevents double-tap through the entire sequence.
+  final bool isCheckingIn;
+
   const AttendanceLoaded({
     required this.todayStatus,
     required this.history,
@@ -37,6 +42,7 @@ class AttendanceLoaded extends AttendanceState {
     this.isOnBreak = false,
     this.breakStartTime,
     this.isSubmittingOvertime = false,
+    this.isCheckingIn = false,
   });
 
   AttendanceLoaded copyWith({
@@ -49,6 +55,7 @@ class AttendanceLoaded extends AttendanceState {
     DateTime? breakStartTime,
     bool clearBreakTime = false,
     bool? isSubmittingOvertime,
+    bool? isCheckingIn,
   }) {
     return AttendanceLoaded(
       todayStatus: todayStatus ?? this.todayStatus,
@@ -57,8 +64,10 @@ class AttendanceLoaded extends AttendanceState {
       overtimeRequests: overtimeRequests ?? this.overtimeRequests,
       isWfh: isWfh ?? this.isWfh,
       isOnBreak: isOnBreak ?? this.isOnBreak,
-      breakStartTime: clearBreakTime ? null : (breakStartTime ?? this.breakStartTime),
+      breakStartTime:
+          clearBreakTime ? null : (breakStartTime ?? this.breakStartTime),
       isSubmittingOvertime: isSubmittingOvertime ?? this.isSubmittingOvertime,
+      isCheckingIn: isCheckingIn ?? this.isCheckingIn,
     );
   }
 
@@ -72,6 +81,7 @@ class AttendanceLoaded extends AttendanceState {
         isOnBreak,
         breakStartTime,
         isSubmittingOvertime,
+        isCheckingIn,
       ];
 }
 

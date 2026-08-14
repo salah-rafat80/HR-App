@@ -1,43 +1,42 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Role } from './roles.enum';
+import { ROLES_KEY } from './roles.decorator';
+
+interface RequestWithUser {
+  user?: {
+    role?: Role;
+  };
+}
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const roles = this.reflector.getAllAndOverride<string[]>('roles', [
+    const requiredRoles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-    if (!roles || roles.length === 0) {
+
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
-    const request = context.switchToHttp().getRequest();
+
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
-    if (!user) {
+    if (!user || !user.role) {
       return false;
     }
 
-    if (!user.role) {
+    const userRole = user.role;
+
+    // superAdmin inherits all role permissions
+    if (userRole === Role.superAdmin) {
       return true;
     }
 
-    const normalize = (r: string) => r.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const userRoleNorm = normalize(user.role);
-
-    return roles.some((targetRole) => {
-      const targetNorm = normalize(targetRole);
-      if (targetNorm === userRoleNorm) return true;
-      if (
-        (userRoleNorm.includes('admin') || userRoleNorm.includes('hr') || userRoleNorm.includes('manager') || userRoleNorm.includes('super')) &&
-        (targetNorm.includes('admin') || targetNorm.includes('hr') || targetNorm.includes('manager') || targetNorm.includes('super'))
-      ) {
-        return true;
-      }
-      return false;
-    });
+    // Strict exact role matching - no String.includes or implicit hr/hrAdmin merging
+    return requiredRoles.includes(userRole);
   }
 }
-
-

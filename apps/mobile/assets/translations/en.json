@@ -1,4 +1,5 @@
 {
+  "no_data_found": "No data found",
   "splash_screen_title": "Welcome to HR System",
   "login_title": "Login",
   "login_button": "Sign In",
@@ -183,5 +184,7 @@
   "system_config": "System Config",
   "recruitment": "Recruitment",
   "executive_dashboard": "Executive Dashboard",
-  "leave_apply_success": "Leave request submitted successfully"
+  "leave_apply_success": "Leave request submitted successfully",
+  "language": "Language",
+  "dark_mode": "Dark Mode"
 }

@@ -62,8 +62,8 @@ class _SystemConfigViewState extends State<_SystemConfigView> with TickerProvide
 
   @override
   Widget build(BuildContext context) {
-    final role = context.read<SessionCubit>().state;
-    final isSuperAdmin = role == UserRole.superAdmin;
+    final sessionState = context.read<SessionCubit>().state;
+    final isSuperAdmin = sessionState.role == UserRole.superAdmin;
 
     final tabs = <_TabDef>[
       _TabDef('Leave Types', Iconsax.calendar_2),

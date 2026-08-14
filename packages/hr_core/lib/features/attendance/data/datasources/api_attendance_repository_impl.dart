@@ -7,7 +7,6 @@ import '../../domain/repositories/attendance_repository.dart';
 
 class ApiAttendanceRepositoryImpl implements AttendanceRepository {
   final Dio dio;
-  AttendanceRecord? _localTodayStatus;
 
   ApiAttendanceRepositoryImpl({required this.dio});
 
@@ -15,13 +14,16 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
   Future<AttendanceRecord> getTodayStatus() async {
     try {
       final response = await dio.get('/attendance/today');
-      final record = AttendanceRecord.fromJson(response.data);
-      if (record.clockInTime != null) {
-        _localTodayStatus = record;
+      if (response.data == null || response.data is! Map) {
+        return AttendanceRecord(
+          date: DateTime.now(),
+          status: AttendanceStatus.none,
+          locationLabel: 'none',
+        );
       }
-      return record;
+      return AttendanceRecord.fromJson(response.data as Map<String, dynamic>);
     } catch (_) {
-      return _localTodayStatus ?? AttendanceRecord(
+      return AttendanceRecord(
         date: DateTime.now(),
         status: AttendanceStatus.none,
         locationLabel: 'none',
@@ -29,127 +31,204 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
     }
   }
 
+  /// Geofence preflight — GET /attendance/geofence-status
+  /// All three parameters are required; the backend rejects missing/invalid ones.
   @override
-  Future<void> clockIn({
-    required String locationLabel,
-    required AttendanceStatus mode,
-    double? lat,
-    double? lng,
-    double? accuracy,
+  Future<GeofenceStatus> preflightGeofence({
+    required double lat,
+    required double lng,
+    required double accuracy,
   }) async {
-    final now = DateTime.now();
-    _localTodayStatus = AttendanceRecord(
-      date: now,
-      clockInTime: now,
-      status: mode,
-      locationLabel: locationLabel,
-    );
-
-    try {
-      final response = await dio.post('/attendance/clock-in', data: {
-        'locationLabel': locationLabel,
-        'mode': mode.name,
+    final response = await dio.get(
+      '/attendance/geofence-status',
+      queryParameters: {
         'lat': lat,
         'lng': lng,
         'accuracy': accuracy,
-      });
-      if (response.data != null) {
-        _localTodayStatus = AttendanceRecord.fromJson(response.data);
-      }
-    } catch (_) {
-      // Keep local in-memory record if Dio fails
+      },
+    );
+    if (response.data == null || response.data is! Map) {
+      return const GeofenceStatus(
+        withinRange: false,
+        distanceMeters: 0.0,
+        allowedRadiusMeters: 200.0,
+        nearestBranch: null,
+      );
     }
+    final data = response.data as Map<String, dynamic>;
+    return GeofenceStatus(
+      withinRange: (data['withinRange'] as bool?) ?? false,
+      distanceMeters: (data['distanceMeters'] as num?)?.toDouble() ?? 0.0,
+      allowedRadiusMeters:
+          (data['allowedRadiusMeters'] as num?)?.toDouble() ?? 200.0,
+      nearestBranch: data['nearestBranch'] as String?,
+    );
+  }
+
+  /// Clock-in — POST /attendance/clock-in
+  /// Returns the persisted AttendanceRecord from the backend response.
+  /// locationLabel is never sent — the backend derives it from its own geofence.
+  @override
+  Future<AttendanceRecord> clockIn({
+    required AttendanceStatus mode,
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final response = await dio.post('/attendance/clock-in', data: {
+      'mode': mode.name,
+      'lat': lat,
+      'lng': lng,
+      'accuracy': accuracy,
+    });
+    return AttendanceRecord.fromJson(response.data as Map<String, dynamic>);
   }
 
   @override
   Future<void> clockOut() async {
-    final now = DateTime.now();
-    if (_localTodayStatus != null) {
-      _localTodayStatus = _localTodayStatus!.copyWith(clockOutTime: now);
-    } else {
-      _localTodayStatus = AttendanceRecord(
-        date: now,
-        clockInTime: now,
-        clockOutTime: now,
-        status: AttendanceStatus.present,
-        locationLabel: 'Main Office',
-      );
-    }
-
-    try {
-      await dio.post('/attendance/clock-out');
-    } catch (_) {
-      // Keep local in-memory record if Dio fails
-    }
+    await dio.post('/attendance/clock-out');
   }
-
-
-  @override
-  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng}) async {
-    final response = await dio.get('/attendance/geofence-status', queryParameters: {
-      'lat': lat,
-      'lng': lng,
-    });
-    return GeofenceStatus(
-      withinRange: response.data['withinRange'],
-      distanceMeters: response.data['distanceMeters']?.toDouble() ?? 0.0,
-      allowedRadiusMeters: response.data['allowedRadiusMeters']?.toDouble() ?? 200.0,
-    );
-  }
-
-
 
   @override
   Future<List<AttendanceRecord>> getHistory() async {
-    List<AttendanceRecord> list = [];
     try {
       final response = await dio.get('/attendance/history');
-      list = (response.data as List).map((e) => AttendanceRecord.fromJson(e)).toList();
-    } catch (_) {}
-
-    if (_localTodayStatus != null && _localTodayStatus!.clockInTime != null) {
-      final hasToday = list.any((r) =>
-          r.date.year == _localTodayStatus!.date.year &&
-          r.date.month == _localTodayStatus!.date.month &&
-          r.date.day == _localTodayStatus!.date.day);
-      if (hasToday) {
-        final index = list.indexWhere((r) =>
-            r.date.year == _localTodayStatus!.date.year &&
-            r.date.month == _localTodayStatus!.date.month &&
-            r.date.day == _localTodayStatus!.date.day);
-        list[index] = _localTodayStatus!;
-      } else {
-        list.insert(0, _localTodayStatus!);
+      if (response.data == null || response.data is! List) {
+        return [];
       }
-    }
-    return list;
-  }
-
-
-  @override
-  Future<ShiftInfo> getShift() async {
-    final response = await dio.get('/attendance/shift');
-    return ShiftInfo.fromJson(response.data);
-  }
-
-  @override
-  Future<void> requestOvertime(double hours, String reason) async {
-    await dio.post('/attendance/overtime', data: {
-      'hoursRequested': hours,
-      'reason': reason,
-    });
-  }
-
-  @override
-  Future<List<OvertimeRequest>> getOvertimeRequests() async {
-    try {
-      final response = await dio.get('/attendance/overtime');
       return (response.data as List)
-          .map((e) => OvertimeRequest.fromJson(e))
+          .whereType<Map<String, dynamic>>()
+          .map((e) => AttendanceRecord.fromJson(e))
           .toList();
     } catch (_) {
       return [];
     }
+  }
+
+  @override
+  Future<ShiftInfo> getShift() async {
+    final now = DateTime.now();
+    final defaultShift = ShiftInfo(
+      name: 'Standard Shift',
+      startTime: DateTime(now.year, now.month, now.day, 9, 0),
+      endTime: DateTime(now.year, now.month, now.day, 17, 0),
+    );
+    try {
+      final response = await dio.get('/attendance/shift');
+      if (response.data == null || response.data is! Map) {
+        return defaultShift;
+      }
+      return ShiftInfo.fromJson(response.data as Map<String, dynamic>);
+    } catch (_) {
+      return defaultShift;
+    }
+  }
+
+  @override
+  Future<OvertimeRequest> requestOvertime({
+    required DateTime requestedStartAt,
+    required DateTime requestedEndAt,
+    required String reason,
+  }) async {
+    final response = await dio.post('/overtime/requests', data: {
+      'requestedStartAt': requestedStartAt.toUtc().toIso8601String(),
+      'requestedEndAt': requestedEndAt.toUtc().toIso8601String(),
+      'reason': reason,
+    });
+    return OvertimeRequest.fromJson(_asJsonMap(response.data));
+  }
+
+  @override
+  Future<List<OvertimeRequest>> getMyOvertimeRequests() async {
+    final response = await dio.get('/overtime/requests/mine');
+    return _asJsonList(response.data)
+        .map(OvertimeRequest.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<OvertimeRequest>> getPendingOvertimeApprovals() async {
+    final response = await dio.get('/overtime/approvals/pending');
+    return _asJsonList(response.data)
+        .map(OvertimeRequest.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<OvertimeRequest> approveOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/team-lead/approve', comment);
+
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/team-lead/reject', comment);
+
+  @override
+  Future<OvertimeRequest> approveOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/hr/approve', comment);
+
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/hr/reject', comment);
+
+  @override
+  Future<OvertimeSession> startOvertimeSession(
+    String requestId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final response = await dio.post(
+        '/overtime/requests/$requestId/session/start',
+        data: {'lat': lat, 'lng': lng, 'accuracy': accuracy});
+    return OvertimeSession.fromJson(_asJsonMap(response.data));
+  }
+
+  @override
+  Future<OvertimeSession> endOvertimeSession(
+    String sessionId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final response = await dio.post('/overtime/sessions/$sessionId/end',
+        data: {'lat': lat, 'lng': lng, 'accuracy': accuracy});
+    return OvertimeSession.fromJson(_asJsonMap(response.data));
+  }
+
+  Future<OvertimeRequest> _decide(String path, String? comment) async {
+    final normalizedComment = comment?.trim();
+    final response = await dio.post(path, data: {
+      if (normalizedComment?.isNotEmpty ?? false) 'comment': normalizedComment,
+    });
+    return OvertimeRequest.fromJson(_asJsonMap(response.data));
+  }
+
+  Map<String, dynamic> _asJsonMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    throw StateError('Expected an object response from the HR API');
+  }
+
+  List<Map<String, dynamic>> _asJsonList(dynamic value) {
+    if (value is! List) {
+      throw StateError('Expected a list response from the HR API');
+    }
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
   }
 
   @override

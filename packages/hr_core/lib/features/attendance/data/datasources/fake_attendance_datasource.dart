@@ -2,119 +2,153 @@ import '../../domain/entities/attendance_enums.dart';
 import '../../domain/entities/attendance_record.dart';
 import '../../domain/entities/overtime_request.dart';
 import '../../domain/entities/shift_info.dart';
+import '../../domain/repositories/attendance_repository.dart';
 
-class FakeAttendanceDataSource {
+/// Fake implementation for isolated tests only.
+/// Production DI registers [ApiAttendanceRepositoryImpl] directly.
+class FakeAttendanceRepository implements AttendanceRepository {
   AttendanceRecord _todayRecord = AttendanceRecord(
     date: DateTime.now(),
     status: AttendanceStatus.none,
     locationLabel: 'none',
   );
+  final List<OvertimeRequest> _overtimeRequests = [];
 
-  final List<AttendanceRecord> _history = List.generate(
-    14,
-    (index) => AttendanceRecord(
-      date: DateTime.now().subtract(Duration(days: index + 1)),
-      clockInTime: DateTime.now().subtract(Duration(days: index + 1, hours: 8)),
-      clockOutTime: DateTime.now().subtract(Duration(days: index + 1, hours: 0)),
-      status: index % 5 == 0 ? AttendanceStatus.late : AttendanceStatus.present,
-      locationLabel: 'Main Office',
-    ),
-  );
+  @override
+  Future<AttendanceRecord> getTodayStatus() async => _todayRecord;
 
-  final List<OvertimeRequest> _overtimeRequests = [
-    OvertimeRequest(
-      id: 'ot-001',
-      hours: 2.0,
-      reason: 'Project deadline',
-      status: OvertimeStatus.approved,
-      submittedAt: DateTime.now().subtract(const Duration(days: 3)),
-    ),
-    OvertimeRequest(
-      id: 'ot-002',
-      hours: 1.5,
-      reason: 'Client call extension',
-      status: OvertimeStatus.pending,
-      submittedAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
+  @override
+  Future<GeofenceStatus> preflightGeofence({
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async =>
+      const GeofenceStatus(
+        withinRange: true,
+        distanceMeters: 50,
+        allowedRadiusMeters: 200,
+        nearestBranch: 'Test Branch',
+      );
 
-  final ShiftInfo _shift = ShiftInfo(
-    name: 'Morning Shift',
-    startTime: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 9, 0),
-    endTime: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 17, 0),
-  );
-
-  Future<AttendanceRecord> getTodayStatus() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    return _todayRecord;
-  }
-
-  Future<void> clockIn({
-    required String locationLabel,
+  @override
+  Future<AttendanceRecord> clockIn({
     required AttendanceStatus mode,
-    double? lat,
-    double? lng,
-    double? accuracy,
+    required double lat,
+    required double lng,
+    required double accuracy,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 800));
     _todayRecord = _todayRecord.copyWith(
       clockInTime: DateTime.now(),
       status: mode,
-      locationLabel: locationLabel,
+      locationLabel: 'Test Branch',
     );
+    return _todayRecord;
   }
 
-  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng}) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return const GeofenceStatus(withinRange: true, distanceMeters: 50, allowedRadiusMeters: 200);
-  }
-
+  @override
   Future<void> clockOut() async {
-    await Future.delayed(const Duration(milliseconds: 800));
     _todayRecord = _todayRecord.copyWith(clockOutTime: DateTime.now());
   }
 
-  Future<List<AttendanceRecord>> getHistory() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    return _history;
-  }
+  @override
+  Future<List<AttendanceRecord>> getHistory() async => const [];
 
+  @override
   Future<ShiftInfo> getShift() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return _shift;
-  }
-
-  Future<void> requestOvertime(double hours, String reason) async {
-    await Future.delayed(const Duration(milliseconds: 1000));
-    _overtimeRequests.insert(
-      0,
-      OvertimeRequest(
-        id: 'ot-${DateTime.now().millisecondsSinceEpoch}',
-        hours: hours,
-        reason: reason,
-        status: OvertimeStatus.pending,
-        submittedAt: DateTime.now(),
-      ),
+    final now = DateTime.now();
+    return ShiftInfo(
+      name: 'Test Shift',
+      startTime: DateTime(now.year, now.month, now.day, 9),
+      endTime: DateTime(now.year, now.month, now.day, 17),
     );
   }
 
-  Future<List<OvertimeRequest>> getOvertimeRequests() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return List.from(_overtimeRequests);
+  @override
+  Future<OvertimeRequest> requestOvertime({
+    required DateTime requestedStartAt,
+    required DateTime requestedEndAt,
+    required String reason,
+  }) async {
+    final request = OvertimeRequest(
+      id: 'test-ot-${DateTime.now().microsecondsSinceEpoch}',
+      userId: 'test-user',
+      date: DateTime(
+        requestedStartAt.year,
+        requestedStartAt.month,
+        requestedStartAt.day,
+      ),
+      requestedStartAt: requestedStartAt,
+      requestedEndAt: requestedEndAt,
+      requestedMinutes: requestedEndAt.difference(requestedStartAt).inMinutes,
+      reason: reason,
+      status: OvertimeStatus.pendingTeamLead,
+      submittedAt: DateTime.now(),
+    );
+    _overtimeRequests.insert(0, request);
+    return request;
   }
 
-  /// Patches only the mode/status of today's existing record.
-  /// Does NOT create a new clock-in record — used by WFH toggle.
+  @override
+  Future<List<OvertimeRequest>> getMyOvertimeRequests() async =>
+      List.unmodifiable(_overtimeRequests);
+
+  @override
+  Future<List<OvertimeRequest>> getPendingOvertimeApprovals() async => const [];
+
+  @override
+  Future<OvertimeRequest> approveOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      Future.error(UnsupportedError('Fake approval flow is not implemented'));
+
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      Future.error(UnsupportedError('Fake approval flow is not implemented'));
+
+  @override
+  Future<OvertimeRequest> approveOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      Future.error(UnsupportedError('Fake approval flow is not implemented'));
+
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      Future.error(UnsupportedError('Fake approval flow is not implemented'));
+
+  @override
+  Future<OvertimeSession> startOvertimeSession(
+    String requestId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      Future.error(UnsupportedError('Fake session flow is not implemented'));
+
+  @override
+  Future<OvertimeSession> endOvertimeSession(
+    String sessionId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      Future.error(UnsupportedError('Fake session flow is not implemented'));
+
+  @override
   Future<void> updateTodayMode(AttendanceStatus mode) async {
-    await Future.delayed(const Duration(milliseconds: 500));
     _todayRecord = _todayRecord.copyWith(status: mode);
   }
 
-  Future<void> startBreak() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-  }
+  @override
+  Future<void> startBreak() async {}
 
-  Future<void> endBreak() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-  }
+  @override
+  Future<void> endBreak() async {}
 }

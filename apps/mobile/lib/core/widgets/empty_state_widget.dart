@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
@@ -24,7 +25,7 @@ class EmptyStateWidget extends StatelessWidget {
             Icon(icon, size: 64.w, color: AppColors.textSecondary.withValues(alpha: 0.5)),
             SizedBox(height: 16.h),
             Text(
-              message,
+              message.tr(),
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),

@@ -45,6 +45,19 @@ enum OvertimeStatus {
   pending
   approved
   rejected
+  pending_team_lead
+  pending_hr
+  rejected_by_team_lead
+  rejected_by_hr
+  cancelled
+  expired
+  completed
+}
+
+enum OvertimeSessionStatus {
+  active
+  completed
+  cancelled
 }
 
 generator client {
@@ -53,35 +66,64 @@ generator client {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  password      String
-  name          String
-  role          String
-  fcmToken      String?
+  id                String         @id @default(uuid())
+  employeeCode      String?        @unique
+  email             String         @unique
+  password          String
+  name              String
+  role              String
+  isActive          Boolean        @default(true)
+  passwordChangedAt DateTime?
+  fcmToken          String?
 
-  department    String?
-  title         String?
+  department        String?
+  title             String?
 
-  managerId     String?
-  manager       User?          @relation("ManagerHierarchy", fields: [managerId], references: [id])
-  directReports User[]         @relation("ManagerHierarchy")
+  managerId         String?
+  manager           User?          @relation("ManagerHierarchy", fields: [managerId], references: [id])
+  directReports     User[]         @relation("ManagerHierarchy")
 
-  leaveRequests LeaveRequest[]
-  leaveBalances LeaveBalance[]
-  attendanceRecords AttendanceRecord[]
-  shiftInfos        ShiftInfo[]
-  overtimeRequests  OvertimeRequest[]
-  kpis              Kpi[]
-  kpiQuarterScores  KpiQuarterScore[]
-  selfAppraisalAnswers  SelfAppraisalAnswer[]
-  peerFeedbacksSent     PeerFeedback[]            @relation("PeerFeedbackFrom")
-  peerFeedbacksReceived PeerFeedback[]            @relation("PeerFeedbackTo")
-  categoryRatings       AppraisalCategoryRating[]
-  developmentGoals      DevelopmentGoal[]
-  careerSteps           CareerStep[]
-  payslips              Payslip[]
-  bonusNotices          BonusNotice[]
+  leaveRequests            LeaveRequest[]
+  leaveBalances            LeaveBalance[]
+  attendanceRecords        AttendanceRecord[]
+  shiftInfos               ShiftInfo[]
+  overtimeRequests         OvertimeRequest[]         @relation("OvertimeEmployee")
+  teamLeadOvertimeRequests OvertimeRequest[]         @relation("OvertimeTeamLead")
+  hrOvertimeRequests       OvertimeRequest[]         @relation("OvertimeHrApprover")
+  overtimeSessions         OvertimeSession[]         @relation("OvertimeSessionUser")
+  companyHolidaysCreated   CompanyHoliday[]          @relation("CompanyHolidayCreator")
+  kpis                     Kpi[]
+  kpiQuarterScores         KpiQuarterScore[]
+  selfAppraisalAnswers     SelfAppraisalAnswer[]
+  peerFeedbacksSent        PeerFeedback[]            @relation("PeerFeedbackFrom")
+  peerFeedbacksReceived    PeerFeedback[]            @relation("PeerFeedbackTo")
+  categoryRatings          AppraisalCategoryRating[]
+  developmentGoals         DevelopmentGoal[]
+  careerSteps              CareerStep[]
+  payslips                 Payslip[]
+  bonusNotices             BonusNotice[]
+  auditLogs                AuditLog[]                @relation("AuditActor")
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([employeeCode])
+  @@index([managerId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?
+  actorUser   User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+  action      String
+  targetType  String
+  targetId    String?
+  metadata    Json?
+  timestamp   DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([actorUserId])
+  @@index([targetType, targetId])
 }
 
 model LeaveBalance {
@@ -109,6 +151,8 @@ model LeaveRequest {
   approvalSteps    LeaveApprovalStep[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
+
+  @@index([userId, overallStatus, startDate, endDate])
 }
 
 model LeaveApprovalStep {
@@ -121,24 +165,27 @@ model LeaveApprovalStep {
   timestamp DateTime
 }
 
-// ---------------------------------------------------------
-// STUBBED MODELS FOR OTHER MODULES (To be implemented later)
-// ---------------------------------------------------------
-
 model AttendanceRecord {
-  id            String           @id @default(uuid())
-  userId        String
-  user          User             @relation(fields: [userId], references: [id])
-  date          DateTime         @db.Date
-  clockInTime   DateTime?
-  clockOutTime  DateTime?
-  status        AttendanceStatus
-  locationLabel String
-  clockInLat    Float?
-  clockInLng    Float?
-  distanceMeters Float?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  date             DateTime          @db.Date
+  clockInTime      DateTime?
+  clockOutTime     DateTime?
+  status           AttendanceStatus
+  locationLabel    String
+  clockInLat       Float?
+  clockInLng       Float?
+  distanceMeters   Float?
+  overtimeRequests OvertimeRequest[]
+  overtimeSessions OvertimeSession[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([userId, status, date])
+  // ARTIFACT ONLY — unique constraint to prevent concurrent duplicate check-ins.
+  // Not applied to the database until explicitly approved and migrated.
+  @@unique([userId, date], name: "AttendanceRecord_userId_date_key")
 }
 
 model CompanySettings {
@@ -171,15 +218,77 @@ model ShiftInfo {
 }
 
 model OvertimeRequest {
-  id             String         @id @default(uuid())
-  userId         String
-  user           User           @relation(fields: [userId], references: [id])
-  date           DateTime       @db.Date
-  hoursRequested Float
-  reason         String
-  status         OvertimeStatus @default(pending)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation("OvertimeEmployee", fields: [userId], references: [id])
+  attendanceRecordId String?
+  attendanceRecord   AttendanceRecord? @relation(fields: [attendanceRecordId], references: [id])
+  date               DateTime          @db.Date
+  requestedStartAt   DateTime?
+  requestedEndAt     DateTime?
+  requestedMinutes   Int?
+  hoursRequested     Float?
+  reason             String
+  status             OvertimeStatus    @default(pending_team_lead)
+  teamLeadId         String?
+  teamLead           User?             @relation("OvertimeTeamLead", fields: [teamLeadId], references: [id])
+  teamLeadDecisionAt DateTime?
+  teamLeadComment    String?
+  hrApproverId       String?
+  hrApprover         User?             @relation("OvertimeHrApprover", fields: [hrApproverId], references: [id])
+  hrDecisionAt       DateTime?
+  hrComment          String?
+  session            OvertimeSession?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([userId, date])
+  @@index([status, date])
+  @@index([teamLeadId, status, date])
+  // ARTIFACT ONLY — partial unique index to prevent concurrent duplicate active requests for the same user and date.
+  // Prisma cannot represent partial unique indexes natively in DSL, so it is enforced via migration DDL:
+  // CREATE UNIQUE INDEX "OvertimeRequest_one_active_per_user_date_key"
+  // ON "OvertimeRequest"("userId", "date")
+  // WHERE "status" IN ('pending_team_lead', 'pending_hr', 'approved');
+}
+
+model OvertimeSession {
+  id                  String                @id @default(uuid())
+  overtimeRequestId   String                @unique
+  overtimeRequest     OvertimeRequest       @relation(fields: [overtimeRequestId], references: [id])
+  userId              String
+  user                User                  @relation("OvertimeSessionUser", fields: [userId], references: [id])
+  attendanceRecordId  String
+  attendanceRecord    AttendanceRecord      @relation(fields: [attendanceRecordId], references: [id])
+  status              OvertimeSessionStatus @default(active)
+  startedAt           DateTime              @default(now())
+  endedAt             DateTime?
+  actualMinutes       Int?
+  startLocationLabel  String?
+  startLatitude       Float?
+  startLongitude      Float?
+  startGpsAccuracy    Float?
+  startDistanceMeters Float?
+  endLocationLabel    String?
+  endLatitude         Float?
+  endLongitude        Float?
+  endGpsAccuracy      Float?
+  endDistanceMeters   Float?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([userId, startedAt])
+}
+
+model CompanyHoliday {
+  id          String   @id @default(uuid())
+  date        DateTime @unique @db.Date
+  name        String
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdBy   User?    @relation("CompanyHolidayCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Kpi {
@@ -195,6 +304,8 @@ model Kpi {
   hasEvidence         Boolean  @default(false)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model KpiQuarterScore {
@@ -205,6 +316,8 @@ model KpiQuarterScore {
   averageScorePercent Float
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  @@index([userId, quarterLabel(sort: Desc)])
 }
 
 enum AppraisalStatus {
@@ -315,7 +428,7 @@ model PayrollRun {
   id            String        @id @default(uuid())
   periodLabel   String
   status        PayrollStatus @default(draft)
-  totalAmount   Float         @default(0)
+  totalAmount   Decimal       @default(0) @db.Decimal(12, 2)
   employeeCount Int           @default(0)
   payslips      Payslip[]
   createdAt     DateTime      @default(now())
@@ -327,19 +440,22 @@ model Payslip {
   userId       String
   user         User              @relation(fields: [userId], references: [id])
   monthLabel   String
-  baseSalary   Float
-  netPay       Float
-  payrollRunId String?
-  payrollRun   PayrollRun?       @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  baseSalary   Decimal           @db.Decimal(12, 2)
+  netPay       Decimal           @db.Decimal(12, 2)
+  payrollRunId String
+  payrollRun   PayrollRun        @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
   lineItems    PayslipLineItem[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+
+  @@unique([userId, payrollRunId])
+  @@index([userId])
 }
 
 model PayslipLineItem {
   id        String              @id @default(uuid())
   label     String
-  amount    Float
+  amount    Decimal             @db.Decimal(12, 2)
   type      PayslipLineItemType
   payslipId String
   payslip   Payslip             @relation(fields: [payslipId], references: [id], onDelete: Cascade)
@@ -352,45 +468,40 @@ model BonusNotice {
   userId     String
   user       User     @relation(fields: [userId], references: [id])
   monthLabel String
-  amount     Float
+  amount     Decimal  @db.Decimal(12, 2)
   message    String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-}
 
+  @@index([userId])
+}
 
 model TrainingCourse {
   id        String   @id @default(uuid())
-  // Add fields later
   createdAt DateTime @default(now())
 }
 
 model JobRequisition {
   id        String   @id @default(uuid())
-  // Add fields later
   createdAt DateTime @default(now())
 }
 
 model Candidate {
   id        String   @id @default(uuid())
-  // Add fields later
   createdAt DateTime @default(now())
 }
 
 model OrgNode {
   id        String   @id @default(uuid())
-  // Add fields later
   createdAt DateTime @default(now())
 }
 
 model NewHireOnboarding {
   id        String   @id @default(uuid())
-  // Add fields later
   createdAt DateTime @default(now())
 }
 
 model OffboardingCase {
   id        String   @id @default(uuid())
-  // Add fields later
   createdAt DateTime @default(now())
 }

@@ -3,77 +3,124 @@ import '../../domain/entities/attendance_record.dart';
 import '../../domain/entities/overtime_request.dart';
 import '../../domain/entities/shift_info.dart';
 import '../../domain/repositories/attendance_repository.dart';
-import '../datasources/fake_attendance_datasource.dart';
 
 class AttendanceRepositoryImpl implements AttendanceRepository {
-  final FakeAttendanceDataSource _dataSource;
+  final AttendanceRepository _delegate;
 
-  AttendanceRepositoryImpl(this._dataSource);
+  AttendanceRepositoryImpl(this._delegate);
 
   @override
-  Future<void> clockIn({
-    required String locationLabel,
+  Future<AttendanceRecord> getTodayStatus() => _delegate.getTodayStatus();
+
+  @override
+  Future<GeofenceStatus> preflightGeofence({
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      _delegate.preflightGeofence(lat: lat, lng: lng, accuracy: accuracy);
+
+  @override
+  Future<AttendanceRecord> clockIn({
     required AttendanceStatus mode,
-    double? lat,
-    double? lng,
-    double? accuracy,
-  }) {
-    return _dataSource.clockIn(
-      locationLabel: locationLabel,
-      mode: mode,
-      lat: lat,
-      lng: lng,
-      accuracy: accuracy,
-    );
-  }
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      _delegate.clockIn(mode: mode, lat: lat, lng: lng, accuracy: accuracy);
 
   @override
-  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng}) {
-    return _dataSource.getGeofenceStatus(lat: lat, lng: lng);
-  }
+  Future<void> clockOut() => _delegate.clockOut();
 
   @override
-  Future<void> clockOut() {
-    return _dataSource.clockOut();
-  }
+  Future<List<AttendanceRecord>> getHistory() => _delegate.getHistory();
 
   @override
-  Future<void> endBreak() {
-    return _dataSource.endBreak();
-  }
+  Future<ShiftInfo> getShift() => _delegate.getShift();
 
   @override
-  Future<List<AttendanceRecord>> getHistory() {
-    return _dataSource.getHistory();
-  }
+  Future<OvertimeRequest> requestOvertime({
+    required DateTime requestedStartAt,
+    required DateTime requestedEndAt,
+    required String reason,
+  }) =>
+      _delegate.requestOvertime(
+        requestedStartAt: requestedStartAt,
+        requestedEndAt: requestedEndAt,
+        reason: reason,
+      );
 
   @override
-  Future<ShiftInfo> getShift() {
-    return _dataSource.getShift();
-  }
+  Future<List<OvertimeRequest>> getMyOvertimeRequests() =>
+      _delegate.getMyOvertimeRequests();
 
   @override
-  Future<AttendanceRecord> getTodayStatus() {
-    return _dataSource.getTodayStatus();
-  }
+  Future<List<OvertimeRequest>> getPendingOvertimeApprovals() =>
+      _delegate.getPendingOvertimeApprovals();
 
   @override
-  Future<void> requestOvertime(double hours, String reason) {
-    return _dataSource.requestOvertime(hours, reason);
-  }
+  Future<OvertimeRequest> approveOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      _delegate.approveOvertimeAsTeamLead(requestId, comment: comment);
 
   @override
-  Future<List<OvertimeRequest>> getOvertimeRequests() {
-    return _dataSource.getOvertimeRequests();
-  }
+  Future<OvertimeRequest> rejectOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      _delegate.rejectOvertimeAsTeamLead(requestId, comment: comment);
 
   @override
-  Future<void> updateTodayMode(AttendanceStatus mode) {
-    return _dataSource.updateTodayMode(mode);
-  }
+  Future<OvertimeRequest> approveOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      _delegate.approveOvertimeAsHr(requestId, comment: comment);
 
   @override
-  Future<void> startBreak() {
-    return _dataSource.startBreak();
-  }
+  Future<OvertimeRequest> rejectOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      _delegate.rejectOvertimeAsHr(requestId, comment: comment);
+
+  @override
+  Future<OvertimeSession> startOvertimeSession(
+    String requestId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      _delegate.startOvertimeSession(
+        requestId,
+        lat: lat,
+        lng: lng,
+        accuracy: accuracy,
+      );
+
+  @override
+  Future<OvertimeSession> endOvertimeSession(
+    String sessionId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      _delegate.endOvertimeSession(
+        sessionId,
+        lat: lat,
+        lng: lng,
+        accuracy: accuracy,
+      );
+
+  @override
+  Future<void> updateTodayMode(AttendanceStatus mode) =>
+      _delegate.updateTodayMode(mode);
+
+  @override
+  Future<void> startBreak() => _delegate.startBreak();
+
+  @override
+  Future<void> endBreak() => _delegate.endBreak();
 }

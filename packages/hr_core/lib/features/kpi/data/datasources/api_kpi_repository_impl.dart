@@ -17,12 +17,8 @@ class ApiKpiRepositoryImpl implements KpiRepository {
 
   @override
   Future<List<KpiQuarterScore>> getHistoricalScores() async {
-    try {
-      final response = await dio.get('/kpi/history');
-      return (response.data as List).map((e) => KpiQuarterScore.fromJson(e)).toList();
-    } catch (_) {
-      return const [];
-    }
+    final response = await dio.get('/kpi/history');
+    return (response.data as List).map((e) => KpiQuarterScore.fromJson(e)).toList();
   }
 
   @override
@@ -37,15 +33,11 @@ class ApiKpiRepositoryImpl implements KpiRepository {
 
   @override
   Future<double> getOverallQuarterScore() async {
-    try {
-      final response = await dio.get('/kpi/overall-score');
-      if (response.data is Map) {
-        return (response.data['overallScore'] as num).toDouble();
-      }
-      return (response.data as num).toDouble();
-    } catch (_) {
-      return 0.0;
+    final response = await dio.get('/kpi/overall-score');
+    if (response.data is Map) {
+      return (response.data['overallScore'] as num).toDouble();
     }
+    return (response.data as num).toDouble();
   }
 
   @override

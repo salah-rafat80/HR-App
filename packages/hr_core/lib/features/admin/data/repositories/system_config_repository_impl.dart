@@ -49,38 +49,22 @@ class SystemConfigRepositoryImpl implements SystemConfigRepository {
 
   @override
   Future<List<OfficeBranch>> getBranches() async {
-    try {
-      return await _apiDataSource.getBranches();
-    } catch (_) {
-      return await _fakeDataSource.getBranches();
-    }
+    return await _apiDataSource.getBranches();
   }
 
   @override
   Future<void> addBranch(OfficeBranch branch) async {
-    try {
-      await _apiDataSource.addBranch(branch);
-    } catch (_) {
-      await _fakeDataSource.addBranch(branch);
-    }
+    await _apiDataSource.addBranch(branch);
   }
 
   @override
   Future<void> updateBranch(OfficeBranch branch) async {
-    try {
-      await _apiDataSource.updateBranch(branch);
-    } catch (_) {
-      await _fakeDataSource.updateBranch(branch);
-    }
+    await _apiDataSource.updateBranch(branch);
   }
 
   @override
   Future<void> deleteBranch(String id) async {
-    try {
-      await _apiDataSource.deleteBranch(id);
-    } catch (_) {
-      await _fakeDataSource.deleteBranch(id);
-    }
+    await _apiDataSource.deleteBranch(id);
   }
 }
 

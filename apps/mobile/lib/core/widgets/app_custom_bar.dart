@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:hr_app_demo/core/theme/app_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -71,20 +72,31 @@ class _AppCustomBarState extends State<AppCustomBar> {
     final bool isScrolled = _scrollOffset > 10.0;
     final double opacity = (_scrollOffset / 50.0).clamp(0.0, 1.0);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isScrolled ? AppColors.surface.withValues(alpha: opacity * 0.85) : AppColors.background,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24.r)),
-        boxShadow: isScrolled ? AppShadows.soft : [],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24.r)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: opacity * 10, sigmaY: opacity * 10),
-          child: SafeArea(
-            bottom: false,
-            child: SizedBox(
-              height: kToolbarHeight + (widget.bottom?.preferredSize.height ?? 0.0),
+    final overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: AppColors.isDarkMode ? Brightness.light : Brightness.dark,
+      statusBarBrightness: AppColors.isDarkMode ? Brightness.dark : Brightness.light,
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isScrolled
+              ? AppColors.surface.withValues(alpha: (0.85 + opacity * 0.15).clamp(0.0, 1.0))
+              : AppColors.surface,
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24.r)),
+          boxShadow: AppShadows.medium,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24.r)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: opacity * 10, sigmaY: opacity * 10),
+            child: SafeArea(
+              bottom: false,
+              top: true,
+              child: SizedBox(
+                height: kToolbarHeight + (widget.bottom?.preferredSize.height ?? 0.0),
               child: Column(
                 children: [
                   SizedBox(
@@ -129,8 +141,9 @@ class _AppCustomBarState extends State<AppCustomBar> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class CustomIconButton extends StatefulWidget {

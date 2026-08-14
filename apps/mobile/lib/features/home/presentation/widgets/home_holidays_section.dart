@@ -20,13 +20,13 @@ class HomeHolidaysSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('upcoming_holidays'.tr(), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+          Text('upcoming_holidays'.tr(), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
           SizedBox(height: 8.h),
           ...holidays.map((h) => AppCard(
             child: ListTile(
               leading: Icon(AppIcons.leave, color: AppColors.accent),
-              title: Text(h.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-              trailing: Text(df.format(h.date), style: TextStyle(fontSize: 12.sp, color: AppColors.textPrimary)),
+              title: Text(h.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp, color: AppColors.textPrimary)),
+              trailing: Text(df.format(h.date), style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)),
             ),
           )),
           SizedBox(height: 16.h),
