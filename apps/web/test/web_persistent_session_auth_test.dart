@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:hr_core/core/enums/role_enums.dart';
 import 'package:hr_core/core/services/token_storage.dart';
-import '../lib/core/bloc/session_cubit.dart';
+import 'package:hr_web/core/bloc/session_cubit.dart';
 
 class MockTokenStorage implements TokenStorage {
   String? accessToken;

@@ -7,8 +7,8 @@ import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/shell/presentation/pages/desktop_shell.dart';
 import '../../features/shell/presentation/pages/dashboard_screen.dart';
 import '../../features/approvals/presentation/pages/approvals_screen.dart';
-import '../../features/overtime/presentation/pages/overtime_approvals_screen.dart';
-import '../../features/hr_reports/presentation/pages/hr_reports_screen.dart';
+import '../../features/approvals/presentation/pages/overtime_approvals_screen.dart';
+import '../../features/reports/presentation/pages/hr_reports_screen.dart';
 import '../../features/team_kpi/presentation/pages/team_kpi_screen.dart';
 import '../../features/payroll/presentation/pages/payroll_screen.dart';
 import '../../features/recruitment/presentation/pages/recruitment_screen.dart';
@@ -30,17 +30,15 @@ final GlobalKey<NavigatorState> _shellNavigatorKey =
 String _firstRouteForRole(UserRole role) {
   switch (role) {
     case UserRole.teamLead:
-      return AppRoutes.approvals;
     case UserRole.manager:
-      return AppRoutes.approvals;
+      return AppRoutes.overtimeApprovals;
     case UserRole.hrAdmin:
-      return AppRoutes.approvals;
     case UserRole.superAdmin:
+      return AppRoutes.hrReports;
+    case UserRole.cLevel:
       return AppRoutes.executiveDashboard;
     case UserRole.employee:
       return AppRoutes.dashboard;
-    case UserRole.cLevel:
-      return AppRoutes.executiveDashboard;
   }
 }
 
@@ -66,6 +64,28 @@ class AppRouter {
       // If logged in and on login page, redirect to role-appropriate first section
       if (sessionState.isAuthenticated && isLogin) {
         return _firstRouteForRole(sessionState.role ?? UserRole.employee);
+      }
+
+      // Role Protection Guards
+      if (sessionState.isAuthenticated) {
+        final role = sessionState.role ?? UserRole.employee;
+        final loc = state.matchedLocation;
+
+        // Employees cannot access overtime approvals, hr reports, or system config
+        if (role == UserRole.employee) {
+          if (loc == AppRoutes.overtimeApprovals ||
+              loc == AppRoutes.hrReports ||
+              loc == AppRoutes.systemConfig) {
+            return AppRoutes.dashboard;
+          }
+        }
+
+        // Team Leads cannot access HR reports or System Config
+        if (role == UserRole.teamLead) {
+          if (loc == AppRoutes.hrReports || loc == AppRoutes.systemConfig) {
+            return AppRoutes.overtimeApprovals;
+          }
+        }
       }
 
       return null;
@@ -98,7 +118,10 @@ class AppRouter {
           GoRoute(
             path: AppRoutes.overtimeApprovals,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const OvertimeApprovalsScreen(),
+            builder: (context, state) {
+              final role = context.read<SessionCubit>().state.role ?? UserRole.employee;
+              return OvertimeApprovalsScreen(userRole: role);
+            },
           ),
           GoRoute(
             path: AppRoutes.hrReports,

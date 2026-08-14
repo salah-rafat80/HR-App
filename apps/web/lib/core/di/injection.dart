@@ -33,6 +33,8 @@ import 'package:hr_core/features/executive/data/repositories/executive_repositor
 import 'package:hr_core/features/executive/domain/repositories/executive_repository.dart';
 import 'package:hr_core/features/engagement/data/repositories/engagement_repository_impl.dart';
 import 'package:hr_core/features/engagement/domain/repositories/engagement_repository.dart';
+import 'package:hr_core/features/admin/domain/repositories/hr_report_repository.dart';
+import 'package:hr_core/features/admin/data/repositories/hr_report_repository_impl.dart';
 
 import 'package:hr_core/core/services/token_storage.dart';
 import '../bloc/session_cubit.dart';
@@ -108,6 +110,7 @@ Future<void> initDI({String? overrideBaseUrl}) async {
   getIt.registerLazySingleton<SystemConfigRepository>(() => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
   getIt.registerLazySingleton<OffboardingRepository>(() => OffboardingRepositoryImpl(getIt<FakeOffboardingDataSource>()));
   getIt.registerLazySingleton<EngagementRepository>(() => EngagementRepositoryImpl(getIt<FakeEngagementDataSource>()));
+  getIt.registerLazySingleton<HrReportRepository>(() => ApiHrReportRepositoryImpl(getIt<Dio>()));
   
   // Executive Repo requires multiple data sources
   getIt.registerLazySingleton<ExecutiveRepository>(() => ExecutiveRepositoryImpl(
