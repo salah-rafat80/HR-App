@@ -39,6 +39,12 @@ ALTER TABLE "OvertimeRequest"
   ADD COLUMN "hrDecisionAt" TIMESTAMP(3),
   ADD COLUMN "hrComment" TEXT;
 
+-- Update column default for status to pending_team_lead (preserves historical rows while setting new default)
+ALTER TABLE "OvertimeRequest" ALTER COLUMN "status" SET DEFAULT 'pending_team_lead';
+
+-- Allow hoursRequested to be NULL so new workflow uses requestedMinutes without duplicate float requirements
+ALTER TABLE "OvertimeRequest" ALTER COLUMN "hoursRequested" DROP NOT NULL;
+
 -- Foreign key for AttendanceRecord relation
 ALTER TABLE "OvertimeRequest" 
   ADD CONSTRAINT "OvertimeRequest_attendanceRecordId_fkey" 
@@ -61,6 +67,13 @@ ALTER TABLE "OvertimeRequest"
 CREATE INDEX "OvertimeRequest_userId_date_idx" ON "OvertimeRequest"("userId", "date");
 CREATE INDEX "OvertimeRequest_status_date_idx" ON "OvertimeRequest"("status", "date");
 CREATE INDEX "OvertimeRequest_teamLeadId_status_date_idx" ON "OvertimeRequest"("teamLeadId", "status", "date");
+
+-- Partial unique index to prevent concurrent duplicate active overtime requests for the same user on the same date.
+-- This prevents race conditions where an employee clicks submit twice simultaneously while allowing historical
+-- rejected, cancelled, expired, or completed requests for the same date.
+CREATE UNIQUE INDEX "OvertimeRequest_one_active_per_user_date_key"
+ON "OvertimeRequest"("userId", "date")
+WHERE "status" IN ('pending_team_lead', 'pending_hr', 'approved');
 
 -- -----------------------------------------------------------------------------
 -- 3. Create OvertimeSession Table

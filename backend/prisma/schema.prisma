@@ -245,6 +245,11 @@ model OvertimeRequest {
   @@index([userId, date])
   @@index([status, date])
   @@index([teamLeadId, status, date])
+  // ARTIFACT ONLY — partial unique index to prevent concurrent duplicate active requests for the same user and date.
+  // Prisma cannot represent partial unique indexes natively in DSL, so it is enforced via migration DDL:
+  // CREATE UNIQUE INDEX "OvertimeRequest_one_active_per_user_date_key"
+  // ON "OvertimeRequest"("userId", "date")
+  // WHERE "status" IN ('pending_team_lead', 'pending_hr', 'approved');
 }
 
 model OvertimeSession {
