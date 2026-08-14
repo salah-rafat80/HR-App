@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
+import 'package:hr_core/features/admin/domain/repositories/hr_report_repository.dart';
 
 import 'app_routes.dart';
+import '../di/injection.dart';
 import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/shell/presentation/pages/desktop_shell.dart';
 import '../../features/shell/presentation/pages/dashboard_screen.dart';
 import '../../features/approvals/presentation/pages/approvals_screen.dart';
 import '../../features/approvals/presentation/pages/overtime_approvals_screen.dart';
+import '../../features/approvals/presentation/bloc/overtime_approvals_cubit.dart';
 import '../../features/reports/presentation/pages/hr_reports_screen.dart';
+import '../../features/reports/presentation/bloc/hr_reports_cubit.dart';
 import '../../features/team_kpi/presentation/pages/team_kpi_screen.dart';
 import '../../features/payroll/presentation/pages/payroll_screen.dart';
 import '../../features/recruitment/presentation/pages/recruitment_screen.dart';
@@ -119,14 +124,23 @@ class AppRouter {
             path: AppRoutes.overtimeApprovals,
             parentNavigatorKey: _shellNavigatorKey,
             builder: (context, state) {
-              final role = context.read<SessionCubit>().state.role ?? UserRole.employee;
-              return OvertimeApprovalsScreen(userRole: role);
+              final role =
+                  context.read<SessionCubit>().state.role ?? UserRole.employee;
+              return BlocProvider(
+                create: (_) => OvertimeApprovalsCubit(
+                  getIt<AttendanceRepository>(),
+                ),
+                child: OvertimeApprovalsScreen(userRole: role),
+              );
             },
           ),
           GoRoute(
             path: AppRoutes.hrReports,
             parentNavigatorKey: _shellNavigatorKey,
-            builder: (context, state) => const HrReportsScreen(),
+            builder: (context, state) => BlocProvider(
+              create: (_) => HrReportsCubit(getIt<HrReportRepository>()),
+              child: const HrReportsScreen(),
+            ),
           ),
           GoRoute(
             path: AppRoutes.teamKpi,
