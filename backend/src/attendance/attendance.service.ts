@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -182,6 +183,19 @@ export class AttendanceService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    let record = await this.prisma.attendanceRecord.findFirst({
+      where: { userId, date: today },
+    });
+
+    if (record) {
+      if (record.clockOutTime !== null) {
+        throw new ConflictException('Today attendance is closed');
+      }
+      if (record.clockInTime !== null) {
+        throw new ConflictException('Employee is already clocked in today');
+      }
+    }
+
     const geofence = await this.checkGeofence(
       data.lat,
       data.lng,
@@ -195,10 +209,6 @@ export class AttendanceService {
     }
 
     const locationLabel = geofence.nearestBranch;
-
-    let record = await this.prisma.attendanceRecord.findFirst({
-      where: { userId, date: today },
-    });
 
     const updateData = {
       clockInTime: new Date(),
@@ -283,6 +293,14 @@ export class AttendanceService {
 
     if (!record) {
       throw new NotFoundException('No clock-in record found for today');
+    }
+
+    if (record.clockInTime === null) {
+      throw new ConflictException('No active clock-in exists today');
+    }
+
+    if (record.clockOutTime !== null) {
+      throw new ConflictException('Employee is already clocked out today');
     }
 
     const updated = await this.prisma.attendanceRecord.update({

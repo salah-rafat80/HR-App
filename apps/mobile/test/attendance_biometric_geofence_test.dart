@@ -90,6 +90,8 @@ class MockAttendanceRepository implements AttendanceRepository {
     return preflightResult;
   }
 
+  bool shouldThrowConflictOnClockIn = false;
+
   @override
   Future<AttendanceRecord> clockIn({
     required AttendanceStatus mode,
@@ -97,6 +99,10 @@ class MockAttendanceRepository implements AttendanceRepository {
     required double lng,
     required double accuracy,
   }) async {
+    if (shouldThrowConflictOnClockIn) {
+      throw Exception(
+          'HTTP 409 Conflict: Employee is already clocked in today');
+    }
     clockInCallCount++;
     lastClockInLat = lat;
     lastClockInLng = lng;
@@ -390,6 +396,68 @@ void main() {
       expect(repo.clockInCallCount, equals(1));
 
       await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets(
+        '11. Closed-day record renders a non-actionable completed state',
+        (tester) async {
+      repo.todayRecord = AttendanceRecord(
+        date: DateTime(2026, 8, 14),
+        clockInTime: DateTime(2026, 8, 14, 9, 0),
+        clockOutTime: DateTime(2026, 8, 14, 17, 0),
+        status: AttendanceStatus.present,
+        locationLabel: 'Main Office',
+      );
+      await cubit.loadAttendanceData();
+
+      await tester.pumpWidget(createWidgetUnderTest(
+        cubit: cubit,
+        biometricService: biometric,
+        locationService: location,
+      ));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Attendance completed for today'), findsOneWidget);
+      expect(find.byType(AnimatedClockButton), findsNothing);
+    });
+
+    testWidgets(
+        '12. Tapping completed state triggers zero GPS, preflight, biometric, or POST calls',
+        (tester) async {
+      repo.todayRecord = AttendanceRecord(
+        date: DateTime(2026, 8, 14),
+        clockInTime: DateTime(2026, 8, 14, 9, 0),
+        clockOutTime: DateTime(2026, 8, 14, 17, 0),
+        status: AttendanceStatus.present,
+        locationLabel: 'Main Office',
+      );
+      await cubit.loadAttendanceData();
+
+      await tester.pumpWidget(createWidgetUnderTest(
+        cubit: cubit,
+        biometricService: biometric,
+        locationService: location,
+      ));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Attendance completed for today'));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(location.fixCallCount, equals(0));
+      expect(repo.preflightCallCount, equals(0));
+      expect(biometric.authCallCount, equals(0));
+      expect(repo.clockInCallCount, equals(0));
+    });
+
+    test('13. API 409 does not show a false success state', () async {
+      await cubit.loadAttendanceData();
+
+      repo.shouldThrowConflictOnClockIn = true;
+
+      final res =
+          await cubit.clockIn(lat: 24.7136, lng: 46.6753, accuracy: 10.0);
+      expect(res, isNull);
+      expect(repo.todayRecord.clockInTime, isNull);
     });
   });
 }

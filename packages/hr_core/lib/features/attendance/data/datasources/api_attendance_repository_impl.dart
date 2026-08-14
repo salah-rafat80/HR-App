@@ -12,15 +12,23 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
 
   @override
   Future<AttendanceRecord> getTodayStatus() async {
-    final response = await dio.get('/attendance/today');
-    if (response.data == null || response.data is! Map) {
+    try {
+      final response = await dio.get('/attendance/today');
+      if (response.data == null || response.data is! Map) {
+        return AttendanceRecord(
+          date: DateTime.now(),
+          status: AttendanceStatus.none,
+          locationLabel: 'none',
+        );
+      }
+      return AttendanceRecord.fromJson(response.data as Map<String, dynamic>);
+    } catch (_) {
       return AttendanceRecord(
         date: DateTime.now(),
         status: AttendanceStatus.none,
         locationLabel: 'none',
       );
     }
-    return AttendanceRecord.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Geofence preflight — GET /attendance/geofence-status
@@ -39,6 +47,14 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
         'accuracy': accuracy,
       },
     );
+    if (response.data == null || response.data is! Map) {
+      return const GeofenceStatus(
+        withinRange: false,
+        distanceMeters: 0.0,
+        allowedRadiusMeters: 200.0,
+        nearestBranch: null,
+      );
+    }
     final data = response.data as Map<String, dynamic>;
     return GeofenceStatus(
       withinRange: (data['withinRange'] as bool?) ?? false,
@@ -75,16 +91,37 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
 
   @override
   Future<List<AttendanceRecord>> getHistory() async {
-    final response = await dio.get('/attendance/history');
-    return (response.data as List)
-        .map((e) => AttendanceRecord.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final response = await dio.get('/attendance/history');
+      if (response.data == null || response.data is! List) {
+        return [];
+      }
+      return (response.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map((e) => AttendanceRecord.fromJson(e))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   @override
   Future<ShiftInfo> getShift() async {
-    final response = await dio.get('/attendance/shift');
-    return ShiftInfo.fromJson(response.data as Map<String, dynamic>);
+    final now = DateTime.now();
+    final defaultShift = ShiftInfo(
+      name: 'Standard Shift',
+      startTime: DateTime(now.year, now.month, now.day, 9, 0),
+      endTime: DateTime(now.year, now.month, now.day, 17, 0),
+    );
+    try {
+      final response = await dio.get('/attendance/shift');
+      if (response.data == null || response.data is! Map) {
+        return defaultShift;
+      }
+      return ShiftInfo.fromJson(response.data as Map<String, dynamic>);
+    } catch (_) {
+      return defaultShift;
+    }
   }
 
   @override
@@ -97,10 +134,18 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
 
   @override
   Future<List<OvertimeRequest>> getOvertimeRequests() async {
-    final response = await dio.get('/attendance/overtime');
-    return (response.data as List)
-        .map((e) => OvertimeRequest.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final response = await dio.get('/attendance/overtime');
+      if (response.data == null || response.data is! List) {
+        return [];
+      }
+      return (response.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map((e) => OvertimeRequest.fromJson(e))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   @override

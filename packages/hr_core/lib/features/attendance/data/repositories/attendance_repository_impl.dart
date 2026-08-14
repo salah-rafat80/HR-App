@@ -6,74 +6,55 @@ import '../../domain/repositories/attendance_repository.dart';
 import '../datasources/fake_attendance_datasource.dart';
 
 class AttendanceRepositoryImpl implements AttendanceRepository {
-  final FakeAttendanceDataSource _dataSource;
+  final AttendanceRepository _delegate;
 
-  AttendanceRepositoryImpl(this._dataSource);
+  AttendanceRepositoryImpl([AttendanceRepository? delegate])
+      : _delegate = delegate ?? FakeAttendanceRepository();
 
   @override
-  Future<void> clockIn({
-    required String locationLabel,
+  Future<AttendanceRecord> getTodayStatus() => _delegate.getTodayStatus();
+
+  @override
+  Future<GeofenceStatus> preflightGeofence({
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      _delegate.preflightGeofence(lat: lat, lng: lng, accuracy: accuracy);
+
+  @override
+  Future<AttendanceRecord> clockIn({
     required AttendanceStatus mode,
-    double? lat,
-    double? lng,
-    double? accuracy,
-  }) {
-    return _dataSource.clockIn(
-      locationLabel: locationLabel,
-      mode: mode,
-      lat: lat,
-      lng: lng,
-      accuracy: accuracy,
-    );
-  }
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) =>
+      _delegate.clockIn(mode: mode, lat: lat, lng: lng, accuracy: accuracy);
 
   @override
-  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng}) {
-    return _dataSource.getGeofenceStatus(lat: lat, lng: lng);
-  }
+  Future<void> clockOut() => _delegate.clockOut();
 
   @override
-  Future<void> clockOut() {
-    return _dataSource.clockOut();
-  }
+  Future<List<AttendanceRecord>> getHistory() => _delegate.getHistory();
 
   @override
-  Future<void> endBreak() {
-    return _dataSource.endBreak();
-  }
+  Future<ShiftInfo> getShift() => _delegate.getShift();
 
   @override
-  Future<List<AttendanceRecord>> getHistory() {
-    return _dataSource.getHistory();
-  }
+  Future<void> requestOvertime(double hours, String reason) =>
+      _delegate.requestOvertime(hours, reason);
 
   @override
-  Future<ShiftInfo> getShift() {
-    return _dataSource.getShift();
-  }
+  Future<List<OvertimeRequest>> getOvertimeRequests() =>
+      _delegate.getOvertimeRequests();
 
   @override
-  Future<AttendanceRecord> getTodayStatus() {
-    return _dataSource.getTodayStatus();
-  }
+  Future<void> updateTodayMode(AttendanceStatus mode) =>
+      _delegate.updateTodayMode(mode);
 
   @override
-  Future<void> requestOvertime(double hours, String reason) {
-    return _dataSource.requestOvertime(hours, reason);
-  }
+  Future<void> startBreak() => _delegate.startBreak();
 
   @override
-  Future<List<OvertimeRequest>> getOvertimeRequests() {
-    return _dataSource.getOvertimeRequests();
-  }
-
-  @override
-  Future<void> updateTodayMode(AttendanceStatus mode) {
-    return _dataSource.updateTodayMode(mode);
-  }
-
-  @override
-  Future<void> startBreak() {
-    return _dataSource.startBreak();
-  }
+  Future<void> endBreak() => _delegate.endBreak();
 }

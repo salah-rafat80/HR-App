@@ -141,6 +141,8 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     if (cubit.state is! AttendanceLoaded) return;
     final state = cubit.state as AttendanceLoaded;
 
+    if (state.todayStatus.clockOutTime != null) return;
+
     // In-flight guard: cover the ENTIRE user action
     if (state.isCheckingIn) return;
 
@@ -191,6 +193,13 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
             nearestBranch: preflight.nearestBranch,
           );
         });
+      }
+
+      if (preflight.outcome == PreflightOutcome.serverError) {
+        _showErrorSnackBar(
+          'Server connection error. If Render backend is sleeping, please try again in a few seconds.',
+        );
+        return;
       }
 
       if (preflight.outcome != PreflightOutcome.inRange) {
@@ -246,6 +255,12 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
   }
 
   Future<void> _handleClockOut() async {
+    final cubit = context.read<AttendanceCubit>();
+    if (cubit.state is! AttendanceLoaded) return;
+    final state = cubit.state as AttendanceLoaded;
+
+    if (state.todayStatus.clockOutTime != null) return;
+
     final biometricAvailable = await _biometric.isBiometricAvailable();
     if (biometricAvailable) {
       final auth = await _biometric.authenticateBiometricOnly(
@@ -254,7 +269,7 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
       if (!auth || !mounted) return;
     }
     if (!mounted) return;
-    context.read<AttendanceCubit>().clockOut();
+    await cubit.clockOut();
   }
 
   void _showErrorSnackBar(String message) {
@@ -364,12 +379,37 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
         }
       },
       builder: (context, state) {
+        if (state is AttendanceError) {
+          return Container(
+            height: 220,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.cloud_off, color: Colors.orangeAccent, size: 40),
+                const SizedBox(height: 10),
+                const Text(
+                  'Failed to load attendance status',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () =>
+                      context.read<AttendanceCubit>().loadAttendanceData(),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
         if (state is! AttendanceLoaded) return const AppLoader();
 
         final todayRec = state.todayStatus;
         final isClockedIn =
             todayRec.clockInTime != null && todayRec.clockOutTime == null;
-        final isActionable = !state.isCheckingIn;
+        final isDayCompleted = todayRec.clockOutTime != null;
+        final isActionable = !state.isCheckingIn && !isDayCompleted;
 
         int streak = _calculateStreak(state.history);
         if (todayRec.clockInTime != null) streak++;
@@ -442,14 +482,44 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
                     ],
                   ),
                   SizedBox(height: 32.h),
-                  AnimatedClockButton(
-                    isClockedIn: isClockedIn,
-                    isActionable: isActionable,
-                    justClockedIn: _justClockedIn,
-                    clockInTime: todayRec.clockInTime,
-                    onTap: () =>
-                        isClockedIn ? _handleClockOut() : _handleClockIn(),
-                  ),
+                  if (isDayCompleted)
+                    Container(
+                      key: const Key('completed_day_badge'),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 24.w, vertical: 18.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle_rounded,
+                              color: Colors.greenAccent, size: 24),
+                          SizedBox(width: 8.w),
+                          Flexible(
+                            child: Text(
+                              'Attendance completed for today',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    AnimatedClockButton(
+                      isClockedIn: isClockedIn,
+                      isActionable: isActionable,
+                      justClockedIn: _justClockedIn,
+                      clockInTime: todayRec.clockInTime,
+                      onTap: () =>
+                          isClockedIn ? _handleClockOut() : _handleClockIn(),
+                    ),
                   SizedBox(height: 32.h),
                   LocationStatusIndicator(
                     isLoadingLocation: _isLoadingLocation,

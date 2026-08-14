@@ -2,6 +2,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   ValidationPipe,
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
@@ -331,6 +332,141 @@ describe('AttendanceService (unit)', () => {
     const serialised = JSON.stringify(record);
     expect(serialised).not.toContain('fcmToken');
     expect(serialised).not.toContain('secret-token');
+  });
+
+  describe('Single-Shift Attendance Lifecycle Enforcement', () => {
+    it('a) first clock-in succeeds when no record exists today', async () => {
+      prisma.attendanceRecord.findFirst.mockResolvedValue(null);
+      const record = await service.clockIn('user-1', {
+        mode: AttendanceStatus.present,
+        lat: INSIDE_LAT,
+        lng: INSIDE_LNG,
+        accuracy: INSIDE_ACCURACY,
+      });
+      expect(record.clockInTime).not.toBeNull();
+      expect(prisma.attendanceRecord.create).toHaveBeenCalled();
+    });
+
+    it('b) duplicate clock-in while day is open returns 409 and does not update or send FCM', async () => {
+      const existingOpenRecord = {
+        id: 'rec-open',
+        userId: 'user-1',
+        date: new Date(),
+        clockInTime: new Date(Date.now() - 3600000),
+        clockOutTime: null,
+        status: AttendanceStatus.present,
+        locationLabel: 'Main Office',
+        distanceMeters: 10,
+      };
+      prisma.attendanceRecord.findFirst.mockResolvedValue(
+        existingOpenRecord as any,
+      );
+
+      await expect(
+        service.clockIn('user-1', {
+          mode: AttendanceStatus.present,
+          lat: INSIDE_LAT,
+          lng: INSIDE_LNG,
+          accuracy: INSIDE_ACCURACY,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(prisma.attendanceRecord.update).not.toHaveBeenCalled();
+      expect(prisma.attendanceRecord.create).not.toHaveBeenCalled();
+      expect(notifications.sendToDevice).not.toHaveBeenCalled();
+    });
+
+    it('c) clock-out from an open record succeeds exactly once', async () => {
+      const existingOpenRecord = {
+        id: 'rec-open',
+        userId: 'user-1',
+        date: new Date(),
+        clockInTime: new Date(Date.now() - 3600000),
+        clockOutTime: null,
+        status: AttendanceStatus.present,
+        locationLabel: 'Main Office',
+      };
+      prisma.attendanceRecord.findFirst.mockResolvedValue(
+        existingOpenRecord as any,
+      );
+      prisma.attendanceRecord.update.mockImplementation(
+        (args: { data: { clockOutTime: Date } }) =>
+          Promise.resolve({
+            ...existingOpenRecord,
+            clockOutTime: args.data.clockOutTime,
+          } as any),
+      );
+
+      const updated = await service.clockOut('user-1');
+      expect(updated.clockOutTime).not.toBeNull();
+      expect(prisma.attendanceRecord.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'rec-open' },
+          data: expect.objectContaining({ clockOutTime: expect.any(Date) }),
+        }),
+      );
+    });
+
+    it('d) duplicate clock-out returns 409 and preserves original clockOutTime', async () => {
+      const closedRecord = {
+        id: 'rec-closed',
+        userId: 'user-1',
+        date: new Date(),
+        clockInTime: new Date(Date.now() - 7200000),
+        clockOutTime: new Date(Date.now() - 3600000),
+        status: AttendanceStatus.present,
+        locationLabel: 'Main Office',
+      };
+      prisma.attendanceRecord.findFirst.mockResolvedValue(closedRecord as any);
+
+      await expect(service.clockOut('user-1')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(prisma.attendanceRecord.update).not.toHaveBeenCalled();
+    });
+
+    it('e) clock-in after clock-out returns 409 and preserves original record', async () => {
+      const closedRecord = {
+        id: 'rec-closed',
+        userId: 'user-1',
+        date: new Date(),
+        clockInTime: new Date(Date.now() - 7200000),
+        clockOutTime: new Date(Date.now() - 3600000),
+        status: AttendanceStatus.present,
+        locationLabel: 'Main Office',
+      };
+      prisma.attendanceRecord.findFirst.mockResolvedValue(closedRecord as any);
+
+      await expect(
+        service.clockIn('user-1', {
+          mode: AttendanceStatus.present,
+          lat: INSIDE_LAT,
+          lng: INSIDE_LNG,
+          accuracy: INSIDE_ACCURACY,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(prisma.attendanceRecord.update).not.toHaveBeenCalled();
+      expect(prisma.attendanceRecord.create).not.toHaveBeenCalled();
+      expect(notifications.sendToDevice).not.toHaveBeenCalled();
+    });
+
+    it('f) all current-day lookups are scoped to the authenticated user', async () => {
+      await service.getTodayStatus('user-999');
+      expect(prisma.attendanceRecord.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ userId: 'user-999' }),
+        }),
+      );
+
+      prisma.attendanceRecord.findFirst.mockClear();
+      await expect(service.clockOut('user-888')).rejects.toThrow();
+      expect(prisma.attendanceRecord.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ userId: 'user-888' }),
+        }),
+      );
+    });
   });
 });
 
