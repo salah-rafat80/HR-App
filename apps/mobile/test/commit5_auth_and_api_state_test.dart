@@ -9,6 +9,7 @@ import 'package:hr_core/features/payroll/data/datasources/api_payroll_repository
 
 class MockTokenStorage implements TokenStorage {
   String? token;
+  String? refreshToken;
 
   @override
   Future<void> saveToken(String val) async => token = val;
@@ -16,6 +17,26 @@ class MockTokenStorage implements TokenStorage {
   Future<String?> getToken() async => token;
   @override
   Future<void> clearToken() async => token = null;
+
+  @override
+  Future<void> saveAccessToken(String val) async => token = val;
+  @override
+  Future<String?> getAccessToken() async => token;
+  @override
+  Future<void> clearAccessToken() async => token = null;
+
+  @override
+  Future<void> saveRefreshToken(String val) async => refreshToken = val;
+  @override
+  Future<String?> getRefreshToken() async => refreshToken;
+  @override
+  Future<void> clearRefreshToken() async => refreshToken = null;
+
+  @override
+  Future<void> clearAllTokens() async {
+    token = null;
+    refreshToken = null;
+  }
 }
 
 class FakeHttpClientAdapter implements HttpClientAdapter {

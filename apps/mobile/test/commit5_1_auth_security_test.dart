@@ -9,6 +9,7 @@ import 'package:hr_app_demo/core/di/injection.dart';
 
 class TestTokenStorage implements TokenStorage {
   String? token;
+  String? refreshToken;
   bool shouldThrowOnWrite = false;
 
   @override
@@ -24,6 +25,30 @@ class TestTokenStorage implements TokenStorage {
 
   @override
   Future<void> clearToken() async => token = null;
+
+  @override
+  Future<void> saveAccessToken(String val) async => saveToken(val);
+
+  @override
+  Future<String?> getAccessToken() async => getToken();
+
+  @override
+  Future<void> clearAccessToken() async => clearToken();
+
+  @override
+  Future<void> saveRefreshToken(String val) async => refreshToken = val;
+
+  @override
+  Future<String?> getRefreshToken() async => refreshToken;
+
+  @override
+  Future<void> clearRefreshToken() async => refreshToken = null;
+
+  @override
+  Future<void> clearAllTokens() async {
+    token = null;
+    refreshToken = null;
+  }
 }
 
 class FakeAdapter implements HttpClientAdapter {

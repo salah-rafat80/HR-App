@@ -242,7 +242,7 @@ class _AttendanceRequestsTabState extends State<AttendanceRequestsTab> {
                       _isArabic
                           ? 'لا توجد طلبات أوفر تايم.'
                           : 'No overtime requests.',
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(color: AppColors.textSecondary),
                     ),
                   ),
                 )
@@ -286,7 +286,7 @@ class _AttendanceRequestsTabState extends State<AttendanceRequestsTab> {
                 _isArabic
                     ? 'الطلب يمر بقائد الفريق ثم HR. لن يتاح البدء إلا بعد الانصراف الأساسي.'
                     : 'Team Lead then HR approval is required; start is enabled only after normal clock-out.',
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
               SizedBox(height: 16.h),
               Row(
@@ -411,7 +411,7 @@ class _OvertimeRequestCard extends StatelessWidget {
               request.requestedStartAt == null || request.requestedEndAt == null
                   ? dateFormat.format(request.submittedAt)
                   : '${dateFormat.format(request.requestedStartAt!)} → ${DateFormat('HH:mm').format(request.requestedEndAt!)} · ${request.requestedHours.toStringAsFixed(1)} ${isArabic ? 'ساعة' : 'hours'}',
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
             if (request.teamLeadComment?.isNotEmpty ?? false) ...[
               SizedBox(height: 6.h),

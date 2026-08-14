@@ -5,6 +5,7 @@ import 'package:hr_app_demo/core/bloc/session_cubit.dart';
 
 class TestTokenStorage implements TokenStorage {
   String? _token;
+  String? _refreshToken;
   TestTokenStorage(this._token);
 
   @override
@@ -13,6 +14,26 @@ class TestTokenStorage implements TokenStorage {
   Future<String?> getToken() async => _token;
   @override
   Future<void> clearToken() async => _token = null;
+
+  @override
+  Future<void> saveAccessToken(String token) async => _token = token;
+  @override
+  Future<String?> getAccessToken() async => _token;
+  @override
+  Future<void> clearAccessToken() async => _token = null;
+
+  @override
+  Future<void> saveRefreshToken(String token) async => _refreshToken = token;
+  @override
+  Future<String?> getRefreshToken() async => _refreshToken;
+  @override
+  Future<void> clearRefreshToken() async => _refreshToken = null;
+
+  @override
+  Future<void> clearAllTokens() async {
+    _token = null;
+    _refreshToken = null;
+  }
 }
 
 void main() {
