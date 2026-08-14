@@ -134,35 +134,47 @@ export class AttendanceService {
       where: { isActive: true },
     });
 
-    let nearestBranch: OfficeBranch | null = null;
-    let minDistance = Infinity;
-    let withinRange = false;
-    let allowedRadiusMeters = 200;
-
-    for (const branch of branches) {
-      const distance = this.getDistanceFromLatLonInM(
+    const candidates = branches.map((branch) => ({
+      branch,
+      distanceMeters: this.getDistanceFromLatLonInM(
         lat,
         lng,
         branch.latitude,
         branch.longitude,
-      );
+      ),
+    }));
 
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestBranch = branch;
-        allowedRadiusMeters = branch.radiusMeters;
-      }
-
-      if (distance + accuracy <= branch.radiusMeters) {
-        withinRange = true;
-      }
+    if (candidates.length === 0) {
+      return {
+        withinRange: false,
+        distanceMeters: 0,
+        allowedRadiusMeters: 200,
+        nearestBranch: 'Branch',
+      };
     }
 
+    const eligibleCandidates = candidates.filter(
+      (c) => c.distanceMeters + accuracy <= c.branch.radiusMeters,
+    );
+
+    if (eligibleCandidates.length > 0) {
+      eligibleCandidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
+      const matched = eligibleCandidates[0];
+      return {
+        withinRange: true,
+        distanceMeters: matched.distanceMeters,
+        allowedRadiusMeters: matched.branch.radiusMeters,
+        nearestBranch: matched.branch.name,
+      };
+    }
+
+    candidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
+    const nearestPhysical = candidates[0];
     return {
-      withinRange,
-      distanceMeters: minDistance === Infinity ? 0 : minDistance,
-      allowedRadiusMeters,
-      nearestBranch: nearestBranch ? nearestBranch.name : 'Branch',
+      withinRange: false,
+      distanceMeters: nearestPhysical.distanceMeters,
+      allowedRadiusMeters: nearestPhysical.branch.radiusMeters,
+      nearestBranch: nearestPhysical.branch.name,
     };
   }
 

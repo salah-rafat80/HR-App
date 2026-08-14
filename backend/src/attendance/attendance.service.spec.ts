@@ -52,7 +52,7 @@ function makePrisma(branchOverrides = {}) {
           clockInTime: new Date(),
           clockOutTime: null,
           status: 'present',
-          locationLabel: 'Main Office',
+          locationLabel: (args.data.locationLabel as string) || 'Main Office',
           distanceMeters: 50,
           clockInLat: args.data.clockInLat,
           clockInLng: args.data.clockInLng,
@@ -208,6 +208,44 @@ describe('AttendanceService (unit)', () => {
     expect(prisma.attendanceRecord.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ locationLabel: 'Main Office' }),
+      }),
+    );
+  });
+
+  it('selects nearest eligible branch when physically nearest branch is ineligible after accuracy margin', async () => {
+    // Branch A: physically ~11m away, radius 15m. Accuracy 10m -> 11 + 10 = 21 > 15 (Ineligible).
+    // Branch B: physically ~33m away, radius 100m. Accuracy 10m -> 33 + 10 = 43 <= 100 (Eligible).
+    const branchA = makeActiveBranch({
+      id: 'branch-a',
+      name: 'Small Annex',
+      latitude: 24.7137,
+      longitude: 46.6753,
+      radiusMeters: 15,
+    });
+    const branchB = makeActiveBranch({
+      id: 'branch-b',
+      name: 'Main HQ',
+      latitude: 24.7139,
+      longitude: 46.6753,
+      radiusMeters: 100,
+    });
+    prisma.officeBranch.findMany.mockResolvedValue([branchA, branchB]);
+
+    const res = await service.checkGeofence(24.7136, 46.6753, 10);
+    expect(res.withinRange).toBe(true);
+    expect(res.nearestBranch).toBe('Main HQ');
+    expect(res.allowedRadiusMeters).toBe(100);
+
+    const record = await service.clockIn('user-1', {
+      mode: AttendanceStatus.present,
+      lat: 24.7136,
+      lng: 46.6753,
+      accuracy: 10,
+    });
+    expect(record.locationLabel).toBe('Main HQ');
+    expect(prisma.attendanceRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locationLabel: 'Main HQ' }),
       }),
     );
   });

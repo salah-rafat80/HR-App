@@ -46,7 +46,6 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
   @override
   void initState() {
     super.initState();
-    _checkLocationStatus();
   }
 
   // ── Non-authoritative display refresh only ──────────────────────────────────
@@ -142,89 +141,107 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     if (cubit.state is! AttendanceLoaded) return;
     final state = cubit.state as AttendanceLoaded;
 
-    // In-flight guard: disable button while checking in
+    // In-flight guard: cover the ENTIRE user action
     if (state.isCheckingIn) return;
 
-    // 1. Obtain a fresh high-accuracy GPS fix
-    final enabled = await _location.isLocationServiceEnabled();
-    if (!enabled) {
-      _showErrorSnackBar('GPS disabled. Please turn on location services.');
-      return;
-    }
+    cubit.setCheckingIn(true);
 
-    final granted = await _location.requestPermission();
-    if (!granted) {
-      _showErrorSnackBar('Location permission denied.');
-      return;
-    }
+    try {
+      // 1. Obtain a fresh high-accuracy GPS fix
+      final enabled = await _location.isLocationServiceEnabled();
+      if (!enabled) {
+        _showErrorSnackBar('GPS disabled. Please turn on location services.');
+        return;
+      }
 
-    final pos = await _location.getCurrentPosition();
-    if (pos == null) {
-      _showErrorSnackBar('Unable to obtain a fresh GPS fix. Please retry.');
-      return;
-    }
+      final granted = await _location.requestPermission();
+      if (!granted) {
+        _showErrorSnackBar('Location permission denied.');
+        return;
+      }
 
-    if (pos.accuracy > 50) {
-      _showErrorSnackBar(
-          'GPS accuracy too low (${pos.accuracy.toStringAsFixed(0)}m). Must be ≤ 50m.');
-      return;
-    }
+      final pos = await _location.getCurrentPosition();
+      if (pos == null) {
+        _showErrorSnackBar('Unable to obtain a fresh GPS fix. Please retry.');
+        return;
+      }
 
-    // 2. Server geofence preflight call (GET /attendance/geofence-status)
-    final preflight = await cubit.preflightGeofence(
-      lat: pos.lat,
-      lng: pos.lng,
-      accuracy: pos.accuracy,
-    );
+      if (pos.accuracy > 50) {
+        _showErrorSnackBar(
+            'GPS accuracy too low (${pos.accuracy.toStringAsFixed(0)}m). Must be ≤ 50m.');
+        return;
+      }
 
-    if (!mounted) return;
-
-    if (preflight.outcome != PreflightOutcome.inRange) {
-      final branch = preflight.nearestBranch ?? 'office';
-      final dist = preflight.distanceMeters?.toStringAsFixed(0) ?? '?';
-      final radius = preflight.allowedRadiusMeters?.toStringAsFixed(0) ?? '200';
-      _showErrorSnackBar(
-        'You are $dist m away from $branch, outside allowed radius ($radius m).',
+      // 2. Server geofence preflight call (GET /attendance/geofence-status)
+      final preflight = await cubit.preflightGeofence(
+        lat: pos.lat,
+        lng: pos.lng,
+        accuracy: pos.accuracy,
       );
-      return;
-    }
 
-    // 3. Biometric Authentication (Biometric ONLY — no PIN/passcode fallback)
-    final biometricAvailable = await _biometric.isBiometricAvailable();
-    if (!biometricAvailable) {
-      _showErrorSnackBar(
-        'Biometric authentication is not available or enabled on this device.',
+      if (!mounted) return;
+
+      if (preflight.outcome == PreflightOutcome.inRange ||
+          preflight.outcome == PreflightOutcome.outOfRange) {
+        setState(() {
+          _geofenceStatus = GeofenceStatus(
+            withinRange: preflight.outcome == PreflightOutcome.inRange,
+            distanceMeters: preflight.distanceMeters ?? 0.0,
+            allowedRadiusMeters: preflight.allowedRadiusMeters ?? 200.0,
+            nearestBranch: preflight.nearestBranch,
+          );
+        });
+      }
+
+      if (preflight.outcome != PreflightOutcome.inRange) {
+        final branch = preflight.nearestBranch ?? 'office';
+        final dist = preflight.distanceMeters?.toStringAsFixed(0) ?? '?';
+        final radius = preflight.allowedRadiusMeters?.toStringAsFixed(0) ?? '200';
+        _showErrorSnackBar(
+          'You are $dist m away from $branch, outside allowed radius ($radius m).',
+        );
+        return;
+      }
+
+      // 3. Biometric Authentication (Biometric ONLY — no PIN/passcode fallback)
+      final biometricAvailable = await _biometric.isBiometricAvailable();
+      if (!biometricAvailable) {
+        _showErrorSnackBar(
+          'Biometric authentication is not available or enabled on this device.',
+        );
+        return;
+      }
+
+      final authenticated = await _biometric
+          .authenticateBiometricOnly('Please authenticate biometric to clock in');
+
+      if (!authenticated || !mounted) {
+        // Biometric cancelled or failed — DO NOT call clockIn API
+        return;
+      }
+
+      // 4. Send single clock-in request (POST /attendance/clock-in)
+      final record = await cubit.clockIn(
+        lat: pos.lat,
+        lng: pos.lng,
+        accuracy: pos.accuracy,
       );
-      return;
-    }
 
-    final authenticated = await _biometric
-        .authenticateBiometricOnly('Please authenticate biometric to clock in');
-
-    if (!authenticated || !mounted) {
-      // Biometric cancelled or failed — DO NOT call clockIn API
-      return;
-    }
-
-    // 4. Send single clock-in request (POST /attendance/clock-in)
-    final record = await cubit.clockIn(
-      lat: pos.lat,
-      lng: pos.lng,
-      accuracy: pos.accuracy,
-    );
-
-    // 5. Success confirmation based strictly on persisted server response
-    if (record != null && mounted) {
-      setState(() => _justClockedIn = true);
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _justClockedIn = false);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Attendance recorded at ${record.locationLabel}'),
-          backgroundColor: AppColors.success,
-        ),
-      );
+      // 5. Success confirmation based strictly on persisted server response
+      if (record != null && mounted) {
+        setState(() => _justClockedIn = true);
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _justClockedIn = false);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Attendance recorded at ${record.locationLabel}'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } finally {
+      cubit.setCheckingIn(false);
     }
   }
 

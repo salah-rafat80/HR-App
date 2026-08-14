@@ -31,7 +31,7 @@ class _LiveClockState extends State<LiveClock> {
 
   @override
   Widget build(BuildContext context) {
-    final format = DateFormat('hh:mm:ss a', context.locale.languageCode);
+    final format = DateFormat('hh:mm:ss a');
     final timeStr = format.format(_now);
     
     return AnimatedSwitcher(

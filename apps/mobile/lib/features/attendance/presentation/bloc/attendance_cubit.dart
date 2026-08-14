@@ -126,6 +126,14 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
     }
   }
 
+  /// Explicitly update [isCheckingIn] state to guard the entire user action flow
+  /// (GPS acquisition → preflight → biometric → POST clock-in).
+  void setCheckingIn(bool value) {
+    if (state is AttendanceLoaded && !isClosed) {
+      emit((state as AttendanceLoaded).copyWith(isCheckingIn: value));
+    }
+  }
+
   // ── Clock In ────────────────────────────────────────────────────────────────
 
   /// Called ONLY after:
@@ -142,12 +150,6 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
     required double accuracy,
   }) async {
     if (state is! AttendanceLoaded) return null;
-    final currentState = state as AttendanceLoaded;
-
-    // Guard: prevent double invocation
-    if (currentState.isCheckingIn) return null;
-
-    emit(currentState.copyWith(isCheckingIn: true));
 
     try {
       final persistedRecord = await _repository.clockIn(
@@ -157,8 +159,8 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
         accuracy: accuracy,
       );
 
-      if (!isClosed) {
-        emit(currentState.copyWith(
+      if (!isClosed && state is AttendanceLoaded) {
+        emit((state as AttendanceLoaded).copyWith(
           isCheckingIn: false,
           todayStatus: persistedRecord,
         ));
@@ -166,8 +168,8 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
       return persistedRecord;
     } catch (e) {
       debugPrint('[AttendanceCubit] clockIn failed: $e');
-      if (!isClosed) {
-        emit(currentState.copyWith(isCheckingIn: false));
+      if (!isClosed && state is AttendanceLoaded) {
+        emit((state as AttendanceLoaded).copyWith(isCheckingIn: false));
         emit(const AttendanceError('clock_in_failed'));
         loadAttendanceData();
       }

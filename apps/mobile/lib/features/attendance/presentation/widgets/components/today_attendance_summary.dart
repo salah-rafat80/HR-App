@@ -10,8 +10,11 @@ class TodayAttendanceSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = context.locale.languageCode == 'ar';
-    final timeFormat = DateFormat('hh:mm a', context.locale.languageCode);
+    bool isArabic = false;
+    try {
+      isArabic = context.locale.languageCode == 'ar';
+    } catch (_) {}
+    final timeFormat = DateFormat('hh:mm a');
     final inStr = timeFormat.format(todayRec.clockInTime!);
     final outStr = todayRec.clockOutTime != null
         ? timeFormat.format(todayRec.clockOutTime!)

@@ -75,6 +75,19 @@ class LocationStatusIndicator extends StatelessWidget {
         ],
       );
     }
-    return const SizedBox.shrink();
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.location_on_outlined, color: Colors.white70, size: 16.sp),
+        SizedBox(width: 6.w),
+        Flexible(
+          child: Text(
+            'Tap Clock In to verify location',
+            style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
   }
 }
