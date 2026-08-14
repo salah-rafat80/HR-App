@@ -8,6 +8,7 @@ import '../lib/core/bloc/session_cubit.dart';
 class MockTokenStorage implements TokenStorage {
   String? accessToken;
   String? refreshToken;
+  int clearAllTokensCallCount = 0;
 
   @override
   Future<void> saveAccessToken(String token) async => accessToken = token;
@@ -29,6 +30,7 @@ class MockTokenStorage implements TokenStorage {
 
   @override
   Future<void> clearAllTokens() async {
+    clearAllTokensCallCount++;
     accessToken = null;
     refreshToken = null;
   }
@@ -192,19 +194,19 @@ void main() {
       expect(await tokenStorage.getRefreshToken(), 'valid-refresh');
     });
 
-    test('6. Concurrent 401s trigger exactly one POST /auth/refresh and retry original request at most once', () async {
+    test('6. Concurrent 401s with invalid refresh token trigger exactly ONE POST /auth/refresh, ONE clearAllTokens, and ONE onUnauthenticated', () async {
       await tokenStorage.saveAccessToken('expired-access');
-      await tokenStorage.saveRefreshToken('valid-refresh');
+      await tokenStorage.saveRefreshToken('invalid-refresh');
 
       int refreshCallCount = 0;
-      bool unauthenticatedTriggered = false;
+      int onUnauthenticatedCount = 0;
 
       final mockDio = Dio(BaseOptions(baseUrl: 'https://test-api.com'));
       mockDio.interceptors.add(SingleFlightAuthInterceptor(
         dio: mockDio,
         tokenStorage: tokenStorage,
         onUnauthenticated: () async {
-          unauthenticatedTriggered = true;
+          onUnauthenticatedCount++;
         },
       ));
 
@@ -213,16 +215,147 @@ void main() {
           refreshCallCount++;
           await Future.delayed(const Duration(milliseconds: 50));
           return ResponseBody.fromString(
-            '{"access_token":"fresh-access-token","refresh_token":"fresh-refresh-token"}',
-            200,
+            '{"message":"Invalid refresh token"}',
+            401,
             headers: {
               Headers.contentTypeHeader: [Headers.jsonContentType],
             },
           );
         }
 
+        if (options.path == '/data1' || options.path == '/data2') {
+          return ResponseBody.fromString(
+            '{"message":"Unauthorized"}',
+            401,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          );
+        }
+
+        return ResponseBody.fromString('{}', 404);
+      });
+
+      Future<Object?> safeGet(String path) async {
+        try {
+          return await mockDio.get(path);
+        } catch (e) {
+          return e;
+        }
+      }
+
+      await Future.wait([safeGet('/data1'), safeGet('/data2')]);
+
+      expect(refreshCallCount, 1);
+      expect(tokenStorage.clearAllTokensCallCount, 1);
+      expect(onUnauthenticatedCount, 1);
+      expect(await tokenStorage.getAccessToken(), isNull);
+      expect(await tokenStorage.getRefreshToken(), isNull);
+    });
+
+    test('7. Concurrent 401s while refresh receives timeout/5xx/malformed body execute ONE refresh attempt, ZERO clearAllTokens, and ZERO onUnauthenticated', () async {
+      await tokenStorage.saveAccessToken('expired-access');
+      await tokenStorage.saveRefreshToken('valid-refresh');
+
+      int refreshCallCount = 0;
+      int onUnauthenticatedCount = 0;
+
+      final mockDio = Dio(BaseOptions(baseUrl: 'https://test-api.com'));
+      mockDio.interceptors.add(SingleFlightAuthInterceptor(
+        dio: mockDio,
+        tokenStorage: tokenStorage,
+        onUnauthenticated: () async {
+          onUnauthenticatedCount++;
+        },
+      ));
+
+      mockDio.httpClientAdapter = MockHttpClientAdapter((options) async {
+        if (options.path == '/auth/refresh') {
+          refreshCallCount++;
+          await Future.delayed(const Duration(milliseconds: 50));
+          return ResponseBody.fromString(
+            'Internal Server Error',
+            500,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          );
+        }
+
+        if (options.path == '/data1' || options.path == '/data2') {
+          return ResponseBody.fromString(
+            '{"message":"Unauthorized"}',
+            401,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          );
+        }
+
+        return ResponseBody.fromString('{}', 404);
+      });
+
+      Future<Object?> safeGet(String path) async {
+        try {
+          return await mockDio.get(path);
+        } catch (e) {
+          return e;
+        }
+      }
+
+      final results = await Future.wait([safeGet('/data1'), safeGet('/data2')]);
+
+      expect(refreshCallCount, 1);
+      expect(tokenStorage.clearAllTokensCallCount, 0);
+      expect(onUnauthenticatedCount, 0);
+      expect(await tokenStorage.getAccessToken(), 'expired-access');
+      expect(await tokenStorage.getRefreshToken(), 'valid-refresh');
+      expect(results[0], isA<DioException>());
+      expect(results[1], isA<DioException>());
+    });
+
+    test('8. Later independent refresh cycle succeeds normally after a previous network failure', () async {
+      await tokenStorage.saveAccessToken('expired-access');
+      await tokenStorage.saveRefreshToken('valid-refresh');
+
+      int refreshCallCount = 0;
+      int onUnauthenticatedCount = 0;
+
+      final mockDio = Dio(BaseOptions(baseUrl: 'https://test-api.com'));
+      mockDio.interceptors.add(SingleFlightAuthInterceptor(
+        dio: mockDio,
+        tokenStorage: tokenStorage,
+        onUnauthenticated: () async {
+          onUnauthenticatedCount++;
+        },
+      ));
+
+      mockDio.httpClientAdapter = MockHttpClientAdapter((options) async {
+        if (options.path == '/auth/refresh') {
+          refreshCallCount++;
+          if (refreshCallCount == 1) {
+            // First refresh attempt fails with 503 Service Unavailable
+            return ResponseBody.fromString(
+              'Service Unavailable',
+              503,
+              headers: {
+                Headers.contentTypeHeader: [Headers.jsonContentType],
+              },
+            );
+          } else {
+            // Second refresh attempt succeeds
+            return ResponseBody.fromString(
+              '{"access_token":"new-fresh-access-token","refresh_token":"new-fresh-refresh-token"}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: [Headers.jsonContentType],
+              },
+            );
+          }
+        }
+
         if (options.path == '/data') {
-          if (options.headers['Authorization'] != 'Bearer fresh-access-token') {
+          if (options.headers['Authorization'] != 'Bearer new-fresh-access-token') {
             return ResponseBody.fromString(
               '{"message":"Unauthorized"}',
               401,
@@ -244,16 +377,28 @@ void main() {
         return ResponseBody.fromString('{}', 404);
       });
 
-      final req1 = mockDio.get('/data');
-      final req2 = mockDio.get('/data');
-
-      final results = await Future.wait([req1, req2]);
+      // Cycle 1: Refresh fails with 503
+      try {
+        await mockDio.get('/data');
+      } catch (e) {
+        expect(e, isA<DioException>());
+      }
 
       expect(refreshCallCount, 1);
-      expect(results[0].data['success'], true);
-      expect(results[1].data['success'], true);
-      expect(unauthenticatedTriggered, false);
-      expect(await tokenStorage.getAccessToken(), 'fresh-access-token');
+      expect(tokenStorage.clearAllTokensCallCount, 0);
+      expect(onUnauthenticatedCount, 0);
+      expect(await tokenStorage.getAccessToken(), 'expired-access');
+
+      // Cycle 2: Independent later request triggers a fresh refresh cycle and succeeds
+      final response = await mockDio.get('/data');
+
+      expect(refreshCallCount, 2);
+      expect(response.statusCode, 200);
+      expect(response.data['success'], true);
+      expect(await tokenStorage.getAccessToken(), 'new-fresh-access-token');
+      expect(await tokenStorage.getRefreshToken(), 'new-fresh-refresh-token');
+      expect(tokenStorage.clearAllTokensCallCount, 0);
+      expect(onUnauthenticatedCount, 0);
     });
   });
 }
