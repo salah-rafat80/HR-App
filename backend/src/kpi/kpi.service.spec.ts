@@ -28,13 +28,16 @@ interface MockMethod<T> {
   (args?: unknown): Promise<T>;
   mockResolvedValue: (v: T) => void;
   mockResolvedValueOnce: (v: T) => void;
+  calls: unknown[];
 }
 
 function createMockMethod<T>(initialValue: T): MockMethod<T> {
   let defaultValue = initialValue;
   const queue: T[] = [];
+  const calls: unknown[] = [];
 
-  const fn = ((): Promise<T> => {
+  const fn = ((args?: unknown): Promise<T> => {
+    calls.push(args);
     if (queue.length > 0) {
       const item = queue.shift();
       if (item !== undefined) return Promise.resolve(item);
@@ -42,6 +45,7 @@ function createMockMethod<T>(initialValue: T): MockMethod<T> {
     return Promise.resolve(defaultValue);
   }) as MockMethod<T>;
 
+  fn.calls = calls;
   fn.mockResolvedValue = (v: T) => {
     defaultValue = v;
   };
@@ -213,6 +217,8 @@ describe('KpiService', () => {
         'manager',
       );
       expect(members).toEqual([]);
+      expect(prismaMock.leaveRequest.findMany.calls).toHaveLength(0);
+      expect(prismaMock.attendanceRecord.findMany.calls).toHaveLength(0);
     });
 
     it('scopes manager query ONLY to resolved managed employee IDs and excludes unrelated employees', async () => {
@@ -243,6 +249,32 @@ describe('KpiService', () => {
 
       expect(members).toHaveLength(1);
       expect(members[0].id).toEqual('emp-1');
+
+      // Assert the FINAL prisma.user.findMany call explicitly uses: where: { id: { in: ['emp-1'] }, role: 'employee' }
+      const lastUserCall = prismaMock.user.findMany.calls[
+        prismaMock.user.findMany.calls.length - 1
+      ] as { where: { id: { in: string[] }; role: string } };
+
+      expect(lastUserCall.where.id).toEqual({ in: ['emp-1'] });
+      expect(lastUserCall.where.role).toEqual('employee');
+
+      // Assert that an unrelated ID such as emp-99 is not present in the `in` array
+      expect(lastUserCall.where.id.in).not.toContain('emp-99');
+
+      // Assert leaveRequest.findMany and attendanceRecord.findMany are each called once for the resolved team IDs only
+      expect(prismaMock.leaveRequest.findMany.calls).toHaveLength(1);
+      const leaveCall = prismaMock.leaveRequest.findMany.calls[0] as {
+        where: { userId: { in: string[] } };
+      };
+      expect(leaveCall.where.userId).toEqual({ in: ['emp-1'] });
+      expect(leaveCall.where.userId.in).not.toContain('emp-99');
+
+      expect(prismaMock.attendanceRecord.findMany.calls).toHaveLength(1);
+      const attendanceCall = prismaMock.attendanceRecord.findMany.calls[0] as {
+        where: { userId: { in: string[] } };
+      };
+      expect(attendanceCall.where.userId).toEqual({ in: ['emp-1'] });
+      expect(attendanceCall.where.userId.in).not.toContain('emp-99');
     });
 
     it('bulk fetches team data in batch queries without per-member N+1 loop', async () => {
@@ -296,6 +328,18 @@ describe('KpiService', () => {
         kpiScorePercent: 0,
         leaveStatus: 'wfh',
       });
+
+      expect(prismaMock.leaveRequest.findMany.calls).toHaveLength(1);
+      const leaveCall = prismaMock.leaveRequest.findMany.calls[0] as {
+        where: { userId: { in: string[] } };
+      };
+      expect(leaveCall.where.userId).toEqual({ in: ['emp-1', 'emp-2'] });
+
+      expect(prismaMock.attendanceRecord.findMany.calls).toHaveLength(1);
+      const attendanceCall = prismaMock.attendanceRecord.findMany.calls[0] as {
+        where: { userId: { in: string[] } };
+      };
+      expect(attendanceCall.where.userId).toEqual({ in: ['emp-1', 'emp-2'] });
     });
   });
 

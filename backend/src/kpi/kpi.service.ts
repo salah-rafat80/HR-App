@@ -201,25 +201,26 @@ export class KpiService {
       59,
     );
 
-    // Perform bulk queries for active leave & WFH attendance to avoid N+1 queries
-    const activeLeaves = await this.prisma.leaveRequest.findMany({
-      where: {
-        userId: { in: userIds },
-        overallStatus: 'approved',
-        startDate: { lte: today },
-        endDate: { gte: today },
-      },
-      select: { userId: true },
-    });
-
-    const wfhRecords = await this.prisma.attendanceRecord.findMany({
-      where: {
-        userId: { in: userIds },
-        status: 'workFromHome',
-        date: { gte: startOfDay, lte: endOfDay },
-      },
-      select: { userId: true },
-    });
+    // Perform bulk queries in parallel for active leave & WFH attendance to avoid N+1 queries
+    const [activeLeaves, wfhRecords] = await Promise.all([
+      this.prisma.leaveRequest.findMany({
+        where: {
+          userId: { in: userIds },
+          overallStatus: 'approved',
+          startDate: { lte: today },
+          endDate: { gte: today },
+        },
+        select: { userId: true },
+      }),
+      this.prisma.attendanceRecord.findMany({
+        where: {
+          userId: { in: userIds },
+          status: 'workFromHome',
+          date: { gte: startOfDay, lte: endOfDay },
+        },
+        select: { userId: true },
+      }),
+    ]);
 
     const onLeaveUserIds = new Set(activeLeaves.map((l) => l.userId));
     const wfhUserIds = new Set(wfhRecords.map((a) => a.userId));
