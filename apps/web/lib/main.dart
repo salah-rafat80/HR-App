@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:hr_core/core/widgets/api_config_error_screen.dart';
 import 'core/di/injection.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -10,17 +11,26 @@ import 'core/bloc/session_cubit.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
-  
-  await initDI();
-  
-  runApp(
-    EasyLocalization(
-      supportedLocales: const [Locale('en'), Locale('ar')],
-      path: 'assets/translations',
-      fallbackLocale: const Locale('en'),
-      child: const HRWebApp(),
-    ),
-  );
+
+  try {
+    await initDI();
+
+    runApp(
+      EasyLocalization(
+        supportedLocales: const [Locale('en'), Locale('ar')],
+        path: 'assets/translations',
+        fallbackLocale: const Locale('en'),
+        child: const HRWebApp(),
+      ),
+    );
+  } catch (error) {
+    runApp(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: ApiConfigErrorScreen(message: error.toString()),
+      ),
+    );
+  }
 }
 
 class HRWebApp extends StatelessWidget {

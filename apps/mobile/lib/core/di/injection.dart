@@ -54,7 +54,7 @@ import '../utils/crash_reporter.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> initDI({String? overrideBaseUrl, bool fallbackToDefaultUrl = true}) async {
+Future<void> initDI({String? overrideBaseUrl}) async {
   // Utils
   getIt.registerLazySingleton<CrashReporter>(() => ConsoleCrashReporter());
 
@@ -68,17 +68,17 @@ Future<void> initDI({String? overrideBaseUrl, bool fallbackToDefaultUrl = true})
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  final String envUrl = const String.fromEnvironment('API_BASE_URL');
-  String baseUrl = overrideBaseUrl ?? envUrl;
+  final String rawEnv = const String.fromEnvironment('API_BASE_URL');
+  final String baseUrl = (overrideBaseUrl ?? rawEnv).trim();
   if (baseUrl.isEmpty) {
-    if (fallbackToDefaultUrl) {
-      baseUrl = 'https://hr-app-lswi.onrender.com';
-    } else {
-      throw StateError(
-        'CRITICAL CONFIGURATION ERROR: API_BASE_URL dart-define parameter is missing!\n'
-        'You must supply --dart-define=API_BASE_URL=<url> when running the application.',
-      );
-    }
+    throw StateError(
+      'CRITICAL CONFIGURATION ERROR: API_BASE_URL is missing or blank.\n'
+      'You must supply --dart-define=API_BASE_URL=<url> when running the application.\n'
+      'Examples:\n'
+      '  - Android Emulator: --dart-define=API_BASE_URL=http://10.0.2.2:3000\n'
+      '  - Physical LAN Device: --dart-define=API_BASE_URL=http://192.168.1.50:3000\n'
+      '  - Production Server: --dart-define=API_BASE_URL=https://api.yourdomain.com',
+    );
   }
 
   final dio = Dio(BaseOptions(

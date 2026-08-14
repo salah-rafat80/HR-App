@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
@@ -58,18 +59,23 @@ void main() {
       expect(prefs.getString('jwt_token'), isNull);
     });
 
-    test('2. Secure-storage failure does NOT fall back to insecure SharedPreferences persistence', () async {
+    test(
+        '2. Secure-storage failure does NOT fall back to insecure SharedPreferences persistence',
+        () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
       final storage = TestTokenStorage()..shouldThrowOnWrite = true;
       final tokenService = TokenService(storage: storage);
 
-      expect(() => tokenService.saveToken('secret_token'), throwsA(isA<Exception>()));
+      expect(() => tokenService.saveToken('secret_token'),
+          throwsA(isA<Exception>()));
       expect(prefs.getString('jwt_token'), isNull);
     });
 
-    test('3. Non-401 validation failure (e.g. 500 / timeout) DOES NOT authenticate session', () async {
+    test(
+        '3. Non-401 validation failure (e.g. 500 / timeout) DOES NOT authenticate session',
+        () async {
       final storage = TestTokenStorage()..token = 'existing_valid_format_jwt';
       final dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000'));
       final adapter = FakeAdapter();
@@ -94,9 +100,35 @@ void main() {
       expect(sessionCubit.state.isAuthenticated, isFalse);
     });
 
-    test('4. Missing API_BASE_URL throws StateError and CANNOT call Render silently', () async {
+    test(
+        '4. Missing, blank, or whitespace-only API_BASE_URL fails safely without fallback URL',
+        () async {
       await getIt.reset();
-      expect(() => initDI(fallbackToDefaultUrl: false), throwsA(isA<StateError>()));
+      expect(() => initDI(), throwsA(isA<StateError>()));
+
+      await getIt.reset();
+      expect(() => initDI(overrideBaseUrl: ''), throwsA(isA<StateError>()));
+
+      await getIt.reset();
+      expect(() => initDI(overrideBaseUrl: '   '), throwsA(isA<StateError>()));
+    });
+
+    test('5. Valid overrideBaseUrl initializes Dio client successfully',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      await getIt.reset();
+      await initDI(overrideBaseUrl: 'http://localhost:3000');
+      expect(getIt.isRegistered<Dio>(), isTrue);
+      expect(getIt<Dio>().options.baseUrl, equals('http://localhost:3000'));
+    });
+
+    test(
+        '6. Production mobile injection.dart file contains NO hard-coded Render URL',
+        () {
+      final injectionFile = File('lib/core/di/injection.dart');
+      expect(injectionFile.existsSync(), isTrue);
+      final content = injectionFile.readAsStringSync();
+      expect(content.contains('https://hr-app-lswi.onrender.com'), isFalse);
     });
   });
 }

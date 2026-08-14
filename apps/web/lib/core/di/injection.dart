@@ -51,9 +51,17 @@ Future<void> initDI({String? overrideBaseUrl}) async {
   getIt.registerLazySingleton(() => ThemeCubit());
 
   // API Client Setup
-  final String envUrl = const String.fromEnvironment('API_BASE_URL');
-  final String baseUrl = overrideBaseUrl ??
-      (envUrl.isNotEmpty ? envUrl : 'https://hr-app-lswi.onrender.com');
+  final String rawEnv = const String.fromEnvironment('API_BASE_URL');
+  final String baseUrl = (overrideBaseUrl ?? rawEnv).trim();
+  if (baseUrl.isEmpty) {
+    throw StateError(
+      'CRITICAL CONFIGURATION ERROR: API_BASE_URL is missing or blank.\n'
+      'You must supply --dart-define=API_BASE_URL=<url> when running the web application.\n'
+      'Examples:\n'
+      '  - Local backend: --dart-define=API_BASE_URL=http://localhost:3000\n'
+      '  - Production Server: --dart-define=API_BASE_URL=https://api.yourdomain.com',
+    );
+  }
 
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
 

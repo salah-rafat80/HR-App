@@ -48,7 +48,7 @@ void main() {
     sessionCubit = SessionCubit(tokenStorage: tokenStorage);
     adapter = FakeHttpClientAdapter();
 
-    dio = Dio(BaseOptions(baseUrl: 'https://hr-app-lswi.onrender.com'));
+    dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000'));
     dio.httpClientAdapter = adapter;
 
     dio.interceptors.add(InterceptorsWrapper(
