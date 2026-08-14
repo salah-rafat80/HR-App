@@ -43,7 +43,7 @@ class ProfileScreen extends StatelessWidget {
               SizedBox(height: 32.h),
               ListTile(
                 leading: const Icon(AppIcons.communication),
-                title: const Text('اللغة / Language'),
+                title: Text('language'.tr()),
                 trailing: DropdownButton<String>(
                   value: context.locale.languageCode,
                   items: const [
@@ -58,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
               const Divider(),
               ListTile(
                 leading: const Icon(AppIcons.admin),
-                title: const Text('Dark Mode'),
+                title: Text('dark_mode'.tr()),
                 trailing: Switch(
                   value: themeMode == ThemeMode.dark,
                   onChanged: (val) {

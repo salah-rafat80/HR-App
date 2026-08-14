@@ -49,12 +49,16 @@ class _LoginFormState extends State<LoginForm> {
       });
 
       final token = response.data['access_token'] as String?;
+      final refreshToken = response.data['refresh_token'] as String?;
       if (token == null || token.isEmpty) {
         throw Exception('Invalid token returned');
       }
 
       final tokenService = getIt<TokenService>();
-      await tokenService.saveToken(token);
+      await tokenService.saveAccessToken(token);
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await tokenService.saveRefreshToken(refreshToken);
+      }
 
       try {
         final socket = getIt<io.Socket>();

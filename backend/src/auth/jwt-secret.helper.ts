@@ -15,3 +15,11 @@ export function getJwtSecret(): string {
   }
   return secret;
 }
+
+export function getJwtRefreshSecret(): string | undefined {
+  const secret = process.env.JWT_REFRESH_SECRET;
+  if (!secret) {
+    return undefined;
+  }
+  return secret;
+}

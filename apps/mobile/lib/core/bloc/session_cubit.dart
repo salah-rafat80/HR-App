@@ -53,8 +53,11 @@ class SessionCubit extends Cubit<SessionState> {
   Dio? get dio => _dio ?? (getIt.isRegistered<Dio>() ? getIt<Dio>() : null);
 
   Future<SessionState> checkStoredSession() async {
-    final token = await tokenStorage.getToken();
-    if (token == null || token.isEmpty) {
+    final accessToken = await tokenStorage.getAccessToken();
+    final refreshToken = await tokenStorage.getRefreshToken();
+
+    if ((accessToken == null || accessToken.isEmpty) &&
+        (refreshToken == null || refreshToken.isEmpty)) {
       final newState = SessionState.unauthenticated();
       emit(newState);
       return newState;
@@ -68,32 +71,82 @@ class SessionCubit extends Cubit<SessionState> {
       return newState;
     }
 
-    try {
-      final response = await client.get('/attendance/today');
-      if (response.statusCode == 200) {
-        final newState = SessionState.authenticated();
-        emit(newState);
-        return newState;
-      } else {
-        final newState = SessionState.sessionUnknown(
-            'Unexpected response code: ${response.statusCode}');
-        emit(newState);
-        return newState;
+    // Step 1: Try GET /auth/me with existing access token
+    if (accessToken != null && accessToken.isNotEmpty) {
+      try {
+        final response = await client.get('/auth/me');
+        if (response.statusCode == 200) {
+          final newState = SessionState.authenticated();
+          emit(newState);
+          return newState;
+        }
+      } catch (e) {
+        if (e is DioException) {
+          if (e.response?.statusCode == 401) {
+            // Access token expired/invalid, try refresh token below
+          } else {
+            // Network error / timeout / 5xx -> retain tokens, return sessionUnknown
+            final newState = SessionState.sessionUnknown(
+              'Backend session validation unavailable. Please retry verification.',
+            );
+            emit(newState);
+            return newState;
+          }
+        } else {
+          final newState = SessionState.sessionUnknown(
+            'Backend session validation unavailable. Please retry verification.',
+          );
+          emit(newState);
+          return newState;
+        }
       }
-    } catch (e) {
-      if (e is DioException && e.response?.statusCode == 401) {
-        await tokenStorage.clearToken();
-        final newState = SessionState.unauthenticated();
-        emit(newState);
-        return newState;
-      }
-
-      final newState = SessionState.sessionUnknown(
-        'Backend session validation unavailable. Please retry login.',
-      );
-      emit(newState);
-      return newState;
     }
+
+    // Step 2: Try POST /auth/refresh with refresh token
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      try {
+        final response = await client.post(
+          '/auth/refresh',
+          data: {'refresh_token': refreshToken},
+        );
+        if (response.statusCode == 200 && response.data != null) {
+          final newAccessToken = response.data['access_token'] as String?;
+          final newRefreshToken = response.data['refresh_token'] as String?;
+
+          if (newAccessToken != null && newAccessToken.isNotEmpty) {
+            await tokenStorage.saveAccessToken(newAccessToken);
+            if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+              await tokenStorage.saveRefreshToken(newRefreshToken);
+            }
+            final newState = SessionState.authenticated();
+            emit(newState);
+            return newState;
+          }
+        }
+      } catch (e) {
+        if (e is DioException) {
+          if (e.response?.statusCode == 401) {
+            // Refresh token invalid/expired/inactive user -> clear tokens
+            await tokenStorage.clearAllTokens();
+            final newState = SessionState.unauthenticated();
+            emit(newState);
+            return newState;
+          }
+        }
+        // Network error / timeout / 5xx -> retain tokens, return sessionUnknown
+        final newState = SessionState.sessionUnknown(
+          'Backend session validation unavailable. Please retry verification.',
+        );
+        emit(newState);
+        return newState;
+      }
+    }
+
+    // Neither token worked
+    await tokenStorage.clearAllTokens();
+    final newState = SessionState.unauthenticated();
+    emit(newState);
+    return newState;
   }
 
   void setAuthenticated(bool isAuthenticated) {
@@ -105,7 +158,7 @@ class SessionCubit extends Cubit<SessionState> {
   }
 
   Future<void> logout() async {
-    await tokenStorage.clearToken();
+    await tokenStorage.clearAllTokens();
     emit(SessionState.unauthenticated());
   }
 }

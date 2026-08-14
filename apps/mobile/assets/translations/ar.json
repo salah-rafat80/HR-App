@@ -184,5 +184,7 @@
   "system_config": "إعدادات النظام",
   "recruitment": "التوظيف",
   "executive_dashboard": "لوحة القيادة التنفيذية",
-  "leave_apply_success": "تم تقديم طلب الإجازة بنجاح"
+  "leave_apply_success": "تم تقديم طلب الإجازة بنجاح",
+  "language": "اللغة",
+  "dark_mode": "الوضع الداكن"
 }

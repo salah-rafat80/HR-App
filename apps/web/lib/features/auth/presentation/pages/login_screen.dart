@@ -146,12 +146,16 @@ class _WebLoginFormState extends State<WebLoginForm> {
       });
 
       final token = response.data['access_token'] as String?;
+      final refreshToken = response.data['refresh_token'] as String?;
       if (token == null || token.isEmpty) {
         throw Exception('Invalid authentication response');
       }
 
       final tokenStorage = getIt<TokenStorage>();
-      await tokenStorage.saveToken(token);
+      await tokenStorage.saveAccessToken(token);
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await tokenStorage.saveRefreshToken(refreshToken);
+      }
 
       final roleStr = response.data['user']?['role'] as String?;
       final userRole = _parseRole(roleStr);

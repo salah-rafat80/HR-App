@@ -1,5 +1,6 @@
 class AppRoutes {
-  static const String login = '/';
+  static const String splash = '/splash';
+  static const String login = '/login';
   
   // Shell Routes (Sidebar)
   static const String dashboard = '/dashboard';

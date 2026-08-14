@@ -7,6 +7,10 @@ export interface JwtPayload {
   sub: string;
   employeeCode?: string;
   role: string;
+  tokenType?: string;
+  aud?: string;
+  iss?: string;
+  iat?: number;
 }
 
 @Injectable()
@@ -16,12 +20,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: getJwtSecret(),
+      audience: 'hr-app-access',
+      issuer: 'hr-app-api',
     });
   }
 
-  async validate(payload: JwtPayload) {
-    if (!payload || !payload.sub) {
-      throw new UnauthorizedException('Invalid JWT token payload');
+  validate(payload: JwtPayload) {
+    if (
+      !payload ||
+      !payload.sub ||
+      payload.tokenType !== 'access' ||
+      payload.aud !== 'hr-app-access' ||
+      payload.iss !== 'hr-app-api'
+    ) {
+      throw new UnauthorizedException('Invalid access token claims');
     }
     return {
       userId: payload.sub,

@@ -184,5 +184,7 @@
   "system_config": "System Config",
   "recruitment": "Recruitment",
   "executive_dashboard": "Executive Dashboard",
-  "leave_apply_success": "Leave request submitted successfully"
+  "leave_apply_success": "Leave request submitted successfully",
+  "language": "Language",
+  "dark_mode": "Dark Mode"
 }

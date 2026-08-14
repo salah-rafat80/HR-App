@@ -1,3 +1,4 @@
+import 'package:hr_core/core/network/auth_interceptor.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/theme_cubit.dart';
@@ -65,25 +66,11 @@ Future<void> initDI({String? overrideBaseUrl}) async {
 
   final dio = Dio(BaseOptions(baseUrl: baseUrl));
 
-  dio.interceptors.add(InterceptorsWrapper(
-    onRequest: (options, handler) async {
-      if (!options.path.contains('/auth/login')) {
-        final tokenStorage = getIt<TokenStorage>();
-        final token = await tokenStorage.getToken();
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-      }
-      return handler.next(options);
-    },
-    onError: (DioException error, handler) async {
-      if (error.response?.statusCode == 401 &&
-          !error.requestOptions.path.contains('/auth/login')) {
-        final tokenStorage = getIt<TokenStorage>();
-        await tokenStorage.clearToken();
-        getIt<SessionCubit>().logout();
-      }
-      return handler.next(error);
+  dio.interceptors.add(SingleFlightAuthInterceptor(
+    dio: dio,
+    tokenStorage: getIt<TokenStorage>(),
+    onUnauthenticated: () async {
+      getIt<SessionCubit>().logout();
     },
   ));
 

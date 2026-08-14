@@ -14,6 +14,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -21,14 +23,18 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initStartupRouting() async {
+    setState(() {
+      _errorMessage = null;
+    });
+
     try {
       final sessionState = await context
           .read<SessionCubit>()
           .checkStoredSession()
-          .timeout(const Duration(seconds: 3), onTimeout: () {
+          .timeout(const Duration(seconds: 5), onTimeout: () {
         return const SessionState(
           status: SessionStatus.sessionUnknown,
-          errorMessage: 'Server connection timeout. Navigating to login.',
+          errorMessage: 'Server connection timeout. Retrying recommended.',
         );
       });
 
@@ -42,15 +48,10 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       } else if (sessionState.status == SessionStatus.sessionUnknown) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(sessionState.errorMessage ??
-                  'Server unavailable. Please sign in again.'),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          context.go(AppRoutes.login);
+          setState(() {
+            _errorMessage = sessionState.errorMessage ??
+                'Session verification unavailable. Check connection.';
+          });
         }
       } else {
         context.go(AppRoutes.login);
@@ -67,20 +68,44 @@ class _SplashScreenState extends State<SplashScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SplashLogo(),
-            const SizedBox(height: 36),
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SplashLogo(),
+              const SizedBox(height: 36),
+              if (_errorMessage != null) ...[
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.orange.shade800,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _initStartupRouting,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry Verification'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => context.go(AppRoutes.login),
+                  child: const Text('Proceed to Login'),
+                ),
+              ] else ...[
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

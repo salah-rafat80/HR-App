@@ -7,10 +7,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { getJwtRefreshSecret } from './jwt-secret.helper';
 
 interface FailureRecord {
   count: number;
   lastAttempt: number;
+}
+
+interface RefreshTokenClaims {
+  sub: string;
+  tokenType: string;
+  aud: string;
+  iss: string;
+  iat?: number;
 }
 
 @Injectable()
@@ -102,14 +111,40 @@ export class AuthService {
     // Clear failed attempts counter on successful login
     this.clearFailures(normalizedCode);
 
-    const payload = {
+    const accessPayload = {
       sub: user.id,
       employeeCode: user.employeeCode,
       role: user.role,
+      tokenType: 'access',
+      aud: 'hr-app-access',
+      iss: 'hr-app-api',
     };
 
+    const accessToken = this.jwtService.sign(accessPayload);
+
+    const refreshSecret = getJwtRefreshSecret();
+    let refreshToken: string | undefined = undefined;
+
+    if (refreshSecret) {
+      const refreshPayload = {
+        sub: user.id,
+        tokenType: 'refresh',
+        aud: 'hr-app-refresh',
+        iss: 'hr-app-api',
+      };
+      refreshToken = this.jwtService.sign(refreshPayload, {
+        secret: refreshSecret,
+        expiresIn: '30d',
+      });
+    } else {
+      console.warn(
+        '[SECURITY WARNING] JWT_REFRESH_SECRET is not configured on server. Refresh token omitted.',
+      );
+    }
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: accessToken,
+      ...(refreshToken ? { refresh_token: refreshToken } : {}),
       user: {
         id: user.id,
         employeeCode: user.employeeCode,
@@ -118,6 +153,118 @@ export class AuthService {
         role: user.role,
         isActive: user.isActive,
       },
+    };
+  }
+
+  async refreshToken(refreshTokenStr: string) {
+    if (!refreshTokenStr || typeof refreshTokenStr !== 'string') {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    const refreshSecret = getJwtRefreshSecret();
+    if (!refreshSecret) {
+      console.warn(
+        '[SECURITY WARNING] JWT_REFRESH_SECRET is not configured on server.',
+      );
+      throw new UnauthorizedException(
+        'Refresh token functionality is not enabled on this server',
+      );
+    }
+
+    let payload: RefreshTokenClaims;
+    try {
+      payload = this.jwtService.verify<RefreshTokenClaims>(refreshTokenStr, {
+        secret: refreshSecret,
+        audience: 'hr-app-refresh',
+        issuer: 'hr-app-api',
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (
+      !payload ||
+      !payload.sub ||
+      payload.tokenType !== 'refresh' ||
+      payload.aud !== 'hr-app-refresh' ||
+      payload.iss !== 'hr-app-api'
+    ) {
+      throw new UnauthorizedException('Invalid refresh token claims');
+    }
+
+    const userId = payload.sub;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || user.isActive === false) {
+      throw new UnauthorizedException(
+        'Employee account is inactive or user not found',
+      );
+    }
+
+    // Password-change invalidation check
+    if (user.passwordChangedAt && payload.iat) {
+      const pwdChangeTime = user.passwordChangedAt.getTime();
+      const tokenIatTime = payload.iat * 1000;
+      if (pwdChangeTime > tokenIatTime) {
+        throw new UnauthorizedException(
+          'Password was changed after refresh token issuance',
+        );
+      }
+    }
+
+    const accessPayload = {
+      sub: user.id,
+      employeeCode: user.employeeCode,
+      role: user.role,
+      tokenType: 'access',
+      aud: 'hr-app-access',
+      iss: 'hr-app-api',
+    };
+
+    const newAccessToken = this.jwtService.sign(accessPayload);
+    const newRefreshToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        tokenType: 'refresh',
+        aud: 'hr-app-refresh',
+        iss: 'hr-app-api',
+      },
+      { secret: refreshSecret, expiresIn: '30d' },
+    );
+
+    return {
+      access_token: newAccessToken,
+      refresh_token: newRefreshToken,
+      user: {
+        id: user.id,
+        employeeCode: user.employeeCode,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isActive: user.isActive,
+      },
+    };
+  }
+
+  async getMe(userId: string) {
+    if (!userId) {
+      throw new UnauthorizedException('User ID is required');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user || user.isActive === false) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+    return {
+      id: user.id,
+      employeeCode: user.employeeCode,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      isActive: user.isActive,
     };
   }
 

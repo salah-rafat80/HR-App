@@ -18,6 +18,8 @@ import '../../features/executive/presentation/pages/executive_screen.dart';
 import '../bloc/session_cubit.dart';
 import 'package:hr_core/core/enums/role_enums.dart';
 
+import '../../features/auth/presentation/pages/splash_screen.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -32,19 +34,25 @@ String _firstRouteForRole(UserRole role) {
     case UserRole.superAdmin:
       return AppRoutes.executiveDashboard;
     case UserRole.employee:
-            return AppRoutes.dashboard;
-          case UserRole.cLevel:
-            return AppRoutes.executiveDashboard;
+      return AppRoutes.dashboard;
+    case UserRole.cLevel:
+      return AppRoutes.executiveDashboard;
   }
 }
 
 class AppRouter {
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: AppRoutes.login,
+    initialLocation: AppRoutes.splash,
     redirect: (context, state) {
       final sessionState = context.read<SessionCubit>().state;
+      final isSplash = state.matchedLocation == AppRoutes.splash;
       final isLogin = state.matchedLocation == AppRoutes.login;
+
+      // Allow splash to perform session bootstrap
+      if (isSplash) {
+        return null;
+      }
 
       // If not logged in and trying to access protected route, redirect to login
       if (!sessionState.isAuthenticated && !isLogin) {
@@ -59,6 +67,11 @@ class AppRouter {
       return null;
     },
     routes: [
+      GoRoute(
+        path: AppRoutes.splash,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const WebSplashScreen(),
+      ),
       GoRoute(
         path: AppRoutes.login,
         parentNavigatorKey: _rootNavigatorKey,
