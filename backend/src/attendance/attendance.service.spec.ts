@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/unbound-method */
 import {
   BadRequestException,
   ForbiddenException,
@@ -9,8 +9,7 @@ import { ClockInDto } from './dto/clock-in.dto';
 import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
-
-// ── Mock factories ─────────────────────────────────────────────────────────────
+import { AttendanceStatus } from '@prisma/client';
 
 function makeActiveBranch(
   overrides: Partial<{
@@ -38,7 +37,9 @@ function makeActiveBranch(
 function makePrisma(branchOverrides = {}) {
   return {
     officeBranch: {
-      findMany: jest.fn().mockResolvedValue([makeActiveBranch(branchOverrides)]),
+      findMany: jest
+        .fn()
+        .mockResolvedValue([makeActiveBranch(branchOverrides)]),
     },
     attendanceRecord: {
       findFirst: jest.fn().mockResolvedValue(null),
@@ -87,30 +88,25 @@ function makeEventsGateway(): jest.Mocked<EventsGateway> {
   return { emitToUser: jest.fn() } as unknown as jest.Mocked<EventsGateway>;
 }
 
-// ── Service-unit tests ─────────────────────────────────────────────────────────
-
 describe('AttendanceService (unit)', () => {
-  // Inside-range: Riyadh city centre, office at same position, radius 200m
   const INSIDE_LAT = 24.7136;
   const INSIDE_LNG = 46.6753;
   const INSIDE_ACCURACY = 10;
 
-  // Outside by distance alone (≈600 m away)
   const OUTSIDE_LAT = 24.719;
   const OUTSIDE_LNG = 46.6753;
   const OUTSIDE_ACCURACY = 10;
 
-  // Boundary: distance + accuracy > radius
-  const BOUNDARY_LAT = 24.7155; // ~215 m from office
+  const BOUNDARY_LAT = 24.7155;
   const BOUNDARY_LNG = 46.6753;
-  const BOUNDARY_ACCURACY = 40; // distance ~215 + 40 = 255 > 200
+  const BOUNDARY_ACCURACY = 40;
 
   let service: AttendanceService;
   let prisma: ReturnType<typeof makePrisma>;
   let notifications: jest.Mocked<NotificationService>;
   let events: jest.Mocked<EventsGateway>;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     prisma = makePrisma();
     notifications = makeNotificationService();
     events = makeEventsGateway();
@@ -121,12 +117,10 @@ describe('AttendanceService (unit)', () => {
     );
   });
 
-  // ── checkGeofence validation ───────────────────────────────────────────────
-
   it('rejects NaN lat', async () => {
-    await expect(service.checkGeofence(NaN, 46.6753, 10)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.checkGeofence(NaN, 46.6753, 10),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects Infinity lng', async () => {
@@ -188,12 +182,10 @@ describe('AttendanceService (unit)', () => {
     expect(result.withinRange).toBe(false);
   });
 
-  // ── clockIn validation ────────────────────────────────────────────────────
-
   it('rejects clockIn when outside geofence — no DB write', async () => {
     await expect(
       service.clockIn('user-1', {
-        mode: 'present' as any,
+        mode: AttendanceStatus.present,
         lat: OUTSIDE_LAT,
         lng: OUTSIDE_LNG,
         accuracy: OUTSIDE_ACCURACY,
@@ -206,7 +198,7 @@ describe('AttendanceService (unit)', () => {
 
   it('saves record with branch label from geofence, not from client', async () => {
     const record = await service.clockIn('user-1', {
-      mode: 'present' as any,
+      mode: AttendanceStatus.present,
       lat: INSIDE_LAT,
       lng: INSIDE_LNG,
       accuracy: INSIDE_ACCURACY,
@@ -222,7 +214,7 @@ describe('AttendanceService (unit)', () => {
 
   it('returns typed persisted record with required fields', async () => {
     const record = await service.clockIn('user-1', {
-      mode: 'present' as any,
+      mode: AttendanceStatus.present,
       lat: INSIDE_LAT,
       lng: INSIDE_LNG,
       accuracy: INSIDE_ACCURACY,
@@ -241,7 +233,7 @@ describe('AttendanceService (unit)', () => {
     prisma.user.findUnique.mockResolvedValue({ fcmToken: 'device-token-abc' });
 
     await service.clockIn('user-1', {
-      mode: 'present' as any,
+      mode: AttendanceStatus.present,
       lat: INSIDE_LAT,
       lng: INSIDE_LNG,
       accuracy: INSIDE_ACCURACY,
@@ -260,11 +252,13 @@ describe('AttendanceService (unit)', () => {
 
   it('FCM failure does not throw or roll back the attendance record', async () => {
     prisma.user.findUnique.mockResolvedValue({ fcmToken: 'device-token' });
-    notifications.sendToDevice.mockRejectedValue(new Error('FCM network error'));
+    notifications.sendToDevice.mockRejectedValue(
+      new Error('FCM network error'),
+    );
 
     await expect(
       service.clockIn('user-1', {
-        mode: 'present' as any,
+        mode: AttendanceStatus.present,
         lat: INSIDE_LAT,
         lng: INSIDE_LNG,
         accuracy: INSIDE_ACCURACY,
@@ -276,7 +270,7 @@ describe('AttendanceService (unit)', () => {
     prisma.user.findUnique.mockResolvedValue({ fcmToken: null });
 
     await service.clockIn('user-1', {
-      mode: 'present' as any,
+      mode: AttendanceStatus.present,
       lat: INSIDE_LAT,
       lng: INSIDE_LNG,
       accuracy: INSIDE_ACCURACY,
@@ -290,7 +284,7 @@ describe('AttendanceService (unit)', () => {
     prisma.user.findUnique.mockResolvedValue({ fcmToken: 'secret-token' });
 
     const record = await service.clockIn('user-1', {
-      mode: 'present' as any,
+      mode: AttendanceStatus.present,
       lat: INSIDE_LAT,
       lng: INSIDE_LNG,
       accuracy: INSIDE_ACCURACY,
@@ -301,8 +295,6 @@ describe('AttendanceService (unit)', () => {
     expect(serialised).not.toContain('secret-token');
   });
 });
-
-// ── ClockInDto ValidationPipe tests ──────────────────────────────────────────
 
 describe('ClockInDto ValidationPipe (DTO validation)', () => {
   let target: ValidationPipe;

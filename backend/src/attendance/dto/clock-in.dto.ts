@@ -1,10 +1,4 @@
-import {
-  IsEnum,
-  IsNumber,
-  Min,
-  Max,
-  IsPositive,
-} from 'class-validator';
+import { IsEnum, IsNumber, Min, Max, IsPositive } from 'class-validator';
 import { AttendanceStatus } from '@prisma/client';
 
 export class ClockInDto {

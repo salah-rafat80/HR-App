@@ -12,7 +12,6 @@ import { AttendanceStatus, OfficeBranch } from '@prisma/client';
 import { ClockInDto } from './dto/clock-in.dto';
 import { RequestOvertimeDto } from './dto/request-overtime.dto';
 
-/** Maximum accepted GPS accuracy in metres. */
 const MAX_ACCURACY_METRES = 50;
 
 export interface GeofenceResult {
@@ -78,8 +77,6 @@ export class AttendanceService {
     };
   }
 
-  // ── Haversine ──────────────────────────────────────────────────────────────
-
   private getDistanceFromLatLonInM(
     lat1: number,
     lon1: number,
@@ -103,8 +100,6 @@ export class AttendanceService {
     return deg * (Math.PI / 180);
   }
 
-  // ── Shared coordinate validation ───────────────────────────────────────────
-
   private assertCoordinatesValid(
     lat: number,
     lng: number,
@@ -117,7 +112,9 @@ export class AttendanceService {
       throw new BadRequestException('lat or lng out of valid geographic range');
     }
     if (!Number.isFinite(accuracy) || accuracy <= 0) {
-      throw new BadRequestException('accuracy must be a positive finite number');
+      throw new BadRequestException(
+        'accuracy must be a positive finite number',
+      );
     }
     if (accuracy > MAX_ACCURACY_METRES) {
       throw new BadRequestException(
@@ -126,13 +123,6 @@ export class AttendanceService {
     }
   }
 
-  // ── Single geofence computation used by BOTH preflight and clock-in ────────
-
-  /**
-   * Returns the geofence result for the given position.
-   * Conservative rule: distanceMeters + accuracyMeters <= branch.radiusMeters
-   * Both preflight (GET) and clock-in (POST) call this method.
-   */
   async checkGeofence(
     lat: number,
     lng: number,
@@ -163,7 +153,6 @@ export class AttendanceService {
         allowedRadiusMeters = branch.radiusMeters;
       }
 
-      // Conservative rule: distance + accuracy uncertainty must fit within radius
       if (distance + accuracy <= branch.radiusMeters) {
         withinRange = true;
       }
@@ -177,17 +166,15 @@ export class AttendanceService {
     };
   }
 
-  // ── Clock In ───────────────────────────────────────────────────────────────
-
-  async clockIn(
-    userId: string,
-    data: ClockInDto,
-  ): Promise<ClockInResponse> {
+  async clockIn(userId: string, data: ClockInDto): Promise<ClockInResponse> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Server independently revalidates geofence before any DB write.
-    const geofence = await this.checkGeofence(data.lat, data.lng, data.accuracy);
+    const geofence = await this.checkGeofence(
+      data.lat,
+      data.lng,
+      data.accuracy,
+    );
     if (!geofence.withinRange) {
       throw new ForbiddenException(
         `You are ${Math.round(geofence.distanceMeters)}m from ${geofence.nearestBranch}, ` +
@@ -195,7 +182,6 @@ export class AttendanceService {
       );
     }
 
-    // Branch label is derived from the server's geofence result — never from client.
     const locationLabel = geofence.nearestBranch;
 
     let record = await this.prisma.attendanceRecord.findFirst({
@@ -226,17 +212,13 @@ export class AttendanceService {
       });
     }
 
-    // WebSocket is an additional UI refresh — not the source of truth.
     this.events.emitToUser(userId, 'updated', {
       type: 'AttendanceRecord',
       data: record,
     });
 
-    // Non-blocking FCM attempt after successful DB commit.
-    // FCM failure never rolls back the persisted record.
     void this.sendAttendanceFcm(userId, record.id, record.clockInTime!);
 
-    // Return the persisted record as the authoritative response.
     return {
       id: record.id,
       date: record.date,
@@ -254,7 +236,6 @@ export class AttendanceService {
     clockInTime: Date,
   ): Promise<void> {
     try {
-      // Minimal select — never log full token.
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { fcmToken: true },
@@ -273,14 +254,11 @@ export class AttendanceService {
         data: { type: 'attendance_clock_in', id: recordId },
       });
     } catch (err) {
-      // Log without exposing token or sensitive data.
       this.logger.error(
         `FCM attendance notification failed for userId=${userId}: ${String(err)}`,
       );
     }
   }
-
-  // ── Clock Out ──────────────────────────────────────────────────────────────
 
   async clockOut(userId: string) {
     const today = new Date();

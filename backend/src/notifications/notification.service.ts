@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
@@ -24,12 +25,12 @@ export class NotificationService implements OnModuleInit {
     }
 
     try {
-      let serviceAccount;
+      let serviceAccount: any;
       let serviceAccountPath = 'ENVIRONMENT_VARIABLES';
       if (process.env.FIREBASE_CREDENTIALS) {
         try {
           serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-        } catch (e) {
+        } catch (_err) {
           throw new Error(
             'Failed to parse FIREBASE_CREDENTIALS environment variable as JSON',
           );
@@ -37,22 +38,18 @@ export class NotificationService implements OnModuleInit {
       } else {
         const fs = require('fs');
         const possiblePaths = [
-          // 1. Backend root when running from dist (3 levels up)
           path.resolve(
             __dirname,
             '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
           ),
-          // 2. Monorepo root when running from dist (4 levels up)
           path.resolve(
             __dirname,
             '../../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
           ),
-          // 3. Backend root when running from src (2 levels up)
           path.resolve(
             __dirname,
             '../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
           ),
-          // 4. Monorepo root when running from src (3 levels up)
           path.resolve(
             __dirname,
             '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
@@ -73,7 +70,6 @@ export class NotificationService implements OnModuleInit {
           );
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         serviceAccount = require(serviceAccountPath);
       }
 
