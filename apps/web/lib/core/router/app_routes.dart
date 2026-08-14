@@ -6,6 +6,7 @@ class AppRoutes {
   static const String dashboard = '/dashboard';
   static const String approvals = '/approvals';
   static const String overtimeApprovals = '/overtime-approvals';
+  static const String hrReports = '/hr-reports';
   static const String teamKpi = '/team-kpi';
   static const String payroll = '/payroll';
   static const String recruitment = '/recruitment';

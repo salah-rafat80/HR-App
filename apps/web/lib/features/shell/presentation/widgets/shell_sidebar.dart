@@ -134,6 +134,13 @@ class Sidebar extends StatelessWidget {
                       isWide: isWide,
                     ),
                     NavItem(
+                      icon: Icons.assessment_outlined,
+                      activeIcon: Icons.assessment,
+                      label: 'HR Reports',
+                      route: AppRoutes.hrReports,
+                      isWide: isWide,
+                    ),
+                    NavItem(
                       icon: Iconsax.user_add,
                       activeIcon: Iconsax.user_add_copy,
                       label: 'Onboarding',

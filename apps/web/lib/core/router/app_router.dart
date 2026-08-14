@@ -8,6 +8,7 @@ import '../../features/shell/presentation/pages/desktop_shell.dart';
 import '../../features/shell/presentation/pages/dashboard_screen.dart';
 import '../../features/approvals/presentation/pages/approvals_screen.dart';
 import '../../features/overtime/presentation/pages/overtime_approvals_screen.dart';
+import '../../features/hr_reports/presentation/pages/hr_reports_screen.dart';
 import '../../features/team_kpi/presentation/pages/team_kpi_screen.dart';
 import '../../features/payroll/presentation/pages/payroll_screen.dart';
 import '../../features/recruitment/presentation/pages/recruitment_screen.dart';
@@ -98,6 +99,11 @@ class AppRouter {
             path: AppRoutes.overtimeApprovals,
             parentNavigatorKey: _shellNavigatorKey,
             builder: (context, state) => const OvertimeApprovalsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.hrReports,
+            parentNavigatorKey: _shellNavigatorKey,
+            builder: (context, state) => const HrReportsScreen(),
           ),
           GoRoute(
             path: AppRoutes.teamKpi,
