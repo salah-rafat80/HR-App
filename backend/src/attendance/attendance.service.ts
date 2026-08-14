@@ -2,18 +2,44 @@ import {
   Injectable,
   ForbiddenException,
   NotFoundException,
+  BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
+import { NotificationService } from '../notifications/notification.service';
 import { AttendanceStatus, OfficeBranch } from '@prisma/client';
 import { ClockInDto } from './dto/clock-in.dto';
 import { RequestOvertimeDto } from './dto/request-overtime.dto';
 
+/** Maximum accepted GPS accuracy in metres. */
+const MAX_ACCURACY_METRES = 50;
+
+export interface GeofenceResult {
+  withinRange: boolean;
+  distanceMeters: number;
+  allowedRadiusMeters: number;
+  nearestBranch: string;
+}
+
+export interface ClockInResponse {
+  id: string;
+  date: Date;
+  clockInTime: Date | null;
+  clockOutTime: Date | null;
+  status: AttendanceStatus;
+  locationLabel: string;
+  distanceMeters: number | null;
+}
+
 @Injectable()
 export class AttendanceService {
+  private readonly logger = new Logger(AttendanceService.name);
+
   constructor(
     private prisma: PrismaService,
     private events: EventsGateway,
+    private notifications: NotificationService,
   ) {}
 
   async getTodayStatus(userId: string) {
@@ -38,10 +64,7 @@ export class AttendanceService {
     }
 
     const record = await this.prisma.attendanceRecord.findFirst({
-      where: {
-        userId,
-        date: today,
-      },
+      where: { userId, date: today },
     });
 
     if (record) {
@@ -55,12 +78,14 @@ export class AttendanceService {
     };
   }
 
+  // ── Haversine ──────────────────────────────────────────────────────────────
+
   private getDistanceFromLatLonInM(
     lat1: number,
     lon1: number,
     lat2: number,
     lon2: number,
-  ) {
+  ): number {
     const R = 6371000;
     const dLat = this.deg2rad(lat2 - lat1);
     const dLon = this.deg2rad(lon2 - lon1);
@@ -74,11 +99,47 @@ export class AttendanceService {
     return R * c;
   }
 
-  private deg2rad(deg: number) {
+  private deg2rad(deg: number): number {
     return deg * (Math.PI / 180);
   }
 
-  async checkGeofence(lat: number, lng: number) {
+  // ── Shared coordinate validation ───────────────────────────────────────────
+
+  private assertCoordinatesValid(
+    lat: number,
+    lng: number,
+    accuracy: number,
+  ): void {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('lat and lng must be finite numbers');
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      throw new BadRequestException('lat or lng out of valid geographic range');
+    }
+    if (!Number.isFinite(accuracy) || accuracy <= 0) {
+      throw new BadRequestException('accuracy must be a positive finite number');
+    }
+    if (accuracy > MAX_ACCURACY_METRES) {
+      throw new BadRequestException(
+        `GPS accuracy too low (${accuracy}m). Must be ≤ ${MAX_ACCURACY_METRES}m.`,
+      );
+    }
+  }
+
+  // ── Single geofence computation used by BOTH preflight and clock-in ────────
+
+  /**
+   * Returns the geofence result for the given position.
+   * Conservative rule: distanceMeters + accuracyMeters <= branch.radiusMeters
+   * Both preflight (GET) and clock-in (POST) call this method.
+   */
+  async checkGeofence(
+    lat: number,
+    lng: number,
+    accuracy: number,
+  ): Promise<GeofenceResult> {
+    this.assertCoordinatesValid(lat, lng, accuracy);
+
     const branches: OfficeBranch[] = await this.prisma.officeBranch.findMany({
       where: { isActive: true },
     });
@@ -102,7 +163,8 @@ export class AttendanceService {
         allowedRadiusMeters = branch.radiusMeters;
       }
 
-      if (distance <= branch.radiusMeters) {
+      // Conservative rule: distance + accuracy uncertainty must fit within radius
+      if (distance + accuracy <= branch.radiusMeters) {
         withinRange = true;
       }
     }
@@ -112,38 +174,29 @@ export class AttendanceService {
       distanceMeters: minDistance === Infinity ? 0 : minDistance,
       allowedRadiusMeters,
       nearestBranch: nearestBranch ? nearestBranch.name : 'Branch',
-      branches: branches.map((b) => ({
-        id: b.id,
-        name: b.name,
-        latitude: b.latitude,
-        longitude: b.longitude,
-        radiusMeters: b.radiusMeters,
-      })),
     };
   }
 
-  async clockIn(userId: string, data: ClockInDto) {
+  // ── Clock In ───────────────────────────────────────────────────────────────
+
+  async clockIn(
+    userId: string,
+    data: ClockInDto,
+  ): Promise<ClockInResponse> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    let distanceMeters: number | undefined;
-
-    if (data.lat !== undefined && data.lng !== undefined) {
-      if (data.accuracy && data.accuracy > 100) {
-        throw new ForbiddenException(
-          `GPS accuracy too low (${data.accuracy}m). Please wait for a better signal.`,
-        );
-      }
-
-      const geofence = await this.checkGeofence(data.lat, data.lng);
-      if (!geofence.withinRange) {
-        throw new ForbiddenException(
-          `You are ${Math.round(geofence.distanceMeters)}m from ${geofence.nearestBranch}, outside the allowed range.`,
-        );
-      }
-      distanceMeters = geofence.distanceMeters;
-      data.locationLabel = geofence.nearestBranch || data.locationLabel;
+    // Server independently revalidates geofence before any DB write.
+    const geofence = await this.checkGeofence(data.lat, data.lng, data.accuracy);
+    if (!geofence.withinRange) {
+      throw new ForbiddenException(
+        `You are ${Math.round(geofence.distanceMeters)}m from ${geofence.nearestBranch}, ` +
+          `outside the allowed range (${geofence.allowedRadiusMeters}m).`,
+      );
     }
+
+    // Branch label is derived from the server's geofence result — never from client.
+    const locationLabel = geofence.nearestBranch;
 
     let record = await this.prisma.attendanceRecord.findFirst({
       where: { userId, date: today },
@@ -152,10 +205,10 @@ export class AttendanceService {
     const updateData = {
       clockInTime: new Date(),
       status: data.mode || AttendanceStatus.present,
-      locationLabel: data.locationLabel || 'Main Office',
+      locationLabel,
       clockInLat: data.lat,
       clockInLng: data.lng,
-      distanceMeters: distanceMeters,
+      distanceMeters: geofence.distanceMeters,
     };
 
     if (record) {
@@ -173,12 +226,61 @@ export class AttendanceService {
       });
     }
 
+    // WebSocket is an additional UI refresh — not the source of truth.
     this.events.emitToUser(userId, 'updated', {
       type: 'AttendanceRecord',
       data: record,
     });
-    return record;
+
+    // Non-blocking FCM attempt after successful DB commit.
+    // FCM failure never rolls back the persisted record.
+    void this.sendAttendanceFcm(userId, record.id, record.clockInTime!);
+
+    // Return the persisted record as the authoritative response.
+    return {
+      id: record.id,
+      date: record.date,
+      clockInTime: record.clockInTime,
+      clockOutTime: record.clockOutTime,
+      status: record.status,
+      locationLabel: record.locationLabel,
+      distanceMeters: record.distanceMeters,
+    };
   }
+
+  private async sendAttendanceFcm(
+    userId: string,
+    recordId: string,
+    clockInTime: Date,
+  ): Promise<void> {
+    try {
+      // Minimal select — never log full token.
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { fcmToken: true },
+      });
+      if (!user?.fcmToken) return;
+
+      const timeStr = clockInTime.toLocaleTimeString('ar-EG', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      await this.notifications.sendToDevice({
+        token: user.fcmToken,
+        title: '✅ تم تسجيل حضورك',
+        body: `تم تسجيل حضورك اليوم الساعة ${timeStr}`,
+        data: { type: 'attendance_clock_in', id: recordId },
+      });
+    } catch (err) {
+      // Log without exposing token or sensitive data.
+      this.logger.error(
+        `FCM attendance notification failed for userId=${userId}: ${String(err)}`,
+      );
+    }
+  }
+
+  // ── Clock Out ──────────────────────────────────────────────────────────────
 
   async clockOut(userId: string) {
     const today = new Date();

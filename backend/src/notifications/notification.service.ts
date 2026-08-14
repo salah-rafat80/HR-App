@@ -30,19 +30,33 @@ export class NotificationService implements OnModuleInit {
         try {
           serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
         } catch (e) {
-          throw new Error('Failed to parse FIREBASE_CREDENTIALS environment variable as JSON');
+          throw new Error(
+            'Failed to parse FIREBASE_CREDENTIALS environment variable as JSON',
+          );
         }
       } else {
         const fs = require('fs');
         const possiblePaths = [
           // 1. Backend root when running from dist (3 levels up)
-          path.resolve(__dirname, '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+          path.resolve(
+            __dirname,
+            '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
+          ),
           // 2. Monorepo root when running from dist (4 levels up)
-          path.resolve(__dirname, '../../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+          path.resolve(
+            __dirname,
+            '../../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
+          ),
           // 3. Backend root when running from src (2 levels up)
-          path.resolve(__dirname, '../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+          path.resolve(
+            __dirname,
+            '../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
+          ),
           // 4. Monorepo root when running from src (3 levels up)
-          path.resolve(__dirname, '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json'),
+          path.resolve(
+            __dirname,
+            '../../../hr-app-18eef-firebase-adminsdk-fbsvc-0e03f6ece7.json',
+          ),
         ];
 
         serviceAccountPath = '';
@@ -69,7 +83,9 @@ export class NotificationService implements OnModuleInit {
       });
 
       this.isReady = true;
-      this.logger.log(`✅ Firebase Admin initialized using: ${serviceAccountPath} — Push Notifications ready`);
+      this.logger.log(
+        `✅ Firebase Admin initialized using: ${serviceAccountPath} — Push Notifications ready`,
+      );
     } catch (e) {
       this.logger.error(`❌ Firebase Admin init failed: ${e}`);
     }
@@ -137,7 +153,11 @@ export class NotificationService implements OnModuleInit {
     });
   }
 
-  async notifyOvertimeApproved(token: string, employeeName: string, id?: string) {
+  async notifyOvertimeApproved(
+    token: string,
+    employeeName: string,
+    id?: string,
+  ) {
     return this.sendToDevice({
       token,
       title: '✅ تم اعتماد الأوفرتايم',

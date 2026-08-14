@@ -20,24 +20,52 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
         locationLabel: 'none',
       );
     }
-    return AttendanceRecord.fromJson(response.data);
+    return AttendanceRecord.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Geofence preflight — GET /attendance/geofence-status
+  /// All three parameters are required; the backend rejects missing/invalid ones.
   @override
-  Future<void> clockIn({
-    required String locationLabel,
-    required AttendanceStatus mode,
-    double? lat,
-    double? lng,
-    double? accuracy,
+  Future<GeofenceStatus> preflightGeofence({
+    required double lat,
+    required double lng,
+    required double accuracy,
   }) async {
-    await dio.post('/attendance/clock-in', data: {
-      'locationLabel': locationLabel,
+    final response = await dio.get(
+      '/attendance/geofence-status',
+      queryParameters: {
+        'lat': lat,
+        'lng': lng,
+        'accuracy': accuracy,
+      },
+    );
+    final data = response.data as Map<String, dynamic>;
+    return GeofenceStatus(
+      withinRange: (data['withinRange'] as bool?) ?? false,
+      distanceMeters: (data['distanceMeters'] as num?)?.toDouble() ?? 0.0,
+      allowedRadiusMeters:
+          (data['allowedRadiusMeters'] as num?)?.toDouble() ?? 200.0,
+      nearestBranch: data['nearestBranch'] as String?,
+    );
+  }
+
+  /// Clock-in — POST /attendance/clock-in
+  /// Returns the persisted AttendanceRecord from the backend response.
+  /// locationLabel is never sent — the backend derives it from its own geofence.
+  @override
+  Future<AttendanceRecord> clockIn({
+    required AttendanceStatus mode,
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final response = await dio.post('/attendance/clock-in', data: {
       'mode': mode.name,
       'lat': lat,
       'lng': lng,
       'accuracy': accuracy,
     });
+    return AttendanceRecord.fromJson(response.data as Map<String, dynamic>);
   }
 
   @override
@@ -46,32 +74,17 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
   }
 
   @override
-  Future<GeofenceStatus> getGeofenceStatus({
-    required double lat,
-    required double lng,
-  }) async {
-    final response = await dio.get('/attendance/geofence-status', queryParameters: {
-      'lat': lat,
-      'lng': lng,
-    });
-    return GeofenceStatus(
-      withinRange: response.data['withinRange'] ?? false,
-      distanceMeters: (response.data['distanceMeters'] as num?)?.toDouble() ?? 0.0,
-      allowedRadiusMeters:
-          (response.data['allowedRadiusMeters'] as num?)?.toDouble() ?? 200.0,
-    );
-  }
-
-  @override
   Future<List<AttendanceRecord>> getHistory() async {
     final response = await dio.get('/attendance/history');
-    return (response.data as List).map((e) => AttendanceRecord.fromJson(e)).toList();
+    return (response.data as List)
+        .map((e) => AttendanceRecord.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override
   Future<ShiftInfo> getShift() async {
     final response = await dio.get('/attendance/shift');
-    return ShiftInfo.fromJson(response.data);
+    return ShiftInfo.fromJson(response.data as Map<String, dynamic>);
   }
 
   @override
@@ -86,7 +99,7 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
   Future<List<OvertimeRequest>> getOvertimeRequests() async {
     final response = await dio.get('/attendance/overtime');
     return (response.data as List)
-        .map((e) => OvertimeRequest.fromJson(e))
+        .map((e) => OvertimeRequest.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 

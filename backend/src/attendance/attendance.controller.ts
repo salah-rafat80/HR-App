@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Req,
+  Query,
+  UseGuards,
+  BadRequestException,
+  ParseFloatPipe,
+} from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { ClockInDto } from './dto/clock-in.dto';
 import { RequestOvertimeDto } from './dto/request-overtime.dto';
@@ -14,14 +24,21 @@ export class AttendanceController {
     return this.attendanceService.getTodayStatus(req.user.userId);
   }
 
+  /**
+   * Geofence preflight — GET /attendance/geofence-status?lat&lng&accuracy
+   * lat, lng, and accuracy are all required for attendance preflight.
+   */
   @Get('geofence-status')
-  async getGeofenceStatus(@Req() req) {
-    const lat = parseFloat(req.query.lat as string);
-    const lng = parseFloat(req.query.lng as string);
-    if (isNaN(lat) || isNaN(lng)) {
-      throw new BadRequestException('Invalid coordinates');
+  async getGeofenceStatus(
+    @Req() req,
+    @Query('lat', ParseFloatPipe) lat: number,
+    @Query('lng', ParseFloatPipe) lng: number,
+    @Query('accuracy', ParseFloatPipe) accuracy: number,
+  ) {
+    if (!isFinite(lat) || !isFinite(lng) || !isFinite(accuracy)) {
+      throw new BadRequestException('lat, lng, and accuracy must be finite numbers');
     }
-    return this.attendanceService.checkGeofence(lat, lng);
+    return this.attendanceService.checkGeofence(lat, lng, accuracy);
   }
 
   @Post('clock-in')

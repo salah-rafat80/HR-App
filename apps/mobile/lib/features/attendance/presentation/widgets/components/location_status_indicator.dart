@@ -45,7 +45,7 @@ class LocationStatusIndicator extends StatelessWidget {
       );
     } else if (geofenceStatus != null) {
       final inRange = geofenceStatus!.withinRange;
-      final branchName = geofenceStatus!.locationLabel ?? 'Office';
+      final branchName = geofenceStatus!.nearestBranch ?? 'Office';
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

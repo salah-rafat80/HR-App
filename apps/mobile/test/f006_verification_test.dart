@@ -90,7 +90,7 @@ void main() {
       expect(socket.activeListenerCount, 0, reason: 'Baseline active listeners should be 0');
 
       for (int i = 1; i <= 10; i++) {
-        final cubit = AttendanceCubit(repo, socket, config);
+        final cubit = AttendanceCubit(repo, socket);
         expect(socket.activeListenerCount, 1, reason: 'Iteration $i: Cubit created -> 1 active listener registered');
         await cubit.close();
         expect(socket.activeListenerCount, 0, reason: 'Iteration $i: Cubit closed -> active listener deregistered, count returns to 0');
@@ -104,7 +104,7 @@ void main() {
       final socket = VerificationSocket();
       final config = VerificationConfigRepository();
 
-      final cubit = AttendanceCubit(repo, socket, config);
+      final cubit = AttendanceCubit(repo, socket);
       repo.getTodayStatusCallCount = 0;
 
       // Emit entity.updated event for AttendanceRecord
@@ -122,7 +122,7 @@ void main() {
       final socket = VerificationSocket();
       final config = VerificationConfigRepository();
 
-      final cubit = AttendanceCubit(repo, socket, config);
+      final cubit = AttendanceCubit(repo, socket);
       await cubit.close();
 
       repo.getTodayStatusCallCount = 0;
@@ -143,12 +143,12 @@ void main() {
 
       // Cycle 10 historical Cubits
       for (int i = 0; i < 10; i++) {
-        final historicalCubit = AttendanceCubit(repo, socket, config);
+        final historicalCubit = AttendanceCubit(repo, socket);
         await historicalCubit.close();
       }
 
       // Create active 11th Cubit
-      final activeCubit = AttendanceCubit(repo, socket, config);
+      final activeCubit = AttendanceCubit(repo, socket);
       repo.getTodayStatusCallCount = 0;
 
       socket.triggerEvent('entity.updated', {'type': 'AttendanceRecord'});

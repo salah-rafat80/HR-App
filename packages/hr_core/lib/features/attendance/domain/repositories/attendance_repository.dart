@@ -3,21 +3,38 @@ import '../entities/attendance_record.dart';
 import '../entities/overtime_request.dart';
 import '../entities/shift_info.dart';
 
+/// Abstract contract for all attendance operations.
+///
+/// locationLabel is intentionally absent from all write methods —
+/// the backend derives and persists the branch label from its own geofence
+/// result only.
 abstract class AttendanceRepository {
   Future<AttendanceRecord> getTodayStatus();
-  Future<GeofenceStatus> getGeofenceStatus({required double lat, required double lng});
-  Future<void> clockIn({
-    required String locationLabel,
-    required AttendanceStatus mode,
-    double? lat,
-    double? lng,
-    double? accuracy,
+
+  /// Geofence preflight — calls GET /attendance/geofence-status.
+  /// [lat], [lng], and [accuracy] are all required.
+  /// Returns the server's authoritative geofence result.
+  Future<GeofenceStatus> preflightGeofence({
+    required double lat,
+    required double lng,
+    required double accuracy,
   });
+
+  /// Sends a single clock-in request after a successful biometric.
+  /// Returns the persisted [AttendanceRecord] — the sole source of
+  /// truth for the UI success confirmation.
+  Future<AttendanceRecord> clockIn({
+    required AttendanceStatus mode,
+    required double lat,
+    required double lng,
+    required double accuracy,
+  });
+
   Future<void> clockOut();
   Future<List<AttendanceRecord>> getHistory();
   Future<ShiftInfo> getShift();
 
-  /// Submit a new overtime request and return its persisted form.
+  /// Submit a new overtime request.
   Future<void> requestOvertime(double hours, String reason);
 
   /// Fetch all overtime requests submitted by the current user.

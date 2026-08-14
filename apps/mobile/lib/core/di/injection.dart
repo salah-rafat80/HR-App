@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/theme_cubit.dart';
+import '../services/biometric_service.dart';
+import '../services/location_service.dart';
 
 import 'package:hr_core/features/attendance/data/datasources/api_attendance_repository_impl.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
@@ -132,6 +134,9 @@ Future<void> initDI({String? overrideBaseUrl}) async {
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
   getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
 
+  getIt.registerLazySingleton<BiometricService>(() => BiometricServiceImpl());
+  getIt.registerLazySingleton<LocationService>(() => LocationServiceImpl());
+
   // Repositories
   getIt.registerLazySingleton<AttendanceRepository>(
       () => ApiAttendanceRepositoryImpl(dio: getIt<Dio>()));
@@ -155,7 +160,7 @@ Future<void> initDI({String? overrideBaseUrl}) async {
       () => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
 
   // Cubits
-  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>(), getIt<SystemConfigRepository>()));
+  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => HomeCubit(
       getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
   getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<io.Socket>()));

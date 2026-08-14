@@ -1,0 +1,385 @@
+import { Test } from '@nestjs/testing';
+import {
+  BadRequestException,
+  ForbiddenException,
+  ValidationPipe,
+} from '@nestjs/common';
+import { AttendanceService } from './attendance.service';
+import { ClockInDto } from './dto/clock-in.dto';
+import { NotificationService } from '../notifications/notification.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { EventsGateway } from '../events/events/events.gateway';
+
+// ── Mock factories ─────────────────────────────────────────────────────────────
+
+function makeActiveBranch(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    radiusMeters: number;
+    isActive: boolean;
+  }> = {},
+) {
+  return {
+    id: 'branch-1',
+    name: 'Main Office',
+    latitude: 24.7136,
+    longitude: 46.6753,
+    radiusMeters: 200,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+function makePrisma(branchOverrides = {}) {
+  return {
+    officeBranch: {
+      findMany: jest.fn().mockResolvedValue([makeActiveBranch(branchOverrides)]),
+    },
+    attendanceRecord: {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest
+        .fn()
+        .mockImplementation((args: { data: Record<string, unknown> }) => ({
+          id: 'rec-1',
+          userId: 'user-1',
+          date: new Date('2026-08-14'),
+          clockInTime: new Date(),
+          clockOutTime: null,
+          status: 'present',
+          locationLabel: 'Main Office',
+          distanceMeters: 50,
+          clockInLat: args.data.clockInLat,
+          clockInLng: args.data.clockInLng,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })),
+      update: jest.fn(),
+    },
+    leaveRequest: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    user: {
+      findUnique: jest.fn().mockResolvedValue({ fcmToken: null }),
+    },
+    shiftInfo: { findFirst: jest.fn().mockResolvedValue(null) },
+    overtimeRequest: { create: jest.fn() },
+  };
+}
+
+function makeNotificationService(): jest.Mocked<NotificationService> {
+  return {
+    sendToDevice: jest.fn().mockResolvedValue(undefined),
+    notifyLeaveApproved: jest.fn(),
+    notifyLeaveRejected: jest.fn(),
+    notifyNewLeaveRequest: jest.fn(),
+    notifyOvertimeApproved: jest.fn(),
+    notifyKpiUpdated: jest.fn(),
+    onModuleInit: jest.fn(),
+  } as unknown as jest.Mocked<NotificationService>;
+}
+
+function makeEventsGateway(): jest.Mocked<EventsGateway> {
+  return { emitToUser: jest.fn() } as unknown as jest.Mocked<EventsGateway>;
+}
+
+// ── Service-unit tests ─────────────────────────────────────────────────────────
+
+describe('AttendanceService (unit)', () => {
+  // Inside-range: Riyadh city centre, office at same position, radius 200m
+  const INSIDE_LAT = 24.7136;
+  const INSIDE_LNG = 46.6753;
+  const INSIDE_ACCURACY = 10;
+
+  // Outside by distance alone (≈600 m away)
+  const OUTSIDE_LAT = 24.719;
+  const OUTSIDE_LNG = 46.6753;
+  const OUTSIDE_ACCURACY = 10;
+
+  // Boundary: distance + accuracy > radius
+  const BOUNDARY_LAT = 24.7155; // ~215 m from office
+  const BOUNDARY_LNG = 46.6753;
+  const BOUNDARY_ACCURACY = 40; // distance ~215 + 40 = 255 > 200
+
+  let service: AttendanceService;
+  let prisma: ReturnType<typeof makePrisma>;
+  let notifications: jest.Mocked<NotificationService>;
+  let events: jest.Mocked<EventsGateway>;
+
+  beforeEach(async () => {
+    prisma = makePrisma();
+    notifications = makeNotificationService();
+    events = makeEventsGateway();
+    service = new AttendanceService(
+      prisma as unknown as PrismaService,
+      events,
+      notifications,
+    );
+  });
+
+  // ── checkGeofence validation ───────────────────────────────────────────────
+
+  it('rejects NaN lat', async () => {
+    await expect(service.checkGeofence(NaN, 46.6753, 10)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('rejects Infinity lng', async () => {
+    await expect(
+      service.checkGeofence(24.7136, Infinity, 10),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects lat out of range', async () => {
+    await expect(service.checkGeofence(91, 46.6753, 10)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('rejects lng out of range', async () => {
+    await expect(
+      service.checkGeofence(24.7136, -181, 10),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects non-positive accuracy', async () => {
+    await expect(
+      service.checkGeofence(24.7136, 46.6753, 0),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects accuracy > 50m', async () => {
+    await expect(
+      service.checkGeofence(24.7136, 46.6753, 51),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('returns withinRange=true for inside position', async () => {
+    const result = await service.checkGeofence(
+      INSIDE_LAT,
+      INSIDE_LNG,
+      INSIDE_ACCURACY,
+    );
+    expect(result.withinRange).toBe(true);
+    expect(result.nearestBranch).toBe('Main Office');
+  });
+
+  it('returns withinRange=false when outside geofence', async () => {
+    const result = await service.checkGeofence(
+      OUTSIDE_LAT,
+      OUTSIDE_LNG,
+      OUTSIDE_ACCURACY,
+    );
+    expect(result.withinRange).toBe(false);
+    expect(result.distanceMeters).toBeGreaterThan(200);
+  });
+
+  it('rejects boundary where distance + accuracy > radius', async () => {
+    const result = await service.checkGeofence(
+      BOUNDARY_LAT,
+      BOUNDARY_LNG,
+      BOUNDARY_ACCURACY,
+    );
+    expect(result.withinRange).toBe(false);
+  });
+
+  // ── clockIn validation ────────────────────────────────────────────────────
+
+  it('rejects clockIn when outside geofence — no DB write', async () => {
+    await expect(
+      service.clockIn('user-1', {
+        mode: 'present' as any,
+        lat: OUTSIDE_LAT,
+        lng: OUTSIDE_LNG,
+        accuracy: OUTSIDE_ACCURACY,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(prisma.attendanceRecord.create).not.toHaveBeenCalled();
+    expect(prisma.attendanceRecord.update).not.toHaveBeenCalled();
+  });
+
+  it('saves record with branch label from geofence, not from client', async () => {
+    const record = await service.clockIn('user-1', {
+      mode: 'present' as any,
+      lat: INSIDE_LAT,
+      lng: INSIDE_LNG,
+      accuracy: INSIDE_ACCURACY,
+    });
+
+    expect(record.locationLabel).toBe('Main Office');
+    expect(prisma.attendanceRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locationLabel: 'Main Office' }),
+      }),
+    );
+  });
+
+  it('returns typed persisted record with required fields', async () => {
+    const record = await service.clockIn('user-1', {
+      mode: 'present' as any,
+      lat: INSIDE_LAT,
+      lng: INSIDE_LNG,
+      accuracy: INSIDE_ACCURACY,
+    });
+
+    expect(record).toHaveProperty('id');
+    expect(record).toHaveProperty('date');
+    expect(record).toHaveProperty('clockInTime');
+    expect(record).toHaveProperty('status');
+    expect(record).toHaveProperty('locationLabel');
+    expect(record).toHaveProperty('distanceMeters');
+    expect(record).not.toHaveProperty('fcmToken');
+  });
+
+  it('attempts FCM only after successful DB commit', async () => {
+    prisma.user.findUnique.mockResolvedValue({ fcmToken: 'device-token-abc' });
+
+    await service.clockIn('user-1', {
+      mode: 'present' as any,
+      lat: INSIDE_LAT,
+      lng: INSIDE_LNG,
+      accuracy: INSIDE_ACCURACY,
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(prisma.attendanceRecord.create).toHaveBeenCalled();
+    expect(notifications.sendToDevice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.stringContaining('تسجيل'),
+        data: expect.objectContaining({ type: 'attendance_clock_in' }),
+      }),
+    );
+  });
+
+  it('FCM failure does not throw or roll back the attendance record', async () => {
+    prisma.user.findUnique.mockResolvedValue({ fcmToken: 'device-token' });
+    notifications.sendToDevice.mockRejectedValue(new Error('FCM network error'));
+
+    await expect(
+      service.clockIn('user-1', {
+        mode: 'present' as any,
+        lat: INSIDE_LAT,
+        lng: INSIDE_LNG,
+        accuracy: INSIDE_ACCURACY,
+      }),
+    ).resolves.toHaveProperty('id');
+  });
+
+  it('does not attempt FCM when user has no fcmToken', async () => {
+    prisma.user.findUnique.mockResolvedValue({ fcmToken: null });
+
+    await service.clockIn('user-1', {
+      mode: 'present' as any,
+      lat: INSIDE_LAT,
+      lng: INSIDE_LNG,
+      accuracy: INSIDE_ACCURACY,
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(notifications.sendToDevice).not.toHaveBeenCalled();
+  });
+
+  it('response does not contain fcmToken field', async () => {
+    prisma.user.findUnique.mockResolvedValue({ fcmToken: 'secret-token' });
+
+    const record = await service.clockIn('user-1', {
+      mode: 'present' as any,
+      lat: INSIDE_LAT,
+      lng: INSIDE_LNG,
+      accuracy: INSIDE_ACCURACY,
+    });
+
+    const serialised = JSON.stringify(record);
+    expect(serialised).not.toContain('fcmToken');
+    expect(serialised).not.toContain('secret-token');
+  });
+});
+
+// ── ClockInDto ValidationPipe tests ──────────────────────────────────────────
+
+describe('ClockInDto ValidationPipe (DTO validation)', () => {
+  let target: ValidationPipe;
+
+  beforeEach(() => {
+    target = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+  });
+
+  const transform = (body: unknown) =>
+    target.transform(body, { type: 'body', metatype: ClockInDto });
+
+  it('accepts valid payload', async () => {
+    const valid = {
+      mode: 'present',
+      lat: 24.7136,
+      lng: 46.6753,
+      accuracy: 10,
+    };
+    const dto = await transform(valid);
+    expect(dto).toBeInstanceOf(ClockInDto);
+  });
+
+  it('rejects missing lat', async () => {
+    await expect(
+      transform({ mode: 'present', lng: 46.6753, accuracy: 10 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects missing lng', async () => {
+    await expect(
+      transform({ mode: 'present', lat: 24.7136, accuracy: 10 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects missing accuracy', async () => {
+    await expect(
+      transform({ mode: 'present', lat: 24.7136, lng: 46.6753 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects accuracy above 50', async () => {
+    await expect(
+      transform({ mode: 'present', lat: 24.7136, lng: 46.6753, accuracy: 51 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects zero or negative accuracy', async () => {
+    await expect(
+      transform({ mode: 'present', lat: 24.7136, lng: 46.6753, accuracy: 0 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects lat out of range', async () => {
+    await expect(
+      transform({ mode: 'present', lat: 91, lng: 46.6753, accuracy: 10 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects lng out of range', async () => {
+    await expect(
+      transform({ mode: 'present', lat: 24.7136, lng: 181, accuracy: 10 }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects client-supplied locationLabel (forbidden non-whitelisted)', async () => {
+    await expect(
+      transform({
+        mode: 'present',
+        lat: 24.7136,
+        lng: 46.6753,
+        accuracy: 10,
+        locationLabel: 'Hacker Office',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+});

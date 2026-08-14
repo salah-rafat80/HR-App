@@ -164,6 +164,9 @@ model AttendanceRecord {
   updatedAt     DateTime         @updatedAt
 
   @@index([userId, status, date])
+  // ARTIFACT ONLY — unique constraint to prevent concurrent duplicate check-ins.
+  // Not applied to the database until explicitly approved and migrated.
+  @@unique([userId, date], name: "AttendanceRecord_userId_date_key")
 }
 
 model CompanySettings {

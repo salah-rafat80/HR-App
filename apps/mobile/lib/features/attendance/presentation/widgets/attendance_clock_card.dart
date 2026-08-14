@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:local_auth/local_auth.dart';
-import 'package:hr_core/features/attendance/domain/entities/attendance_enums.dart';
 import 'package:hr_core/features/attendance/domain/entities/attendance_record.dart';
+import 'package:hr_core/features/attendance/domain/entities/attendance_enums.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/services/biometric_service.dart';
+import '../../../../core/services/location_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/attendance_cubit.dart';
 import '../bloc/attendance_state.dart';
@@ -18,7 +19,14 @@ import 'components/location_status_indicator.dart';
 import 'components/today_attendance_summary.dart';
 
 class AttendanceClockCard extends StatefulWidget {
-  const AttendanceClockCard({super.key});
+  final BiometricService? biometricService;
+  final LocationService? locationService;
+
+  const AttendanceClockCard({
+    super.key,
+    this.biometricService,
+    this.locationService,
+  });
 
   @override
   State<AttendanceClockCard> createState() => _AttendanceClockCardState();
@@ -28,9 +36,12 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
   bool _isLoadingLocation = false;
   GeofenceStatus? _geofenceStatus;
   String? _locationError;
+  bool _justClockedIn = false;
 
-  final LocalAuthentication _auth = LocalAuthentication();
-  bool _justClockedIn = false; // Flag to trigger success animation
+  late final BiometricService _biometric =
+      widget.biometricService ?? getIt<BiometricService>();
+  late final LocationService _location =
+      widget.locationService ?? getIt<LocationService>();
 
   @override
   void initState() {
@@ -38,52 +49,41 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     _checkLocationStatus();
   }
 
-  // ── Location ────────────────────────────────────────────────────────────────
-  Future<void> _checkLocationStatus({bool forceRefresh = false, bool showSnackBar = false}) async {
+  // ── Non-authoritative display refresh only ──────────────────────────────────
+  Future<void> _checkLocationStatus({bool showSnackBar = false}) async {
     if (!mounted) return;
     setState(() {
       _isLoadingLocation = true;
       _locationError = null;
     });
 
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+    final enabled = await _location.isLocationServiceEnabled();
+    if (!enabled) {
       if (mounted) {
         setState(() {
-          _locationError = 'GPS disabled.';
+          _locationError = 'GPS disabled. Please enable location services.';
           _isLoadingLocation = false;
         });
       }
       return;
     }
 
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    final granted = await _location.requestPermission();
+    if (!granted) {
       if (mounted) {
         setState(() {
-          _locationError = 'Permission denied.';
+          _locationError = 'Location permission denied.';
           _isLoadingLocation = false;
         });
       }
       return;
     }
 
-    Position? position;
-    try {
-      position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
-      );
-    } catch (_) {
-      position = await Geolocator.getLastKnownPosition();
-    }
-
-    if (position == null) {
+    final pos = await _location.getCurrentPosition();
+    if (pos == null) {
       if (mounted) {
         setState(() {
-          _locationError = 'No GPS signal.';
+          _locationError = 'Unable to get fresh GPS location.';
           _isLoadingLocation = false;
         });
       }
@@ -92,113 +92,188 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
 
     if (!mounted) return;
     try {
-      final status = await context.read<AttendanceCubit>().checkGeofence(
-            position.latitude,
-            position.longitude,
-            forceRefresh: forceRefresh,
+      final res = await context.read<AttendanceCubit>().preflightGeofence(
+            lat: pos.lat,
+            lng: pos.lng,
+            accuracy: pos.accuracy,
           );
       if (!mounted) return;
       setState(() {
-        _geofenceStatus = status;
+        _geofenceStatus = GeofenceStatus(
+          withinRange: res.outcome == PreflightOutcome.inRange,
+          distanceMeters: res.distanceMeters ?? 0.0,
+          allowedRadiusMeters: res.allowedRadiusMeters ?? 200.0,
+          nearestBranch: res.nearestBranch,
+        );
         _isLoadingLocation = false;
       });
 
       if (showSnackBar && mounted) {
-        final label = status.locationLabel ?? 'Office';
-        final distanceStr = '${status.distanceMeters.toStringAsFixed(0)}m';
-        final msg = status.withinRange
+        final label = res.nearestBranch ?? 'Office';
+        final distanceStr =
+            '${(res.distanceMeters ?? 0.0).toStringAsFixed(0)}m';
+        final msg = res.outcome == PreflightOutcome.inRange
             ? 'Location updated: Within range of $label ($distanceStr)'
-            : 'Location updated: Too far from $label ($distanceStr • allowed ${status.allowedRadiusMeters.toStringAsFixed(0)}m)';
+            : 'Location updated: Too far from $label ($distanceStr • allowed ${(res.allowedRadiusMeters ?? 200.0).toStringAsFixed(0)}m)';
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
-            backgroundColor: status.withinRange ? AppColors.success : AppColors.error,
+            backgroundColor: res.outcome == PreflightOutcome.inRange
+                ? AppColors.success
+                : AppColors.error,
             duration: const Duration(seconds: 3),
           ),
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
-          _locationError = 'Geofence error.';
+          _locationError = 'Geofence check failed.';
           _isLoadingLocation = false;
         });
       }
     }
   }
 
-  // ── Biometric ───────────────────────────────────────────────────────────────
-  Future<bool> _authenticateUser(String reason) async {
-    try {
-      return await _auth.authenticate(
-        localizedReason: reason,
-        options: const AuthenticationOptions(biometricOnly: false, stickyAuth: true),
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Authentication error: $e')));
-      }
-      return false;
-    }
-  }
-
-  // ── Actions ─────────────────────────────────────────────────────────────────
+  // ── Single Clock-In Flow (GPS → Preflight → Biometric → ClockIn) ─────────
   Future<void> _handleClockIn() async {
-    if (_geofenceStatus == null || !_geofenceStatus!.withinRange) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('You are not in range of the office (${_geofenceStatus?.distanceMeters.toStringAsFixed(0) ?? '?'}m away)')),
+    final cubit = context.read<AttendanceCubit>();
+    if (cubit.state is! AttendanceLoaded) return;
+    final state = cubit.state as AttendanceLoaded;
+
+    // In-flight guard: disable button while checking in
+    if (state.isCheckingIn) return;
+
+    // 1. Obtain a fresh high-accuracy GPS fix
+    final enabled = await _location.isLocationServiceEnabled();
+    if (!enabled) {
+      _showErrorSnackBar('GPS disabled. Please turn on location services.');
+      return;
+    }
+
+    final granted = await _location.requestPermission();
+    if (!granted) {
+      _showErrorSnackBar('Location permission denied.');
+      return;
+    }
+
+    final pos = await _location.getCurrentPosition();
+    if (pos == null) {
+      _showErrorSnackBar('Unable to obtain a fresh GPS fix. Please retry.');
+      return;
+    }
+
+    if (pos.accuracy > 50) {
+      _showErrorSnackBar(
+          'GPS accuracy too low (${pos.accuracy.toStringAsFixed(0)}m). Must be ≤ 50m.');
+      return;
+    }
+
+    // 2. Server geofence preflight call (GET /attendance/geofence-status)
+    final preflight = await cubit.preflightGeofence(
+      lat: pos.lat,
+      lng: pos.lng,
+      accuracy: pos.accuracy,
+    );
+
+    if (!mounted) return;
+
+    if (preflight.outcome != PreflightOutcome.inRange) {
+      final branch = preflight.nearestBranch ?? 'office';
+      final dist = preflight.distanceMeters?.toStringAsFixed(0) ?? '?';
+      final radius = preflight.allowedRadiusMeters?.toStringAsFixed(0) ?? '200';
+      _showErrorSnackBar(
+        'You are $dist m away from $branch, outside allowed radius ($radius m).',
       );
       return;
     }
 
-    final authenticated = await _authenticateUser('Please authenticate to clock in');
-    if (!authenticated || !mounted) return;
-
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 5)),
+    // 3. Biometric Authentication (Biometric ONLY — no PIN/passcode fallback)
+    final biometricAvailable = await _biometric.isBiometricAvailable();
+    if (!biometricAvailable) {
+      _showErrorSnackBar(
+        'Biometric authentication is not available or enabled on this device.',
       );
-      if (!mounted) return;
-      context.read<AttendanceCubit>().clockIn(
-            locationLabel: _geofenceStatus?.locationLabel ?? 'Office',
-            lat: position.latitude,
-            lng: position.longitude,
-            accuracy: position.accuracy,
-          );
-    } catch (e) {
-      if (!mounted) return;
-      context.read<AttendanceCubit>().clockIn(
-            locationLabel: _geofenceStatus?.locationLabel ?? 'Office',
-          );
+      return;
+    }
+
+    final authenticated = await _biometric
+        .authenticateBiometricOnly('Please authenticate biometric to clock in');
+
+    if (!authenticated || !mounted) {
+      // Biometric cancelled or failed — DO NOT call clockIn API
+      return;
+    }
+
+    // 4. Send single clock-in request (POST /attendance/clock-in)
+    final record = await cubit.clockIn(
+      lat: pos.lat,
+      lng: pos.lng,
+      accuracy: pos.accuracy,
+    );
+
+    // 5. Success confirmation based strictly on persisted server response
+    if (record != null && mounted) {
+      setState(() => _justClockedIn = true);
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _justClockedIn = false);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Attendance recorded at ${record.locationLabel}'),
+          backgroundColor: AppColors.success,
+        ),
+      );
     }
   }
 
   Future<void> _handleClockOut() async {
-    final authenticated = await _authenticateUser('Please authenticate to clock out');
-    if (!authenticated || !mounted) return;
+    final biometricAvailable = await _biometric.isBiometricAvailable();
+    if (biometricAvailable) {
+      final auth = await _biometric.authenticateBiometricOnly(
+        'Please authenticate biometric to clock out',
+      );
+      if (!auth || !mounted) return;
+    }
+    if (!mounted) return;
     context.read<AttendanceCubit>().clockOut();
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   int _calculateStreak(List<AttendanceRecord> history) {
     int streak = 0;
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    
+
     final sortedHistory = List<AttendanceRecord>.from(history)
       ..sort((a, b) => b.date.compareTo(a.date));
 
     DateTime currentCheckDate = todayStart.subtract(const Duration(days: 1));
-    
+
     for (final record in sortedHistory) {
-      final recordDate = DateTime(record.date.year, record.date.month, record.date.day);
-      if (recordDate.isAfter(todayStart) || recordDate.isAtSameMomentAs(todayStart)) continue;
-      
+      final recordDate =
+          DateTime(record.date.year, record.date.month, record.date.day);
+      if (recordDate.isAfter(todayStart) ||
+          recordDate.isAtSameMomentAs(todayStart)) {
+        continue;
+      }
+
       if (recordDate.isAtSameMomentAs(currentCheckDate)) {
         if (record.clockInTime != null) {
           streak++;
-          currentCheckDate = currentCheckDate.subtract(const Duration(days: 1));
+          currentCheckDate =
+              currentCheckDate.subtract(const Duration(days: 1));
         } else {
           break;
         }
@@ -219,21 +294,23 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
   Color _getGradientStartColor(AttendanceLoaded state) {
     if (state.isWfh) return Colors.indigo.shade400;
     if (state.isOnBreak) return Colors.amber.shade600;
-    
-    final isClockedIn = state.todayStatus.clockInTime != null && state.todayStatus.clockOutTime == null;
+
+    final isClockedIn = state.todayStatus.clockInTime != null &&
+        state.todayStatus.clockOutTime == null;
     if (isClockedIn) return AppColors.primary;
 
     final hour = DateTime.now().hour;
-    if (hour < 12) return const Color(0xFFFF8C69); // Warm coral
-    if (hour < 17) return AppColors.primary; // Teal
-    return const Color(0xFF1E3A5F); // Deep indigo
+    if (hour < 12) return const Color(0xFFFF8C69);
+    if (hour < 17) return AppColors.primary;
+    return const Color(0xFF1E3A5F);
   }
 
   Color _getGradientEndColor(AttendanceLoaded state) {
     if (state.isWfh) return Colors.indigo.shade800;
     if (state.isOnBreak) return Colors.orange.shade800;
-    
-    final isClockedIn = state.todayStatus.clockInTime != null && state.todayStatus.clockOutTime == null;
+
+    final isClockedIn = state.todayStatus.clockInTime != null &&
+        state.todayStatus.clockOutTime == null;
     if (isClockedIn) return const Color(0xFF074740);
 
     final hour = DateTime.now().hour;
@@ -242,15 +319,13 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
     return const Color(0xFF0F1C2E);
   }
 
-  // ── Build ───────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AttendanceCubit, AttendanceState>(
       listenWhen: (prev, current) {
-        if (current is AttendanceError && current.message == 'clock_out_failed') return true;
-        if (prev is AttendanceLoaded && current is AttendanceLoaded) {
-          // Detect clock in success
-          if (prev.todayStatus.clockInTime == null && current.todayStatus.clockInTime != null) return true;
+        if (current is AttendanceError &&
+            current.message == 'clock_out_failed') {
+          return true;
         }
         return false;
       },
@@ -264,29 +339,23 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
               action: SnackBarAction(
                 label: 'retry'.tr(),
                 textColor: Colors.white,
-                onPressed: () => context.read<AttendanceCubit>().retryClockOut(),
+                onPressed: () =>
+                    context.read<AttendanceCubit>().retryClockOut(),
               ),
             ),
           );
-        } else if (state is AttendanceLoaded) {
-          // Trigger celebratory burst
-          if (mounted) {
-            setState(() => _justClockedIn = true);
-            Future.delayed(const Duration(seconds: 3), () {
-              if (mounted) setState(() => _justClockedIn = false);
-            });
-          }
         }
       },
       builder: (context, state) {
         if (state is! AttendanceLoaded) return const AppLoader();
 
         final todayRec = state.todayStatus;
-        final isClockedIn = todayRec.clockInTime != null && todayRec.clockOutTime == null;
-        final isActionable = _geofenceStatus?.withinRange == true && !isClockedIn;
-        
+        final isClockedIn =
+            todayRec.clockInTime != null && todayRec.clockOutTime == null;
+        final isActionable = !state.isCheckingIn;
+
         int streak = _calculateStreak(state.history);
-        if (todayRec.clockInTime != null) streak++; // Add today
+        if (todayRec.clockInTime != null) streak++;
 
         return AppCard(
           padding: EdgeInsets.zero,
@@ -308,7 +377,6 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
               padding: EdgeInsets.all(24.w),
               child: Column(
                 children: [
-                  // ── Header: Greeting & Streak ──────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,7 +400,8 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
                       ),
                       if (streak > 0)
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 6.h),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20.r),
@@ -356,26 +425,22 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
                     ],
                   ),
                   SizedBox(height: 32.h),
-
-                  // ── Central Clock Button ────────────────────────────────────
                   AnimatedClockButton(
                     isClockedIn: isClockedIn,
                     isActionable: isActionable,
                     justClockedIn: _justClockedIn,
                     clockInTime: todayRec.clockInTime,
-                    onTap: () => isClockedIn ? _handleClockOut() : _handleClockIn(),
+                    onTap: () =>
+                        isClockedIn ? _handleClockOut() : _handleClockIn(),
                   ),
                   SizedBox(height: 32.h),
-
-                  // ── Location Indicator ──────────────────────────────────────
                   LocationStatusIndicator(
                     isLoadingLocation: _isLoadingLocation,
                     locationError: _locationError,
                     geofenceStatus: _geofenceStatus,
-                    onRefresh: () => _checkLocationStatus(forceRefresh: true, showSnackBar: true),
+                    onRefresh: () =>
+                        _checkLocationStatus(showSnackBar: true),
                   ),
-                  
-                  // ── Today Summary ───────────────────────────────────────────
                   if (todayRec.clockInTime != null)
                     TodayAttendanceSummary(todayRec: todayRec),
                 ],
@@ -386,7 +451,4 @@ class _AttendanceClockCardState extends State<AttendanceClockCard> {
       },
     );
   }
-
-
 }
-
