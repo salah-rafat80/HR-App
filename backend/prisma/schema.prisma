@@ -45,6 +45,19 @@ enum OvertimeStatus {
   pending
   approved
   rejected
+  pending_team_lead
+  pending_hr
+  rejected_by_team_lead
+  rejected_by_hr
+  cancelled
+  expired
+  completed
+}
+
+enum OvertimeSessionStatus {
+  active
+  completed
+  cancelled
 }
 
 generator client {
@@ -70,22 +83,26 @@ model User {
   manager           User?          @relation("ManagerHierarchy", fields: [managerId], references: [id])
   directReports     User[]         @relation("ManagerHierarchy")
 
-  leaveRequests     LeaveRequest[]
-  leaveBalances     LeaveBalance[]
-  attendanceRecords AttendanceRecord[]
-  shiftInfos        ShiftInfo[]
-  overtimeRequests  OvertimeRequest[]
-  kpis              Kpi[]
-  kpiQuarterScores  KpiQuarterScore[]
-  selfAppraisalAnswers  SelfAppraisalAnswer[]
-  peerFeedbacksSent     PeerFeedback[]            @relation("PeerFeedbackFrom")
-  peerFeedbacksReceived PeerFeedback[]            @relation("PeerFeedbackTo")
-  categoryRatings       AppraisalCategoryRating[]
-  developmentGoals      DevelopmentGoal[]
-  careerSteps           CareerStep[]
-  payslips              Payslip[]
-  bonusNotices          BonusNotice[]
-  auditLogs             AuditLog[]                @relation("AuditActor")
+  leaveRequests            LeaveRequest[]
+  leaveBalances            LeaveBalance[]
+  attendanceRecords        AttendanceRecord[]
+  shiftInfos               ShiftInfo[]
+  overtimeRequests         OvertimeRequest[]         @relation("OvertimeEmployee")
+  teamLeadOvertimeRequests OvertimeRequest[]         @relation("OvertimeTeamLead")
+  hrOvertimeRequests       OvertimeRequest[]         @relation("OvertimeHrApprover")
+  overtimeSessions         OvertimeSession[]         @relation("OvertimeSessionUser")
+  companyHolidaysCreated   CompanyHoliday[]          @relation("CompanyHolidayCreator")
+  kpis                     Kpi[]
+  kpiQuarterScores         KpiQuarterScore[]
+  selfAppraisalAnswers     SelfAppraisalAnswer[]
+  peerFeedbacksSent        PeerFeedback[]            @relation("PeerFeedbackFrom")
+  peerFeedbacksReceived    PeerFeedback[]            @relation("PeerFeedbackTo")
+  categoryRatings          AppraisalCategoryRating[]
+  developmentGoals         DevelopmentGoal[]
+  careerSteps              CareerStep[]
+  payslips                 Payslip[]
+  bonusNotices             BonusNotice[]
+  auditLogs                AuditLog[]                @relation("AuditActor")
 
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
@@ -149,19 +166,21 @@ model LeaveApprovalStep {
 }
 
 model AttendanceRecord {
-  id            String           @id @default(uuid())
-  userId        String
-  user          User             @relation(fields: [userId], references: [id])
-  date          DateTime         @db.Date
-  clockInTime   DateTime?
-  clockOutTime  DateTime?
-  status        AttendanceStatus
-  locationLabel String
-  clockInLat    Float?
-  clockInLng    Float?
-  distanceMeters Float?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  date             DateTime          @db.Date
+  clockInTime      DateTime?
+  clockOutTime     DateTime?
+  status           AttendanceStatus
+  locationLabel    String
+  clockInLat       Float?
+  clockInLng       Float?
+  distanceMeters   Float?
+  overtimeRequests OvertimeRequest[]
+  overtimeSessions OvertimeSession[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([userId, status, date])
   // ARTIFACT ONLY — unique constraint to prevent concurrent duplicate check-ins.
@@ -199,15 +218,72 @@ model ShiftInfo {
 }
 
 model OvertimeRequest {
-  id             String         @id @default(uuid())
-  userId         String
-  user           User           @relation(fields: [userId], references: [id])
-  date           DateTime       @db.Date
-  hoursRequested Float
-  reason         String
-  status         OvertimeStatus @default(pending)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                 String            @id @default(uuid())
+  userId             String
+  user               User              @relation("OvertimeEmployee", fields: [userId], references: [id])
+  attendanceRecordId String?
+  attendanceRecord   AttendanceRecord? @relation(fields: [attendanceRecordId], references: [id])
+  date               DateTime          @db.Date
+  requestedStartAt   DateTime?
+  requestedEndAt     DateTime?
+  requestedMinutes   Int?
+  hoursRequested     Float?
+  reason             String
+  status             OvertimeStatus    @default(pending_team_lead)
+  teamLeadId         String?
+  teamLead           User?             @relation("OvertimeTeamLead", fields: [teamLeadId], references: [id])
+  teamLeadDecisionAt DateTime?
+  teamLeadComment    String?
+  hrApproverId       String?
+  hrApprover         User?             @relation("OvertimeHrApprover", fields: [hrApproverId], references: [id])
+  hrDecisionAt       DateTime?
+  hrComment          String?
+  session            OvertimeSession?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([userId, date])
+  @@index([status, date])
+  @@index([teamLeadId, status, date])
+}
+
+model OvertimeSession {
+  id                  String                @id @default(uuid())
+  overtimeRequestId   String                @unique
+  overtimeRequest     OvertimeRequest       @relation(fields: [overtimeRequestId], references: [id])
+  userId              String
+  user                User                  @relation("OvertimeSessionUser", fields: [userId], references: [id])
+  attendanceRecordId  String
+  attendanceRecord    AttendanceRecord      @relation(fields: [attendanceRecordId], references: [id])
+  status              OvertimeSessionStatus @default(active)
+  startedAt           DateTime              @default(now())
+  endedAt             DateTime?
+  actualMinutes       Int?
+  startLocationLabel  String?
+  startLatitude       Float?
+  startLongitude      Float?
+  startGpsAccuracy    Float?
+  startDistanceMeters Float?
+  endLocationLabel    String?
+  endLatitude         Float?
+  endLongitude        Float?
+  endGpsAccuracy      Float?
+  endDistanceMeters   Float?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@index([userId, startedAt])
+}
+
+model CompanyHoliday {
+  id          String   @id @default(uuid())
+  date        DateTime @unique @db.Date
+  name        String
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdBy   User?    @relation("CompanyHolidayCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Kpi {
