@@ -13,6 +13,7 @@ import { KpiModule } from './kpi/kpi.module';
 import { AppraisalModule } from './appraisal/appraisal.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { OvertimeModule } from './overtime/overtime.module';
+import { HrReportsModule } from './hr-reports/hr-reports.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { OvertimeModule } from './overtime/overtime.module';
     AppraisalModule,
     PayrollModule,
     OvertimeModule,
+    HrReportsModule,
   ],
   controllers: [AppController],
   providers: [
