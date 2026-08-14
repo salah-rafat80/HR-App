@@ -50,7 +50,7 @@ void main() {
       tokenStorage = MockTokenStorage();
     });
 
-    test('1. Web session cubit parses role correctly and emits authenticated with restored role', () async {
+    test('1. Restored role "hr" maps consistently to UserRole.hrAdmin matching fresh-login behavior', () async {
       tokenStorage = MockTokenStorage();
       await tokenStorage.saveAccessToken('valid-access-token');
 
@@ -63,9 +63,9 @@ void main() {
                 requestOptions: options,
                 statusCode: 200,
                 data: {
-                  'id': 'user-1',
-                  'employeeCode': 'EMP-001',
-                  'role': 'super_admin',
+                  'id': 'user-hr-1',
+                  'employeeCode': 'HR-001',
+                  'role': 'hr',
                 },
               ),
             );
@@ -78,10 +78,81 @@ void main() {
       final state = await sessionCubit.checkStoredSession();
 
       expect(state.status, WebSessionStatus.authenticated);
-      expect(state.role, UserRole.superAdmin);
+      expect(state.role, UserRole.hrAdmin);
     });
 
-    test('2. Web session logout clears all stored tokens', () async {
+    test('2. Web session restore falls back to POST /auth/refresh when GET /auth/me returns 401', () async {
+      tokenStorage = MockTokenStorage();
+      await tokenStorage.saveAccessToken('expired-access');
+      await tokenStorage.saveRefreshToken('valid-refresh');
+
+      final mockDio = Dio();
+      mockDio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.path == '/auth/me') {
+            return handler.reject(DioException(
+              requestOptions: options,
+              response: Response(requestOptions: options, statusCode: 401),
+            ));
+          }
+          if (options.path == '/auth/refresh') {
+            return handler.resolve(Response(
+              requestOptions: options,
+              statusCode: 200,
+              data: {
+                'access_token': 'new-access-token',
+                'refresh_token': 'new-refresh-token',
+                'user': {'id': 'user-1', 'role': 'manager'},
+              },
+            ));
+          }
+          return handler.next(options);
+        },
+      ));
+
+      final sessionCubit = SessionCubit(tokenStorage: tokenStorage, dio: mockDio);
+      final state = await sessionCubit.checkStoredSession();
+
+      expect(state.status, WebSessionStatus.authenticated);
+      expect(state.role, UserRole.manager);
+      expect(await tokenStorage.getAccessToken(), 'new-access-token');
+      expect(await tokenStorage.getRefreshToken(), 'new-refresh-token');
+    });
+
+    test('3. Web session network error during refresh retains tokens and emits sessionUnknown', () async {
+      tokenStorage = MockTokenStorage();
+      await tokenStorage.saveAccessToken('expired-access');
+      await tokenStorage.saveRefreshToken('valid-refresh');
+
+      final mockDio = Dio();
+      mockDio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.path == '/auth/me') {
+            return handler.reject(DioException(
+              requestOptions: options,
+              response: Response(requestOptions: options, statusCode: 401),
+            ));
+          }
+          if (options.path == '/auth/refresh') {
+            return handler.reject(DioException(
+              requestOptions: options,
+              type: DioExceptionType.connectionTimeout,
+              error: 'Connection timeout',
+            ));
+          }
+          return handler.next(options);
+        },
+      ));
+
+      final sessionCubit = SessionCubit(tokenStorage: tokenStorage, dio: mockDio);
+      final state = await sessionCubit.checkStoredSession();
+
+      expect(state.status, WebSessionStatus.sessionUnknown);
+      expect(await tokenStorage.getAccessToken(), 'expired-access');
+      expect(await tokenStorage.getRefreshToken(), 'valid-refresh');
+    });
+
+    test('4. Web session logout clears all stored tokens', () async {
       tokenStorage = MockTokenStorage();
       await tokenStorage.saveAccessToken('web-access');
       await tokenStorage.saveRefreshToken('web-refresh');

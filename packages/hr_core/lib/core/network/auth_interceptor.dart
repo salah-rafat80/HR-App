@@ -2,13 +2,25 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import '../services/token_storage.dart';
 
+class RefreshResult {
+  final String? accessToken;
+  final bool isAuthError;
+  final DioException? networkException;
+
+  RefreshResult({
+    this.accessToken,
+    this.isAuthError = false,
+    this.networkException,
+  });
+}
+
 class SingleFlightAuthInterceptor extends Interceptor {
   final Dio dio;
   final TokenStorage tokenStorage;
   final Future<void> Function()? onUnauthenticated;
 
   bool _isRefreshing = false;
-  Completer<String?>? _refreshCompleter;
+  Completer<RefreshResult>? _refreshCompleter;
 
   SingleFlightAuthInterceptor({
     required this.dio,
@@ -52,24 +64,29 @@ class SingleFlightAuthInterceptor extends Interceptor {
         return handler.next(err);
       }
 
-      String? newAccessToken;
+      RefreshResult result;
 
       if (_isRefreshing) {
-        // Wait for existing in-flight refresh
-        newAccessToken = await _refreshCompleter?.future;
+        final completedResult = await _refreshCompleter?.future;
+        result = completedResult ?? RefreshResult(isAuthError: true);
       } else {
         _isRefreshing = true;
-        _refreshCompleter = Completer<String?>();
+        _refreshCompleter = Completer<RefreshResult>();
 
         try {
-          final refreshDio = Dio(BaseOptions(baseUrl: dio.options.baseUrl));
+          final refreshDio = Dio(BaseOptions(
+            baseUrl: dio.options.baseUrl,
+            connectTimeout: dio.options.connectTimeout,
+            receiveTimeout: dio.options.receiveTimeout,
+          ));
+          refreshDio.httpClientAdapter = dio.httpClientAdapter;
           final response = await refreshDio.post(
             '/auth/refresh',
             data: {'refresh_token': refreshToken},
           );
 
           if (response.statusCode == 200 && response.data != null) {
-            newAccessToken = response.data['access_token'] as String?;
+            final newAccessToken = response.data['access_token'] as String?;
             final newRefreshToken = response.data['refresh_token'] as String?;
 
             if (newAccessToken != null && newAccessToken.isNotEmpty) {
@@ -77,23 +94,34 @@ class SingleFlightAuthInterceptor extends Interceptor {
               if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
                 await tokenStorage.saveRefreshToken(newRefreshToken);
               }
-              _refreshCompleter?.complete(newAccessToken);
+              result = RefreshResult(accessToken: newAccessToken);
             } else {
-              _refreshCompleter?.complete(null);
+              result = RefreshResult(isAuthError: true);
             }
           } else {
-            _refreshCompleter?.complete(null);
+            result = RefreshResult(isAuthError: true);
+          }
+        } on DioException catch (refreshErr) {
+          final statusCode = refreshErr.response?.statusCode;
+          if (statusCode == 401 || statusCode == 403) {
+            result = RefreshResult(isAuthError: true);
+          } else {
+            result = RefreshResult(networkException: refreshErr);
           }
         } catch (_) {
-          _refreshCompleter?.complete(null);
+          result = RefreshResult(isAuthError: true);
         } finally {
           _isRefreshing = false;
         }
+
+        if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
+          _refreshCompleter!.complete(result);
+        }
       }
 
-      if (newAccessToken != null && newAccessToken.isNotEmpty) {
+      if (result.accessToken != null && result.accessToken!.isNotEmpty) {
         final opts = err.requestOptions;
-        opts.headers['Authorization'] = 'Bearer $newAccessToken';
+        opts.headers['Authorization'] = 'Bearer ${result.accessToken}';
         opts.extra['_isRetry'] = true;
         try {
           final retriedResponse = await dio.fetch(opts);
@@ -101,13 +129,14 @@ class SingleFlightAuthInterceptor extends Interceptor {
         } on DioException catch (retryErr) {
           return handler.next(retryErr);
         }
-      } else {
-        // Refresh failed with 401/error -> clear tokens and end session
+      } else if (result.isAuthError) {
         await tokenStorage.clearAllTokens();
         if (onUnauthenticated != null) {
           await onUnauthenticated!();
         }
         return handler.next(err);
+      } else if (result.networkException != null) {
+        return handler.next(result.networkException!);
       }
     }
 

@@ -172,9 +172,11 @@ class SessionCubit extends Cubit<WebSessionState> {
         return UserRole.manager;
       case 'hr_admin':
       case 'hradmin':
+      case 'hr':
         return UserRole.hrAdmin;
       case 'super_admin':
       case 'superadmin':
+      case 'admin':
         return UserRole.superAdmin;
       case 'c_level':
       case 'clevel':
