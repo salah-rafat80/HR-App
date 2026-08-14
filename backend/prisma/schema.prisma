@@ -91,6 +91,7 @@ model User {
   updatedAt         DateTime       @updatedAt
 
   @@index([employeeCode])
+  @@index([managerId, role])
 }
 
 model AuditLog {
@@ -134,7 +135,7 @@ model LeaveRequest {
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
-  @@index([userId])
+  @@index([userId, overallStatus, startDate, endDate])
 }
 
 model LeaveApprovalStep {
@@ -162,7 +163,7 @@ model AttendanceRecord {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  @@index([userId])
+  @@index([userId, date, status])
 }
 
 model CompanySettings {
@@ -220,7 +221,7 @@ model Kpi {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model KpiQuarterScore {
@@ -231,6 +232,8 @@ model KpiQuarterScore {
   averageScorePercent Float
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  @@index([userId, quarterLabel(sort: Desc)])
 }
 
 enum AppraisalStatus {

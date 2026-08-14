@@ -27,6 +27,19 @@ export class KpiService {
     return this.prisma.kpi.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        description: true,
+        departmentObjective: true,
+        targetValue: true,
+        currentValue: true,
+        selfAssessmentText: true,
+        hasEvidence: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
@@ -34,11 +47,27 @@ export class KpiService {
     return this.prisma.kpiQuarterScore.findMany({
       where: { userId },
       orderBy: { quarterLabel: 'desc' },
+      select: {
+        id: true,
+        userId: true,
+        quarterLabel: true,
+        averageScorePercent: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
   async submitSelfAssessment(userId: string, kpiId: string, text: string) {
-    const kpi = await this.prisma.kpi.findUnique({ where: { id: kpiId } });
+    const kpi = await this.prisma.kpi.findUnique({
+      where: { id: kpiId },
+      select: {
+        id: true,
+        userId: true,
+        currentValue: true,
+        targetValue: true,
+      },
+    });
     if (!kpi) throw new NotFoundException('KPI not found');
     if (kpi.userId !== userId) {
       throw new ForbiddenException(
@@ -46,7 +75,6 @@ export class KpiService {
       );
     }
 
-    // Bump current value by 5% of target as a demo touch
     let newCurrent = kpi.currentValue + kpi.targetValue * 0.05;
     if (newCurrent > kpi.targetValue) newCurrent = kpi.targetValue;
 
@@ -58,14 +86,16 @@ export class KpiService {
       },
     });
 
-    // Notify via WebSockets
     this.events.emitEntityUpdated('Kpi', 'updated', updated);
 
     return updated;
   }
 
   async attachEvidence(userId: string, kpiId: string) {
-    const kpi = await this.prisma.kpi.findUnique({ where: { id: kpiId } });
+    const kpi = await this.prisma.kpi.findUnique({
+      where: { id: kpiId },
+      select: { id: true, userId: true },
+    });
     if (!kpi) throw new NotFoundException('KPI not found');
     if (kpi.userId !== userId) {
       throw new ForbiddenException(
@@ -84,7 +114,10 @@ export class KpiService {
   }
 
   async getOverallQuarterScore(userId: string) {
-    const kpis = await this.prisma.kpi.findMany({ where: { userId } });
+    const kpis = await this.prisma.kpi.findMany({
+      where: { userId },
+      select: { currentValue: true, targetValue: true },
+    });
     if (kpis.length === 0) return { overallScore: 0.0 };
 
     const totalProgress = kpis.reduce((sum, kpi) => {
@@ -95,28 +128,73 @@ export class KpiService {
     return { overallScore: totalProgress / kpis.length };
   }
 
+  /**
+   * Optimized Breadth-First-Search resolution of managed reporting chain IDs.
+   * Runs in O(depth) database queries instead of O(N) recursive individual user queries.
+   */
   async getManagedUserIds(actorUserId: string): Promise<string[]> {
-    const directReports = await this.prisma.user.findMany({
-      where: { managerId: actorUserId },
-      select: { id: true },
-    });
-    const ids = directReports.map((u) => u.id);
-    const childPromises = ids.map((id) => this.getManagedUserIds(id));
-    const childIdsList = await Promise.all(childPromises);
-    return ids.concat(...childIdsList);
+    let currentLevelIds = [actorUserId];
+    const allManagedIds: string[] = [];
+
+    while (currentLevelIds.length > 0) {
+      const nextLevel = await this.prisma.user.findMany({
+        where: { managerId: { in: currentLevelIds } },
+        select: { id: true },
+      });
+      if (nextLevel.length === 0) break;
+      const nextIds = nextLevel.map((u) => u.id);
+      allManagedIds.push(...nextIds);
+      currentLevelIds = nextIds;
+    }
+
+    return allManagedIds;
   }
 
-  async getLeaveStatus(userId: string, today: Date): Promise<string> {
-    const activeLeave = await this.prisma.leaveRequest.findFirst({
-      where: {
-        userId,
-        overallStatus: 'approved',
-        startDate: { lte: today },
-        endDate: { gte: today },
+  /**
+   * Optimized batch Team KPI endpoint:
+   * 1. Fetches managed employee users and their KPIs in one query.
+   * 2. Bulk fetches active leave requests & WFH attendance records for all team members in 2 parallel queries.
+   * Eliminates the N+1 loop (reducing DB queries from 1 + 2N to 3 total).
+   */
+  async getTeamKpis(
+    actorUserId: string,
+    actorRole: string,
+  ): Promise<TeamMember[]> {
+    let whereCondition:
+      | { role: string }
+      | { id: { in: string[] }; role: string };
+
+    if (actorRole === 'hr' || actorRole === 'hrAdmin') {
+      whereCondition = { role: 'employee' };
+    } else {
+      const managedIds = await this.getManagedUserIds(actorUserId);
+      if (managedIds.length === 0) return [];
+      whereCondition = {
+        id: { in: managedIds },
+        role: 'employee',
+      };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: whereCondition,
+      select: {
+        id: true,
+        name: true,
+        title: true,
+        department: true,
+        kpis: {
+          select: {
+            currentValue: true,
+            targetValue: true,
+          },
+        },
       },
     });
-    if (activeLeave) return 'onLeave';
 
+    if (users.length === 0) return [];
+
+    const userIds = users.map((u) => u.id);
+    const today = new Date();
     const startOfDay = new Date(
       today.getFullYear(),
       today.getMonth(),
@@ -131,75 +209,65 @@ export class KpiService {
       59,
     );
 
-    const wfhRecord = await this.prisma.attendanceRecord.findFirst({
-      where: {
-        userId,
-        date: {
-          gte: startOfDay,
-          lte: endOfDay,
+    // Perform bulk queries for active leave & WFH attendance to avoid N+1 queries
+    const [activeLeaves, wfhRecords] = await Promise.all([
+      this.prisma.leaveRequest.findMany({
+        where: {
+          userId: { in: userIds },
+          overallStatus: 'approved',
+          startDate: { lte: today },
+          endDate: { gte: today },
         },
-        status: 'workFromHome',
-      },
-    });
-    if (wfhRecord) return 'wfh';
+        select: { userId: true },
+      }),
+      this.prisma.attendanceRecord.findMany({
+        where: {
+          userId: { in: userIds },
+          date: { gte: startOfDay, lte: endOfDay },
+          status: 'workFromHome',
+        },
+        select: { userId: true },
+      }),
+    ]);
 
-    return 'present';
-  }
+    const onLeaveUserIds = new Set(activeLeaves.map((l) => l.userId));
+    const wfhUserIds = new Set(wfhRecords.map((a) => a.userId));
 
-  async getTeamKpis(
-    actorUserId: string,
-    actorRole: string,
-  ): Promise<TeamMember[]> {
-    const whereCondition =
-      actorRole === 'hr' || actorRole === 'hrAdmin'
-        ? { role: 'employee' }
-        : {
-            id: { in: await this.getManagedUserIds(actorUserId) },
-            role: 'employee',
-          };
-
-    const users = await this.prisma.user.findMany({
-      where: whereCondition,
-      include: { kpis: true },
-    });
-
-    const teamMembers: TeamMember[] = [];
-    const today = new Date();
-
-    for (const u of users) {
-      const kpis = u.kpis;
+    return users.map((u) => {
       let kpiScorePercent = 0.0;
-      if (kpis.length > 0) {
-        const totalProgress = kpis.reduce((sum: number, k) => {
+      if (u.kpis.length > 0) {
+        const totalProgress = u.kpis.reduce((sum: number, k) => {
           const p = k.targetValue > 0 ? k.currentValue / k.targetValue : 0;
           return sum + (p > 1.0 ? 1.0 : p);
         }, 0);
-        kpiScorePercent = totalProgress / kpis.length;
+        kpiScorePercent = totalProgress / u.kpis.length;
       }
 
-      const leaveStatus = await this.getLeaveStatus(u.id, today);
+      let leaveStatus = 'present';
+      if (onLeaveUserIds.has(u.id)) {
+        leaveStatus = 'onLeave';
+      } else if (wfhUserIds.has(u.id)) {
+        leaveStatus = 'wfh';
+      }
 
-      teamMembers.push({
+      return {
         id: u.id,
         name: u.name,
         title: u.title || '',
         department: u.department || '',
         kpiScorePercent,
         leaveStatus,
-      });
-    }
-
-    return teamMembers;
+      };
+    });
   }
 
   async assignKpi(actorUserId: string, actorRole: string, data: AssignKpiDto) {
     const targetUser = await this.prisma.user.findUnique({
       where: { id: data.memberId },
-      include: { manager: true },
+      select: { id: true, managerId: true },
     });
     if (!targetUser) throw new NotFoundException('Target user not found');
 
-    // Authorize using recursive managed user IDs
     if (actorRole !== 'hr' && actorRole !== 'hrAdmin') {
       const managedIds = await this.getManagedUserIds(actorUserId);
       if (!managedIds.includes(data.memberId)) {
