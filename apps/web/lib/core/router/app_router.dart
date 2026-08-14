@@ -7,6 +7,7 @@ import '../../features/auth/presentation/pages/login_screen.dart';
 import '../../features/shell/presentation/pages/desktop_shell.dart';
 import '../../features/shell/presentation/pages/dashboard_screen.dart';
 import '../../features/approvals/presentation/pages/approvals_screen.dart';
+import '../../features/overtime/presentation/pages/overtime_approvals_screen.dart';
 import '../../features/team_kpi/presentation/pages/team_kpi_screen.dart';
 import '../../features/payroll/presentation/pages/payroll_screen.dart';
 import '../../features/recruitment/presentation/pages/recruitment_screen.dart';
@@ -16,12 +17,14 @@ import '../../features/system_config/presentation/pages/system_config_screen.dar
 import '../../features/appraisal/presentation/pages/appraisal_screen.dart';
 import '../../features/executive/presentation/pages/executive_screen.dart';
 import '../bloc/session_cubit.dart';
+
 import 'package:hr_core/core/enums/role_enums.dart';
 
 import '../../features/auth/presentation/pages/splash_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 String _firstRouteForRole(UserRole role) {
   switch (role) {
@@ -90,6 +93,11 @@ class AppRouter {
             path: AppRoutes.approvals,
             parentNavigatorKey: _shellNavigatorKey,
             builder: (context, state) => const ApprovalsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.overtimeApprovals,
+            parentNavigatorKey: _shellNavigatorKey,
+            builder: (context, state) => const OvertimeApprovalsScreen(),
           ),
           GoRoute(
             path: AppRoutes.teamKpi,

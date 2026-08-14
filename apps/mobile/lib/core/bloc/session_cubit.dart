@@ -1,29 +1,24 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:dio/dio.dart';
+
 import '../di/injection.dart';
+
 import 'package:hr_core/core/services/token_storage.dart';
 
-enum SessionStatus {
-  initial,
-  authenticated,
-  unauthenticated,
-  sessionUnknown,
-}
+enum SessionStatus { initial, authenticated, unauthenticated, sessionUnknown }
 
 class SessionState extends Equatable {
   final SessionStatus status;
   final String? errorMessage;
+  final String? role;
 
-  const SessionState({
-    required this.status,
-    this.errorMessage,
-  });
+  const SessionState({required this.status, this.errorMessage, this.role});
 
   factory SessionState.initial() =>
       const SessionState(status: SessionStatus.initial);
-  factory SessionState.authenticated() =>
-      const SessionState(status: SessionStatus.authenticated);
+  factory SessionState.authenticated({String? role}) =>
+      SessionState(status: SessionStatus.authenticated, role: role);
   factory SessionState.unauthenticated() =>
       const SessionState(status: SessionStatus.unauthenticated);
   factory SessionState.sessionUnknown(String msg) =>
@@ -32,7 +27,7 @@ class SessionState extends Equatable {
   bool get isAuthenticated => status == SessionStatus.authenticated;
 
   @override
-  List<Object?> get props => [status, errorMessage];
+  List<Object?> get props => [status, errorMessage, role];
 }
 
 class SessionCubit extends Cubit<SessionState> {
@@ -40,9 +35,9 @@ class SessionCubit extends Cubit<SessionState> {
   final Dio? _dio;
 
   SessionCubit({TokenStorage? tokenStorage, Dio? dio})
-      : _tokenStorage = tokenStorage,
-        _dio = dio,
-        super(SessionState.initial());
+    : _tokenStorage = tokenStorage,
+      _dio = dio,
+      super(SessionState.initial());
 
   TokenStorage get tokenStorage =>
       _tokenStorage ??
@@ -65,8 +60,9 @@ class SessionCubit extends Cubit<SessionState> {
 
     final client = dio;
     if (client == null) {
-      final newState =
-          SessionState.sessionUnknown('HTTP Client not initialized');
+      final newState = SessionState.sessionUnknown(
+        'HTTP Client not initialized',
+      );
       emit(newState);
       return newState;
     }
@@ -76,7 +72,9 @@ class SessionCubit extends Cubit<SessionState> {
       try {
         final response = await client.get('/auth/me');
         if (response.statusCode == 200) {
-          final newState = SessionState.authenticated();
+          final newState = SessionState.authenticated(
+            role: _roleFromAuthMe(response.data),
+          );
           emit(newState);
           return newState;
         }
@@ -118,7 +116,10 @@ class SessionCubit extends Cubit<SessionState> {
             if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
               await tokenStorage.saveRefreshToken(newRefreshToken);
             }
-            final newState = SessionState.authenticated();
+            final me = await client.get('/auth/me');
+            final newState = SessionState.authenticated(
+              role: _roleFromAuthMe(me.data),
+            );
             emit(newState);
             return newState;
           }
@@ -149,9 +150,14 @@ class SessionCubit extends Cubit<SessionState> {
     return newState;
   }
 
-  void setAuthenticated(bool isAuthenticated) {
+  String? _roleFromAuthMe(dynamic data) {
+    if (data is Map) return data['role']?.toString();
+    return null;
+  }
+
+  void setAuthenticated(bool isAuthenticated, {String? role}) {
     if (isAuthenticated) {
-      emit(SessionState.authenticated());
+      emit(SessionState.authenticated(role: role));
     } else {
       emit(SessionState.unauthenticated());
     }

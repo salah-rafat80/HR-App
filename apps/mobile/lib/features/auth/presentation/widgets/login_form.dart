@@ -43,10 +43,10 @@ class _LoginFormState extends State<LoginForm> {
 
     try {
       final dio = getIt<Dio>();
-      final response = await dio.post('/auth/login', data: {
-        'employeeCode': employeeCode,
-        'password': password,
-      });
+      final response = await dio.post(
+        '/auth/login',
+        data: {'employeeCode': employeeCode, 'password': password},
+      );
 
       final token = response.data['access_token'] as String?;
       final refreshToken = response.data['refresh_token'] as String?;
@@ -68,16 +68,23 @@ class _LoginFormState extends State<LoginForm> {
       try {
         final fcmToken = await FcmService.instance.getToken();
         if (fcmToken != null) {
-          await dio.patch('/auth/fcm-token', data: {
-            'fcmToken': fcmToken,
-          });
+          await dio.patch('/auth/fcm-token', data: {'fcmToken': fcmToken});
         }
       } catch (e) {
         debugPrint('FCM Token registration failed: $e');
       }
 
+      String? role;
+      try {
+        final me = await dio.get('/auth/me');
+        if (me.data is Map) role = me.data['role']?.toString();
+      } catch (_) {
+        // The backend remains the authorization source; a missing role only
+        // hides role-specific navigation until the next verified session check.
+      }
+
       if (!mounted) return;
-      context.read<SessionCubit>().setAuthenticated(true);
+      context.read<SessionCubit>().setAuthenticated(true, role: role);
       context.go(AppRoutes.home);
     } catch (e) {
       if (!mounted) return;
@@ -95,10 +102,7 @@ class _LoginFormState extends State<LoginForm> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMsg),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -118,8 +122,9 @@ class _LoginFormState extends State<LoginForm> {
             decoration: InputDecoration(
               labelText: 'كود الموظف / Employee Code',
               prefixIcon: const Icon(Icons.badge_outlined),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -136,8 +141,9 @@ class _LoginFormState extends State<LoginForm> {
             decoration: InputDecoration(
               labelText: 'كلمة المرور / Password',
               prefixIcon: const Icon(Icons.lock_outline),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -159,7 +165,10 @@ class _LoginFormState extends State<LoginForm> {
                       height: 24,
                       child: AppLoader(size: 24),
                     )
-                  : Text('login_button'.tr(), style: TextStyle(fontSize: 16.sp)),
+                  : Text(
+                      'login_button'.tr(),
+                      style: TextStyle(fontSize: 16.sp),
+                    ),
             ),
           ),
         ],

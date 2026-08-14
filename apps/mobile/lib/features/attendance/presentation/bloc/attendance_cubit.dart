@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:hr_app_demo/core/utils/safe_cubit.dart';
+
 import 'attendance_state.dart';
+
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:hr_core/features/attendance/domain/entities/attendance_enums.dart';
 import 'package:hr_core/features/attendance/domain/entities/attendance_record.dart';
+import 'package:hr_core/features/attendance/domain/entities/overtime_request.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
 /// Result of the server geofence preflight call.
@@ -46,14 +49,20 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
   /// Stashed state used exclusively by [retryClockOut].
   AttendanceLoaded? _clockOutRetryState;
 
-  AttendanceCubit(this._repository, this._socket)
-      : super(AttendanceInitial()) {
+  AttendanceCubit(this._repository, this._socket) : super(AttendanceInitial()) {
     _socket.on('entity.updated', _onEntityUpdated);
   }
 
   void _onEntityUpdated(dynamic data) {
-    if (data is Map && data['type'] == 'AttendanceRecord' && !isClosed) {
-      // WebSocket is an additional UI refresh only — does NOT set success state.
+    if (data is Map &&
+        const {
+          'AttendanceRecord',
+          'OvertimeRequest',
+          'OvertimeSession',
+        }.contains(data['type']) &&
+        !isClosed) {
+      // WebSocket is only an additional refresh; the persisted API result
+      // remains the source of truth for success feedback.
       loadAttendanceData();
     }
   }
@@ -72,14 +81,16 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
       final today = await _repository.getTodayStatus();
       final history = await _repository.getHistory();
       final shift = await _repository.getShift();
-      final overtimeRequests = await _repository.getOvertimeRequests();
+      final overtimeRequests = await _repository.getMyOvertimeRequests();
 
-      emit(AttendanceLoaded(
-        todayStatus: today,
-        history: history,
-        shift: shift,
-        overtimeRequests: overtimeRequests,
-      ));
+      emit(
+        AttendanceLoaded(
+          todayStatus: today,
+          history: history,
+          shift: shift,
+          overtimeRequests: overtimeRequests,
+        ),
+      );
     } catch (e) {
       debugPrint('[AttendanceCubit] loadAttendanceData failed: $e');
       emit(const AttendanceError('load_failed'));
@@ -160,10 +171,12 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
       );
 
       if (!isClosed && state is AttendanceLoaded) {
-        emit((state as AttendanceLoaded).copyWith(
-          isCheckingIn: false,
-          todayStatus: persistedRecord,
-        ));
+        emit(
+          (state as AttendanceLoaded).copyWith(
+            isCheckingIn: false,
+            todayStatus: persistedRecord,
+          ),
+        );
       }
       return persistedRecord;
     } catch (e) {
@@ -205,20 +218,30 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
 
   // ── Overtime ─────────────────────────────────────────────────────────────────
 
-  Future<void> submitOvertime(double hours, String reason) async {
+  Future<void> submitOvertime({
+    required DateTime requestedStartAt,
+    required DateTime requestedEndAt,
+    required String reason,
+  }) async {
     if (state is! AttendanceLoaded) return;
     final currentState = state as AttendanceLoaded;
 
     emit(currentState.copyWith(isSubmittingOvertime: true));
 
     try {
-      await _repository.requestOvertime(hours, reason);
-      final updatedRequests = await _repository.getOvertimeRequests();
+      await _repository.requestOvertime(
+        requestedStartAt: requestedStartAt,
+        requestedEndAt: requestedEndAt,
+        reason: reason,
+      );
+      final updatedRequests = await _repository.getMyOvertimeRequests();
       if (!isClosed) {
-        emit(currentState.copyWith(
-          isSubmittingOvertime: false,
-          overtimeRequests: updatedRequests,
-        ));
+        emit(
+          currentState.copyWith(
+            isSubmittingOvertime: false,
+            overtimeRequests: updatedRequests,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[AttendanceCubit] submitOvertime failed: $e');
@@ -230,14 +253,71 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
     }
   }
 
+  Future<OvertimeSession?> startOvertimeSession({
+    required String requestId,
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final previousState = state is AttendanceLoaded
+        ? state as AttendanceLoaded
+        : null;
+    try {
+      final session = await _repository.startOvertimeSession(
+        requestId,
+        lat: lat,
+        lng: lng,
+        accuracy: accuracy,
+      );
+      await loadAttendanceData();
+      return session;
+    } catch (e) {
+      debugPrint('[AttendanceCubit] startOvertimeSession failed: $e');
+      if (!isClosed) {
+        emit(const AttendanceError('overtime_start_failed'));
+        if (previousState != null) emit(previousState);
+      }
+      return null;
+    }
+  }
+
+  Future<OvertimeSession?> endOvertimeSession({
+    required String sessionId,
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final previousState = state is AttendanceLoaded
+        ? state as AttendanceLoaded
+        : null;
+    try {
+      final session = await _repository.endOvertimeSession(
+        sessionId,
+        lat: lat,
+        lng: lng,
+        accuracy: accuracy,
+      );
+      await loadAttendanceData();
+      return session;
+    } catch (e) {
+      debugPrint('[AttendanceCubit] endOvertimeSession failed: $e');
+      if (!isClosed) {
+        emit(const AttendanceError('overtime_end_failed'));
+        if (previousState != null) emit(previousState);
+      }
+      return null;
+    }
+  }
+
   // ── WFH Toggle ───────────────────────────────────────────────────────────────
 
   Future<void> toggleWfh() async {
     if (state is! AttendanceLoaded) return;
     final currentState = state as AttendanceLoaded;
     final newIsWfh = !currentState.isWfh;
-    final newMode =
-        newIsWfh ? AttendanceStatus.workFromHome : AttendanceStatus.present;
+    final newMode = newIsWfh
+        ? AttendanceStatus.workFromHome
+        : AttendanceStatus.present;
 
     emit(currentState.copyWith(isWfh: newIsWfh));
 
@@ -259,7 +339,9 @@ class AttendanceCubit extends SafeCubit<AttendanceState> {
     if (state is! AttendanceLoaded) return;
     final currentState = state as AttendanceLoaded;
 
-    emit(currentState.copyWith(isOnBreak: true, breakStartTime: DateTime.now()));
+    emit(
+      currentState.copyWith(isOnBreak: true, breakStartTime: DateTime.now()),
+    );
 
     try {
       await _repository.startBreak();

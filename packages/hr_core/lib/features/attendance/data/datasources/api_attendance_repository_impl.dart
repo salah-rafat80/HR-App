@@ -125,27 +125,110 @@ class ApiAttendanceRepositoryImpl implements AttendanceRepository {
   }
 
   @override
-  Future<void> requestOvertime(double hours, String reason) async {
-    await dio.post('/attendance/overtime', data: {
-      'hoursRequested': hours,
+  Future<OvertimeRequest> requestOvertime({
+    required DateTime requestedStartAt,
+    required DateTime requestedEndAt,
+    required String reason,
+  }) async {
+    final response = await dio.post('/overtime/requests', data: {
+      'requestedStartAt': requestedStartAt.toUtc().toIso8601String(),
+      'requestedEndAt': requestedEndAt.toUtc().toIso8601String(),
       'reason': reason,
     });
+    return OvertimeRequest.fromJson(_asJsonMap(response.data));
   }
 
   @override
-  Future<List<OvertimeRequest>> getOvertimeRequests() async {
-    try {
-      final response = await dio.get('/attendance/overtime');
-      if (response.data == null || response.data is! List) {
-        return [];
-      }
-      return (response.data as List)
-          .whereType<Map<String, dynamic>>()
-          .map((e) => OvertimeRequest.fromJson(e))
-          .toList();
-    } catch (_) {
-      return [];
+  Future<List<OvertimeRequest>> getMyOvertimeRequests() async {
+    final response = await dio.get('/overtime/requests/mine');
+    return _asJsonList(response.data)
+        .map(OvertimeRequest.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<OvertimeRequest>> getPendingOvertimeApprovals() async {
+    final response = await dio.get('/overtime/approvals/pending');
+    return _asJsonList(response.data)
+        .map(OvertimeRequest.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<OvertimeRequest> approveOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/team-lead/approve', comment);
+
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/team-lead/reject', comment);
+
+  @override
+  Future<OvertimeRequest> approveOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/hr/approve', comment);
+
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) =>
+      _decide('/overtime/requests/$requestId/hr/reject', comment);
+
+  @override
+  Future<OvertimeSession> startOvertimeSession(
+    String requestId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final response = await dio.post(
+        '/overtime/requests/$requestId/session/start',
+        data: {'lat': lat, 'lng': lng, 'accuracy': accuracy});
+    return OvertimeSession.fromJson(_asJsonMap(response.data));
+  }
+
+  @override
+  Future<OvertimeSession> endOvertimeSession(
+    String sessionId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) async {
+    final response = await dio.post('/overtime/sessions/$sessionId/end',
+        data: {'lat': lat, 'lng': lng, 'accuracy': accuracy});
+    return OvertimeSession.fromJson(_asJsonMap(response.data));
+  }
+
+  Future<OvertimeRequest> _decide(String path, String? comment) async {
+    final normalizedComment = comment?.trim();
+    final response = await dio.post(path, data: {
+      if (normalizedComment?.isNotEmpty ?? false) 'comment': normalizedComment,
+    });
+    return OvertimeRequest.fromJson(_asJsonMap(response.data));
+  }
+
+  Map<String, dynamic> _asJsonMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    throw StateError('Expected an object response from the HR API');
+  }
+
+  List<Map<String, dynamic>> _asJsonList(dynamic value) {
+    if (value is! List) {
+      throw StateError('Expected a list response from the HR API');
     }
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
   }
 
   @override

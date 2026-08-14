@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hr_core/features/attendance/domain/repositories/attendance_repository.dart';
 import 'package:hr_core/features/attendance/domain/entities/attendance_record.dart';
@@ -37,7 +38,9 @@ class VerificationSocket implements io.Socket {
   }
 
   void triggerEvent(String event, dynamic data) {
-    final handlers = List<dynamic Function(dynamic)>.from(listeners[event] ?? []);
+    final handlers = List<dynamic Function(dynamic)>.from(
+      listeners[event] ?? [],
+    );
     for (final h in handlers) {
       h(data);
     }
@@ -64,10 +67,14 @@ class VerificationAttendanceRepository implements AttendanceRepository {
   Future<List<AttendanceRecord>> getHistory() async => [];
 
   @override
-  Future<ShiftInfo> getShift() async => ShiftInfo(name: 'Day', startTime: DateTime.now(), endTime: DateTime.now());
+  Future<ShiftInfo> getShift() async => ShiftInfo(
+    name: 'Day',
+    startTime: DateTime.now(),
+    endTime: DateTime.now(),
+  );
 
   @override
-  Future<List<OvertimeRequest>> getOvertimeRequests() async => [];
+  Future<List<OvertimeRequest>> getMyOvertimeRequests() async => [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -87,35 +94,55 @@ void main() {
       final socket = VerificationSocket();
       final config = VerificationConfigRepository();
 
-      expect(socket.activeListenerCount, 0, reason: 'Baseline active listeners should be 0');
+      expect(
+        socket.activeListenerCount,
+        0,
+        reason: 'Baseline active listeners should be 0',
+      );
 
       for (int i = 1; i <= 10; i++) {
         final cubit = AttendanceCubit(repo, socket);
-        expect(socket.activeListenerCount, 1, reason: 'Iteration $i: Cubit created -> 1 active listener registered');
+        expect(
+          socket.activeListenerCount,
+          1,
+          reason: 'Iteration $i: Cubit created -> 1 active listener registered',
+        );
         await cubit.close();
-        expect(socket.activeListenerCount, 0, reason: 'Iteration $i: Cubit closed -> active listener deregistered, count returns to 0');
+        expect(
+          socket.activeListenerCount,
+          0,
+          reason:
+              'Iteration $i: Cubit closed -> active listener deregistered, count returns to 0',
+        );
       }
     });
   });
 
   group('F-006 Verification: Duplicate Callback & Event Test', () {
-    test('Socket event triggers exactly 1 API refresh on active Cubit', () async {
-      final repo = VerificationAttendanceRepository();
-      final socket = VerificationSocket();
-      final config = VerificationConfigRepository();
+    test(
+      'Socket event triggers exactly 1 API refresh on active Cubit',
+      () async {
+        final repo = VerificationAttendanceRepository();
+        final socket = VerificationSocket();
+        final config = VerificationConfigRepository();
 
-      final cubit = AttendanceCubit(repo, socket);
-      repo.getTodayStatusCallCount = 0;
+        final cubit = AttendanceCubit(repo, socket);
+        repo.getTodayStatusCallCount = 0;
 
-      // Emit entity.updated event for AttendanceRecord
-      socket.triggerEvent('entity.updated', {'type': 'AttendanceRecord'});
+        // Emit entity.updated event for AttendanceRecord
+        socket.triggerEvent('entity.updated', {'type': 'AttendanceRecord'});
 
-      // Wait microtask tick
-      await Future.delayed(const Duration(milliseconds: 10));
+        // Wait microtask tick
+        await Future.delayed(const Duration(milliseconds: 10));
 
-      expect(repo.getTodayStatusCallCount, 1, reason: 'Exactly 1 API request executed on socket event');
-      await cubit.close();
-    });
+        expect(
+          repo.getTodayStatusCallCount,
+          1,
+          reason: 'Exactly 1 API request executed on socket event',
+        );
+        await cubit.close();
+      },
+    );
 
     test('Socket event after Cubit.close() triggers 0 API requests and 0 state emissions', () async {
       final repo = VerificationAttendanceRepository();
@@ -132,8 +159,16 @@ void main() {
       socket.triggerEvent('entity.updated', {'type': 'AttendanceRecord'});
       await Future.delayed(const Duration(milliseconds: 10));
 
-      expect(repo.getTodayStatusCallCount, 0, reason: 'Closed Cubit MUST NOT trigger API requests');
-      expect(cubit.state, equals(stateBefore), reason: 'Closed Cubit MUST NOT emit state changes');
+      expect(
+        repo.getTodayStatusCallCount,
+        0,
+        reason: 'Closed Cubit MUST NOT trigger API requests',
+      );
+      expect(
+        cubit.state,
+        equals(stateBefore),
+        reason: 'Closed Cubit MUST NOT emit state changes',
+      );
     });
 
     test('10 Create -> Close cycles followed by new Cubit produces exactly 1 response', () async {
@@ -154,7 +189,11 @@ void main() {
       socket.triggerEvent('entity.updated', {'type': 'AttendanceRecord'});
       await Future.delayed(const Duration(milliseconds: 10));
 
-      expect(repo.getTodayStatusCallCount, 1, reason: 'Only the active Cubit responded (0 duplicate requests from 10 closed Cubits)');
+      expect(
+        repo.getTodayStatusCallCount,
+        1,
+        reason: 'Only the active Cubit responded (0 duplicate requests from 10 closed Cubits)',
+      );
       await activeCubit.close();
     });
   });

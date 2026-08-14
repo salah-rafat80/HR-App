@@ -35,8 +35,11 @@ class MockBiometricService implements BiometricService {
 class MockLocationService implements LocationService {
   bool enabled = true;
   bool permission = true;
-  LocationFix? currentFix =
-      const LocationFix(lat: 24.7136, lng: 46.6753, accuracy: 10);
+  LocationFix? currentFix = const LocationFix(
+    lat: 24.7136,
+    lng: 46.6753,
+    accuracy: 10,
+  );
   int fixCallCount = 0;
 
   @override
@@ -101,7 +104,8 @@ class MockAttendanceRepository implements AttendanceRepository {
   }) async {
     if (shouldThrowConflictOnClockIn) {
       throw Exception(
-          'HTTP 409 Conflict: Employee is already clocked in today');
+        'HTTP 409 Conflict: Employee is already clocked in today',
+      );
     }
     clockInCallCount++;
     lastClockInLat = lat;
@@ -122,14 +126,54 @@ class MockAttendanceRepository implements AttendanceRepository {
   Future<List<AttendanceRecord>> getHistory() async => [];
   @override
   Future<ShiftInfo> getShift() async => ShiftInfo(
-        name: 'Standard',
-        startTime: DateTime(2026, 8, 14, 9, 0),
-        endTime: DateTime(2026, 8, 14, 17, 0),
-      );
+    name: 'Standard',
+    startTime: DateTime(2026, 8, 14, 9, 0),
+    endTime: DateTime(2026, 8, 14, 17, 0),
+  );
   @override
-  Future<void> requestOvertime(double hours, String reason) async {}
+  Future<OvertimeRequest> requestOvertime({
+    required DateTime requestedStartAt,
+    required DateTime requestedEndAt,
+    required String reason,
+  }) => Future.error(UnimplementedError());
   @override
-  Future<List<OvertimeRequest>> getOvertimeRequests() async => [];
+  Future<List<OvertimeRequest>> getMyOvertimeRequests() async => [];
+  @override
+  Future<List<OvertimeRequest>> getPendingOvertimeApprovals() async => [];
+  @override
+  Future<OvertimeRequest> approveOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) => Future.error(UnimplementedError());
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsTeamLead(
+    String requestId, {
+    String? comment,
+  }) => Future.error(UnimplementedError());
+  @override
+  Future<OvertimeRequest> approveOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) => Future.error(UnimplementedError());
+  @override
+  Future<OvertimeRequest> rejectOvertimeAsHr(
+    String requestId, {
+    String? comment,
+  }) => Future.error(UnimplementedError());
+  @override
+  Future<OvertimeSession> startOvertimeSession(
+    String requestId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) => Future.error(UnimplementedError());
+  @override
+  Future<OvertimeSession> endOvertimeSession(
+    String sessionId, {
+    required double lat,
+    required double lng,
+    required double accuracy,
+  }) => Future.error(UnimplementedError());
   @override
   Future<void> updateTodayMode(AttendanceStatus mode) async {}
   @override
@@ -195,8 +239,7 @@ void main() {
       cubit.close();
     });
 
-    test('1. Location preflight requires lat, lng, and accuracy and calls server API',
-        () async {
+    test('1. Location preflight requires lat, lng, and accuracy and calls server API', () async {
       final res = await cubit.preflightGeofence(
         lat: 24.7136,
         lng: 46.6753,
@@ -208,11 +251,13 @@ void main() {
       expect(repo.lastPreflightLat, equals(24.7136));
       expect(repo.lastPreflightLng, equals(46.6753));
       expect(repo.lastPreflightAccuracy, equals(10.0));
-      expect(repo.clockInCallCount, equals(0)); // Preflight does NOT call clockIn
+      expect(
+        repo.clockInCallCount,
+        equals(0),
+      ); // Preflight does NOT call clockIn
     });
 
-    test('2. Outside range preflight returns outOfRange outcome — no clockIn called',
-        () async {
+    test('2. Outside range preflight returns outOfRange outcome — no clockIn called', () async {
       repo.preflightResult = const GeofenceStatus(
         withinRange: false,
         distanceMeters: 600,
@@ -227,22 +272,25 @@ void main() {
       );
 
       expect(res.outcome, equals(PreflightOutcome.outOfRange));
-      expect(repo.clockInCallCount, equals(0)); // NO clockIn call when outside range
+      expect(
+        repo.clockInCallCount,
+        equals(0),
+      ); // NO clockIn call when outside range
     });
 
     test('3. BiometricService options force biometricOnly: true', () async {
       final isAvailable = await biometric.isBiometricAvailable();
       expect(isAvailable, isTrue);
 
-      final authenticated = await biometric
-          .authenticateBiometricOnly('Please authenticate biometric to clock in');
+      final authenticated = await biometric.authenticateBiometricOnly(
+        'Please authenticate biometric to clock in',
+      );
       expect(authenticated, isTrue);
       expect(biometric.authCallCount, equals(1));
       expect(biometric.lastReason, contains('biometric'));
     });
 
-    test('4. Successful clockIn returns persisted record and updates AttendanceLoaded state',
-        () async {
+    test('4. Successful clockIn returns persisted record and updates AttendanceLoaded state', () async {
       await cubit.loadAttendanceData();
       expect(cubit.state, isA<AttendanceLoaded>());
 
@@ -264,78 +312,136 @@ void main() {
       expect(loadedState.isCheckingIn, isFalse);
     });
 
-    test('5. isCheckingIn guard prevents double-tap / concurrent clockIn calls',
-        () async {
-      await cubit.loadAttendanceData();
+    test(
+      '5. isCheckingIn guard prevents double-tap / concurrent clockIn calls',
+      () async {
+        await cubit.loadAttendanceData();
 
-      cubit.setCheckingIn(true);
-      expect((cubit.state as AttendanceLoaded).isCheckingIn, isTrue);
+        cubit.setCheckingIn(true);
+        expect((cubit.state as AttendanceLoaded).isCheckingIn, isTrue);
 
-      // Concurrent second clockIn during in-flight state
-      final future2 = cubit.clockIn(lat: 24.7136, lng: 46.6753, accuracy: 10.0);
+        // Concurrent second clockIn during in-flight state
+        final future2 = cubit.clockIn(
+          lat: 24.7136,
+          lng: 46.6753,
+          accuracy: 10.0,
+        );
 
-      final res2 = await future2;
+        final res2 = await future2;
 
-      expect(res2, isNotNull); // clockIn executes API call for in-flight sequence
-      cubit.setCheckingIn(false);
-      expect((cubit.state as AttendanceLoaded).isCheckingIn, isFalse);
-    });
+        expect(
+          res2,
+          isNotNull,
+        ); // clockIn executes API call for in-flight sequence
+        cubit.setCheckingIn(false);
+        expect((cubit.state as AttendanceLoaded).isCheckingIn, isFalse);
+      },
+    );
 
-    test('6. LocationService provides fresh location fix with finite coordinates',
-        () async {
-      final fix = await location.getCurrentPosition();
-      expect(fix, isNotNull);
-      expect(fix!.lat.isFinite, isTrue);
-      expect(fix.lng.isFinite, isTrue);
-      expect(fix.accuracy, greaterThan(0));
-    });
+    test(
+      '6. LocationService provides fresh location fix with finite coordinates',
+      () async {
+        final fix = await location.getCurrentPosition();
+        expect(fix, isNotNull);
+        expect(fix!.lat.isFinite, isTrue);
+        expect(fix.lng.isFinite, isTrue);
+        expect(fix.accuracy, greaterThan(0));
+      },
+    );
 
-    testWidgets('7. Opening AttendanceClockCard does NOT request location and does NOT call preflight',
-        (tester) async {
-      await cubit.loadAttendanceData();
+    testWidgets(
+      '7. Opening AttendanceClockCard does NOT request location and does NOT call preflight',
+      (tester) async {
+        await cubit.loadAttendanceData();
 
-      await tester.pumpWidget(createWidgetUnderTest(
-        cubit: cubit,
-        biometricService: biometric,
-        locationService: location,
-      ));
-      await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpWidget(
+          createWidgetUnderTest(
+            cubit: cubit,
+            biometricService: biometric,
+            locationService: location,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
 
-      expect(location.fixCallCount, equals(0));
-      expect(repo.preflightCallCount, equals(0));
-      expect(find.text('Tap Clock In to verify location'), findsOneWidget);
-    });
+        expect(location.fixCallCount, equals(0));
+        expect(repo.preflightCallCount, equals(0));
+        expect(find.text('Tap Clock In to verify location'), findsOneWidget);
+      },
+    );
 
-    testWidgets('8. Outside-range preflight means zero biometric prompt and zero POST clock-in',
-        (tester) async {
-      repo.preflightResult = const GeofenceStatus(
-        withinRange: false,
-        distanceMeters: 600,
-        allowedRadiusMeters: 200,
-        nearestBranch: 'Main Office',
-      );
-      await cubit.loadAttendanceData();
+    testWidgets(
+      '8. Outside-range preflight means zero biometric prompt and zero POST clock-in',
+      (tester) async {
+        repo.preflightResult = const GeofenceStatus(
+          withinRange: false,
+          distanceMeters: 600,
+          allowedRadiusMeters: 200,
+          nearestBranch: 'Main Office',
+        );
+        await cubit.loadAttendanceData();
 
-      await tester.pumpWidget(createWidgetUnderTest(
-        cubit: cubit,
-        biometricService: biometric,
-        locationService: location,
-      ));
-      await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpWidget(
+          createWidgetUnderTest(
+            cubit: cubit,
+            biometricService: biometric,
+            locationService: location,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
 
-      final clockButton =
-          tester.widget<AnimatedClockButton>(find.byType(AnimatedClockButton));
-      clockButton.onTap();
-      await tester.pump(const Duration(milliseconds: 500));
+        final clockButton = tester.widget<AnimatedClockButton>(
+          find.byType(AnimatedClockButton),
+        );
+        clockButton.onTap();
+        await tester.pump(const Duration(milliseconds: 500));
 
-      expect(location.fixCallCount, equals(1));
-      expect(repo.preflightCallCount, equals(1));
-      expect(biometric.authCallCount, equals(0)); // Zero biometric prompt
-      expect(repo.clockInCallCount, equals(0)); // Zero POST clock-in
-    });
+        expect(location.fixCallCount, equals(1));
+        expect(repo.preflightCallCount, equals(1));
+        expect(biometric.authCallCount, equals(0)); // Zero biometric prompt
+        expect(repo.clockInCallCount, equals(0)); // Zero POST clock-in
+      },
+    );
 
-    testWidgets('9. In-range + biometric success produces exactly one POST and success message uses persisted response',
-        (tester) async {
+    testWidgets(
+      '9. In-range + biometric success produces exactly one POST and success message uses persisted response',
+      (tester) async {
+        repo.preflightResult = const GeofenceStatus(
+          withinRange: true,
+          distanceMeters: 30,
+          allowedRadiusMeters: 200,
+          nearestBranch: 'Main Office',
+        );
+        biometric.authResult = true;
+        await cubit.loadAttendanceData();
+
+        await tester.pumpWidget(
+          createWidgetUnderTest(
+            cubit: cubit,
+            biometricService: biometric,
+            locationService: location,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+
+        final clockButton = tester.widget<AnimatedClockButton>(
+          find.byType(AnimatedClockButton),
+        );
+        clockButton.onTap();
+        await tester.pump(const Duration(milliseconds: 500));
+
+        expect(location.fixCallCount, equals(1));
+        expect(repo.preflightCallCount, equals(1));
+        expect(biometric.authCallCount, equals(1));
+        expect(repo.clockInCallCount, equals(1));
+        expect(find.text('Attendance recorded at Main Office'), findsOneWidget);
+
+        await tester.pump(const Duration(seconds: 4));
+      },
+    );
+
+    testWidgets('10. Two rapid taps trigger exactly one full flow', (
+      tester,
+    ) async {
       repo.preflightResult = const GeofenceStatus(
         withinRange: true,
         distanceMeters: 30,
@@ -345,47 +451,18 @@ void main() {
       biometric.authResult = true;
       await cubit.loadAttendanceData();
 
-      await tester.pumpWidget(createWidgetUnderTest(
-        cubit: cubit,
-        biometricService: biometric,
-        locationService: location,
-      ));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      final clockButton =
-          tester.widget<AnimatedClockButton>(find.byType(AnimatedClockButton));
-      clockButton.onTap();
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(location.fixCallCount, equals(1));
-      expect(repo.preflightCallCount, equals(1));
-      expect(biometric.authCallCount, equals(1));
-      expect(repo.clockInCallCount, equals(1));
-      expect(find.text('Attendance recorded at Main Office'), findsOneWidget);
-
-      await tester.pump(const Duration(seconds: 4));
-    });
-
-    testWidgets('10. Two rapid taps trigger exactly one full flow',
-        (tester) async {
-      repo.preflightResult = const GeofenceStatus(
-        withinRange: true,
-        distanceMeters: 30,
-        allowedRadiusMeters: 200,
-        nearestBranch: 'Main Office',
+      await tester.pumpWidget(
+        createWidgetUnderTest(
+          cubit: cubit,
+          biometricService: biometric,
+          locationService: location,
+        ),
       );
-      biometric.authResult = true;
-      await cubit.loadAttendanceData();
-
-      await tester.pumpWidget(createWidgetUnderTest(
-        cubit: cubit,
-        biometricService: biometric,
-        locationService: location,
-      ));
       await tester.pump(const Duration(milliseconds: 100));
 
-      final clockButton =
-          tester.widget<AnimatedClockButton>(find.byType(AnimatedClockButton));
+      final clockButton = tester.widget<AnimatedClockButton>(
+        find.byType(AnimatedClockButton),
+      );
       clockButton.onTap();
       clockButton.onTap();
       await tester.pump(const Duration(milliseconds: 500));
@@ -399,63 +476,72 @@ void main() {
     });
 
     testWidgets(
-        '11. Closed-day record renders a non-actionable completed state',
-        (tester) async {
-      repo.todayRecord = AttendanceRecord(
-        date: DateTime(2026, 8, 14),
-        clockInTime: DateTime(2026, 8, 14, 9, 0),
-        clockOutTime: DateTime(2026, 8, 14, 17, 0),
-        status: AttendanceStatus.present,
-        locationLabel: 'Main Office',
-      );
-      await cubit.loadAttendanceData();
+      '11. Closed-day record renders a non-actionable completed state',
+      (tester) async {
+        repo.todayRecord = AttendanceRecord(
+          date: DateTime(2026, 8, 14),
+          clockInTime: DateTime(2026, 8, 14, 9, 0),
+          clockOutTime: DateTime(2026, 8, 14, 17, 0),
+          status: AttendanceStatus.present,
+          locationLabel: 'Main Office',
+        );
+        await cubit.loadAttendanceData();
 
-      await tester.pumpWidget(createWidgetUnderTest(
-        cubit: cubit,
-        biometricService: biometric,
-        locationService: location,
-      ));
-      await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpWidget(
+          createWidgetUnderTest(
+            cubit: cubit,
+            biometricService: biometric,
+            locationService: location,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Attendance completed for today'), findsOneWidget);
-      expect(find.byType(AnimatedClockButton), findsNothing);
-    });
+        expect(find.text('Attendance completed for today'), findsOneWidget);
+        expect(find.byType(AnimatedClockButton), findsNothing);
+      },
+    );
 
     testWidgets(
-        '12. Tapping completed state triggers zero GPS, preflight, biometric, or POST calls',
-        (tester) async {
-      repo.todayRecord = AttendanceRecord(
-        date: DateTime(2026, 8, 14),
-        clockInTime: DateTime(2026, 8, 14, 9, 0),
-        clockOutTime: DateTime(2026, 8, 14, 17, 0),
-        status: AttendanceStatus.present,
-        locationLabel: 'Main Office',
-      );
-      await cubit.loadAttendanceData();
+      '12. Tapping completed state triggers zero GPS, preflight, biometric, or POST calls',
+      (tester) async {
+        repo.todayRecord = AttendanceRecord(
+          date: DateTime(2026, 8, 14),
+          clockInTime: DateTime(2026, 8, 14, 9, 0),
+          clockOutTime: DateTime(2026, 8, 14, 17, 0),
+          status: AttendanceStatus.present,
+          locationLabel: 'Main Office',
+        );
+        await cubit.loadAttendanceData();
 
-      await tester.pumpWidget(createWidgetUnderTest(
-        cubit: cubit,
-        biometricService: biometric,
-        locationService: location,
-      ));
-      await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpWidget(
+          createWidgetUnderTest(
+            cubit: cubit,
+            biometricService: biometric,
+            locationService: location,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
 
-      await tester.tap(find.text('Attendance completed for today'));
-      await tester.pump(const Duration(milliseconds: 500));
+        await tester.tap(find.text('Attendance completed for today'));
+        await tester.pump(const Duration(milliseconds: 500));
 
-      expect(location.fixCallCount, equals(0));
-      expect(repo.preflightCallCount, equals(0));
-      expect(biometric.authCallCount, equals(0));
-      expect(repo.clockInCallCount, equals(0));
-    });
+        expect(location.fixCallCount, equals(0));
+        expect(repo.preflightCallCount, equals(0));
+        expect(biometric.authCallCount, equals(0));
+        expect(repo.clockInCallCount, equals(0));
+      },
+    );
 
     test('13. API 409 does not show a false success state', () async {
       await cubit.loadAttendanceData();
 
       repo.shouldThrowConflictOnClockIn = true;
 
-      final res =
-          await cubit.clockIn(lat: 24.7136, lng: 46.6753, accuracy: 10.0);
+      final res = await cubit.clockIn(
+        lat: 24.7136,
+        lng: 46.6753,
+        accuracy: 10.0,
+      );
       expect(res, isNull);
       expect(repo.todayRecord.clockInTime, isNull);
     });
