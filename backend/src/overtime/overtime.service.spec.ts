@@ -5,34 +5,39 @@ import { AttendanceService } from '../attendance/attendance.service';
 import { Role } from '../auth/roles.enum';
 import { EventsGateway } from '../events/events/events.gateway';
 import { PrismaService } from '../prisma/prisma.service';
-import { CompanyTimeService } from '../common/time/company-time.service';
 import { OvertimeService } from './overtime.service';
+import {
+  serverNow,
+  startOfEgyptAttendanceDay,
+} from '../common/time/egypt-time.util';
 
 const employee = { userId: 'employee-1', role: Role.employee };
 const teamLead = { userId: 'lead-1', role: Role.team_lead };
 const hr = { userId: 'hr-1', role: Role.hr };
 
 function nowRequestPayload() {
-  const companyTime = new CompanyTimeService();
-  const todayStr = companyTime.companyBusinessDate();
+  // Use noon of Cairo today via ISO string to avoid midnight boundary issues.
+  const now = serverNow();
+  const d = startOfEgyptAttendanceDay(now);
+  const start = new Date(d.getTime() + 12 * 60 * 60 * 1000);
+  const end = new Date(d.getTime() + 14 * 60 * 60 * 1000);
   return {
-    requestedStartAt: `${todayStr} 12:00:00`,
-    requestedEndAt: `${todayStr} 14:00:00`,
+    requestedStartAt: start.toISOString(),
+    requestedEndAt: end.toISOString(),
     reason: 'Critical production support',
   };
 }
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
-  const companyTime = new CompanyTimeService();
-  const todayStr = companyTime.companyBusinessDate();
-  const today = new Date(todayStr);
+  const now = serverNow();
+  const today = startOfEgyptAttendanceDay(now);
   return {
     id: 'request-1',
     userId: employee.userId,
     attendanceRecordId: 'attendance-1',
     date: today,
-    requestedStartAt: new Date(),
-    requestedEndAt: new Date(Date.now() + 60 * 60 * 1000),
+    requestedStartAt: new Date(today.getTime() + 12 * 60 * 60 * 1000),
+    requestedEndAt: new Date(today.getTime() + 13 * 60 * 60 * 1000),
     requestedMinutes: 60,
     hoursRequested: 1,
     reason: 'Critical production support',
@@ -113,7 +118,6 @@ describe('OvertimeService (unit)', () => {
       prisma as unknown as PrismaService,
       attendanceService,
       events,
-      new CompanyTimeService(),
     );
   });
 

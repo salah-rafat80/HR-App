@@ -9,10 +9,13 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
-import { AttendanceStatus, OfficeBranch } from '@prisma/client';
+import { AttendanceStatus } from '@prisma/client';
 import { ClockInDto } from './dto/clock-in.dto';
-
-import { CompanyTimeService } from '../common/time/company-time.service';
+import {
+  formatEgyptTime,
+  serverNow,
+  startOfEgyptAttendanceDay,
+} from '../common/time/egypt-time.util';
 
 const MAX_ACCURACY_METRES = 50;
 
@@ -41,33 +44,31 @@ export class AttendanceService {
     private prisma: PrismaService,
     private events: EventsGateway,
     private notifications: NotificationService,
-    private companyTime: CompanyTimeService,
   ) {}
 
   async getTodayStatus(userId: string) {
-    const now = this.companyTime.serverNowUtc();
-    const todayStr = this.companyTime.companyBusinessDate(now);
-    const todayDateObj = new Date(todayStr);
+    const now = serverNow();
+    const today = startOfEgyptAttendanceDay(now);
 
     const activeLeaves = await this.prisma.leaveRequest.findMany({
       where: {
         userId,
         overallStatus: 'approved',
-        startDate: { lte: todayDateObj },
-        endDate: { gte: todayDateObj },
+        startDate: { lte: today },
+        endDate: { gte: today },
       },
     });
 
     if (activeLeaves.length > 0) {
       return {
-        date: todayDateObj,
+        date: today,
         status: AttendanceStatus.onLeave,
         locationLabel: 'none',
       };
     }
 
     const record = await this.prisma.attendanceRecord.findFirst({
-      where: { userId, date: todayDateObj },
+      where: { userId, date: today },
     });
 
     if (record) {
@@ -75,7 +76,7 @@ export class AttendanceService {
     }
 
     return {
-      date: todayDateObj,
+      date: today,
       status: AttendanceStatus.none,
       locationLabel: 'none',
     };
@@ -127,68 +128,53 @@ export class AttendanceService {
     }
   }
 
+  /**
+   * Checks whether the given GPS coordinates are within the employee's
+   * assigned office branch radius. Only the actor's assigned branch is
+   * consulted — other active branches are never used for authorisation.
+   */
   async checkGeofence(
+    userId: string,
     lat: number,
     lng: number,
     accuracy: number,
   ): Promise<GeofenceResult> {
     this.assertCoordinatesValid(lat, lng, accuracy);
 
-    const branches: OfficeBranch[] = await this.prisma.officeBranch.findMany({
-      where: { isActive: true },
+    const employee = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { branch: true },
     });
-
-    const candidates = branches.map((branch) => ({
-      branch,
-      distanceMeters: this.getDistanceFromLatLonInM(
-        lat,
-        lng,
-        branch.latitude,
-        branch.longitude,
-      ),
-    }));
-
-    if (candidates.length === 0) {
-      return {
-        withinRange: false,
-        distanceMeters: 0,
-        allowedRadiusMeters: 200,
-        nearestBranch: 'Branch',
-      };
+    if (!employee) throw new NotFoundException('Employee not found');
+    if (!employee.branchId || !employee.branch) {
+      throw new ForbiddenException(
+        'No office branch is assigned to this employee',
+      );
+    }
+    if (!employee.branch.isActive) {
+      throw new ForbiddenException('The assigned office branch is inactive');
     }
 
-    const eligibleCandidates = candidates.filter(
-      (c) => c.distanceMeters + accuracy <= c.branch.radiusMeters,
+    const distanceMeters = this.getDistanceFromLatLonInM(
+      lat,
+      lng,
+      employee.branch.latitude,
+      employee.branch.longitude,
     );
-
-    if (eligibleCandidates.length > 0) {
-      eligibleCandidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
-      const matched = eligibleCandidates[0];
-      return {
-        withinRange: true,
-        distanceMeters: matched.distanceMeters,
-        allowedRadiusMeters: matched.branch.radiusMeters,
-        nearestBranch: matched.branch.name,
-      };
-    }
-
-    candidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
-    const nearestPhysical = candidates[0];
     return {
-      withinRange: false,
-      distanceMeters: nearestPhysical.distanceMeters,
-      allowedRadiusMeters: nearestPhysical.branch.radiusMeters,
-      nearestBranch: nearestPhysical.branch.name,
+      withinRange: distanceMeters + accuracy <= employee.branch.radiusMeters,
+      distanceMeters,
+      allowedRadiusMeters: employee.branch.radiusMeters,
+      nearestBranch: employee.branch.name,
     };
   }
 
   async clockIn(userId: string, data: ClockInDto): Promise<ClockInResponse> {
-    const now = this.companyTime.serverNowUtc();
-    const todayStr = this.companyTime.companyBusinessDate(now);
-    const todayDateObj = new Date(todayStr);
+    const now = serverNow();
+    const today = startOfEgyptAttendanceDay(now);
 
     let record = await this.prisma.attendanceRecord.findFirst({
-      where: { userId, date: todayDateObj },
+      where: { userId, date: today },
     });
 
     if (record) {
@@ -201,6 +187,7 @@ export class AttendanceService {
     }
 
     const geofence = await this.checkGeofence(
+      userId,
       data.lat,
       data.lng,
       data.accuracy,
@@ -232,7 +219,7 @@ export class AttendanceService {
       record = await this.prisma.attendanceRecord.create({
         data: {
           userId,
-          date: todayDateObj,
+          date: today,
           ...updateData,
         },
       });
@@ -268,10 +255,7 @@ export class AttendanceService {
       });
       if (!user?.fcmToken) return;
 
-      const timeStr = this.companyTime.formatCompanyDateTime(
-        clockInTime,
-        'HH:mm',
-      );
+      const timeStr = formatEgyptTime(clockInTime);
 
       await this.notifications.sendToDevice({
         token: user.fcmToken,
@@ -287,12 +271,11 @@ export class AttendanceService {
   }
 
   async clockOut(userId: string) {
-    const now = this.companyTime.serverNowUtc();
-    const todayStr = this.companyTime.companyBusinessDate(now);
-    const todayDateObj = new Date(todayStr);
+    const now = serverNow();
+    const today = startOfEgyptAttendanceDay(now);
 
     const record = await this.prisma.attendanceRecord.findFirst({
-      where: { userId, date: todayDateObj },
+      where: { userId, date: today },
     });
 
     if (!record) {

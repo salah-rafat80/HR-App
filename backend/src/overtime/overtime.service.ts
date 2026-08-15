@@ -13,8 +13,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OvertimeDecisionDto } from './dto/decision.dto';
 import { OvertimeLocationDto } from './dto/overtime-location.dto';
 import { RequestOvertimeDto } from './dto/request-overtime.dto';
-
-import { CompanyTimeService } from '../common/time/company-time.service';
+import {
+  isSameEgyptAttendanceDay,
+  serverNow,
+  startOfEgyptAttendanceDay,
+} from '../common/time/egypt-time.util';
 
 const MAX_REQUESTED_OVERTIME_MINUTES = 12 * 60;
 
@@ -29,37 +32,25 @@ export class OvertimeService {
     private readonly prisma: PrismaService,
     private readonly attendanceService: AttendanceService,
     private readonly events: EventsGateway,
-    private readonly companyTime: CompanyTimeService,
   ) {}
 
   async requestOvertime(actor: OvertimeActor, data: RequestOvertimeDto) {
-    const requestedStartAt = this.companyTime.parseCompanyLocalDateTime(
-      data.requestedStartAt,
-    );
-    const requestedEndAt = this.companyTime.parseCompanyLocalDateTime(
-      data.requestedEndAt,
-    );
-    const requestDateStr =
-      this.companyTime.companyBusinessDate(requestedStartAt);
-    const todayStr = this.companyTime.companyBusinessDate(
-      this.companyTime.serverNowUtc(),
-    );
+    const now = serverNow();
+    const requestedStartAt = new Date(data.requestedStartAt);
+    const requestedEndAt = new Date(data.requestedEndAt);
+    const today = startOfEgyptAttendanceDay(now);
 
-    if (requestDateStr !== todayStr) {
+    if (!isSameEgyptAttendanceDay(requestedStartAt, now)) {
       throw new BadRequestException(
-        'Overtime requests must be for the current attendance day',
+        'Overtime requests must be for the current Egypt attendance day',
       );
     }
 
-    const endFormatDateStr =
-      this.companyTime.companyBusinessDate(requestedEndAt);
-    if (endFormatDateStr !== requestDateStr) {
+    if (!isSameEgyptAttendanceDay(requestedEndAt, requestedStartAt)) {
       throw new BadRequestException(
-        'Overtime request start and end must be on the same attendance day',
+        'Overtime request start and end must be on the same Egypt attendance day',
       );
     }
-
-    const today = new Date(todayStr);
 
     const reason = data.reason.trim();
     if (!reason) {
@@ -217,7 +208,7 @@ export class OvertimeService {
       },
       data: {
         status: OvertimeStatus.pending_hr,
-        teamLeadDecisionAt: new Date(),
+        teamLeadDecisionAt: serverNow(),
         teamLeadComment: this.normaliseComment(data.comment),
       },
     });
@@ -256,7 +247,7 @@ export class OvertimeService {
       },
       data: {
         status: OvertimeStatus.rejected_by_team_lead,
-        teamLeadDecisionAt: new Date(),
+        teamLeadDecisionAt: serverNow(),
         teamLeadComment: this.normaliseComment(data.comment),
       },
     });
@@ -284,7 +275,7 @@ export class OvertimeService {
       data: {
         status: OvertimeStatus.approved,
         hrApproverId: actor.userId,
-        hrDecisionAt: new Date(),
+        hrDecisionAt: serverNow(),
         hrComment: this.normaliseComment(data.comment),
       },
     });
@@ -312,7 +303,7 @@ export class OvertimeService {
       data: {
         status: OvertimeStatus.rejected_by_hr,
         hrApproverId: actor.userId,
-        hrDecisionAt: new Date(),
+        hrDecisionAt: serverNow(),
         hrComment: this.normaliseComment(data.comment),
       },
     });
@@ -328,6 +319,7 @@ export class OvertimeService {
     actor: OvertimeActor,
     data: OvertimeLocationDto,
   ) {
+    const now = serverNow();
     const request = await this.prisma.overtimeRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -348,7 +340,7 @@ export class OvertimeService {
         'An overtime session already exists for request',
       );
     }
-    if (!this.isToday(request.date)) {
+    if (!this.isToday(request.date, now)) {
       throw new ConflictException(
         'Overtime can start only on its request date',
       );
@@ -360,6 +352,7 @@ export class OvertimeService {
     }
 
     const geofence = await this.attendanceService.checkGeofence(
+      actor.userId,
       data.lat,
       data.lng,
       data.accuracy,
@@ -377,6 +370,7 @@ export class OvertimeService {
           userId: actor.userId,
           attendanceRecordId: request.attendanceRecord.id,
           status: OvertimeSessionStatus.active,
+          startedAt: now,
           startLocationLabel: geofence.nearestBranch,
           startLatitude: data.lat,
           startLongitude: data.lng,
@@ -418,6 +412,7 @@ export class OvertimeService {
     }
 
     const geofence = await this.attendanceService.checkGeofence(
+      actor.userId,
       data.lat,
       data.lng,
       data.accuracy,
@@ -428,7 +423,7 @@ export class OvertimeService {
       );
     }
 
-    const endedAt = new Date();
+    const endedAt = serverNow();
     const actualMinutes = Math.floor(
       (endedAt.getTime() - session.startedAt.getTime()) / 60000,
     );
@@ -510,13 +505,11 @@ export class OvertimeService {
   }
 
   private startOfDay(value: Date): Date {
-    const dateStr = this.companyTime.companyBusinessDate(value);
-    return new Date(dateStr);
+    return startOfEgyptAttendanceDay(value);
   }
 
-  private isToday(value: Date): boolean {
-    const now = this.companyTime.serverNowUtc();
-    return this.companyTime.isSameCompanyBusinessDay(value, now);
+  private isToday(value: Date, now: Date = serverNow()): boolean {
+    return isSameEgyptAttendanceDay(value, now);
   }
 
   private normaliseComment(comment?: string): string | null {

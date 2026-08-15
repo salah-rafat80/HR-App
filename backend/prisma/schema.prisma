@@ -82,6 +82,8 @@ model User {
   managerId         String?
   manager           User?          @relation("ManagerHierarchy", fields: [managerId], references: [id])
   directReports     User[]         @relation("ManagerHierarchy")
+  branchId          String?
+  branch            OfficeBranch?  @relation("UserOfficeBranch", fields: [branchId], references: [id], onDelete: SetNull)
 
   leaveRequests            LeaveRequest[]
   leaveBalances            LeaveBalance[]
@@ -109,6 +111,7 @@ model User {
 
   @@index([employeeCode])
   @@index([managerId])
+  @@index([branchId])
 }
 
 model AuditLog {
@@ -202,6 +205,7 @@ model OfficeBranch {
   longitude      Float
   radiusMeters   Int      @default(200)
   isActive       Boolean  @default(true)
+  users          User[]   @relation("UserOfficeBranch")
   createdAt      DateTime @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime @updatedAt @db.Timestamptz(3)
 }
