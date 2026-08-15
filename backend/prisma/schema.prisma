@@ -73,7 +73,7 @@ model User {
   name              String
   role              String
   isActive          Boolean        @default(true)
-  passwordChangedAt DateTime?
+  passwordChangedAt DateTime?      @db.Timestamptz(3)
   fcmToken          String?
 
   department        String?
@@ -82,8 +82,6 @@ model User {
   managerId         String?
   manager           User?          @relation("ManagerHierarchy", fields: [managerId], references: [id])
   directReports     User[]         @relation("ManagerHierarchy")
-  branchId          String?
-  branch            OfficeBranch?  @relation("UserOfficeBranch", fields: [branchId], references: [id], onDelete: SetNull)
 
   leaveRequests            LeaveRequest[]
   leaveBalances            LeaveBalance[]
@@ -106,12 +104,11 @@ model User {
   bonusNotices             BonusNotice[]
   auditLogs                AuditLog[]                @relation("AuditActor")
 
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @db.Timestamptz(3)
 
   @@index([employeeCode])
   @@index([managerId])
-  @@index([branchId])
 }
 
 model AuditLog {
@@ -122,7 +119,7 @@ model AuditLog {
   targetType  String
   targetId    String?
   metadata    Json?
-  timestamp   DateTime @default(now())
+  timestamp   DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([timestamp])
   @@index([actorUserId])
@@ -143,8 +140,8 @@ model LeaveRequest {
   userId           String
   user             User                @relation(fields: [userId], references: [id])
   type             LeaveType
-  startDate        DateTime
-  endDate          DateTime
+  startDate        DateTime            @db.Date
+  endDate          DateTime            @db.Date
   isHalfDay        Boolean
   halfDayPeriod    HalfDayPeriod?
   reason           String
@@ -152,8 +149,8 @@ model LeaveRequest {
   overallStatus    LeaveStatus         @default(pending)
   currentStepOrder Int                 @default(1)
   approvalSteps    LeaveApprovalStep[]
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
 
   @@index([userId, overallStatus, startDate, endDate])
 }
@@ -165,7 +162,7 @@ model LeaveApprovalStep {
   stepName  String
   status    ApprovalStepStatus
   stepOrder Int                @default(0)
-  timestamp DateTime
+  timestamp DateTime           @db.Timestamptz(3)
 }
 
 model AttendanceRecord {
@@ -173,8 +170,8 @@ model AttendanceRecord {
   userId           String
   user             User              @relation(fields: [userId], references: [id])
   date             DateTime          @db.Date
-  clockInTime      DateTime?
-  clockOutTime     DateTime?
+  clockInTime      DateTime?         @db.Timestamptz(3)
+  clockOutTime     DateTime?         @db.Timestamptz(3)
   status           AttendanceStatus
   locationLabel    String
   clockInLat       Float?
@@ -182,8 +179,8 @@ model AttendanceRecord {
   distanceMeters   Float?
   overtimeRequests OvertimeRequest[]
   overtimeSessions OvertimeSession[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(3)
 
   @@index([userId, status, date])
   // ARTIFACT ONLY — unique constraint to prevent concurrent duplicate check-ins.
@@ -194,8 +191,8 @@ model AttendanceRecord {
 model CompanySettings {
   id                  String   @id @default(uuid())
   companyName         String   @default("Demo Company")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
 }
 
 model OfficeBranch {
@@ -205,9 +202,8 @@ model OfficeBranch {
   longitude      Float
   radiusMeters   Int      @default(200)
   isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  users          User[]   @relation("UserOfficeBranch")
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
 }
 
 model ShiftInfo {
@@ -217,8 +213,8 @@ model ShiftInfo {
   shiftName String
   startTime DateTime
   endTime   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
 
 model OvertimeRequest {
@@ -228,32 +224,27 @@ model OvertimeRequest {
   attendanceRecordId String?
   attendanceRecord   AttendanceRecord? @relation(fields: [attendanceRecordId], references: [id])
   date               DateTime          @db.Date
-  requestedStartAt   DateTime?
-  requestedEndAt     DateTime?
+  requestedStartAt   DateTime?         @db.Timestamptz(3)
+  requestedEndAt     DateTime?         @db.Timestamptz(3)
   requestedMinutes   Int?
   hoursRequested     Float?
   reason             String
   status             OvertimeStatus    @default(pending_team_lead)
   teamLeadId         String?
   teamLead           User?             @relation("OvertimeTeamLead", fields: [teamLeadId], references: [id])
-  teamLeadDecisionAt DateTime?
+  teamLeadDecisionAt DateTime?         @db.Timestamptz(3)
   teamLeadComment    String?
   hrApproverId       String?
   hrApprover         User?             @relation("OvertimeHrApprover", fields: [hrApproverId], references: [id])
-  hrDecisionAt       DateTime?
+  hrDecisionAt       DateTime?         @db.Timestamptz(3)
   hrComment          String?
   session            OvertimeSession?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime          @updatedAt @db.Timestamptz(3)
 
   @@index([userId, date])
   @@index([status, date])
   @@index([teamLeadId, status, date])
-  // ARTIFACT ONLY — partial unique index to prevent concurrent duplicate active requests for the same user and date.
-  // Prisma cannot represent partial unique indexes natively in DSL, so it is enforced via migration DDL:
-  // CREATE UNIQUE INDEX "OvertimeRequest_one_active_per_user_date_key"
-  // ON "OvertimeRequest"("userId", "date")
-  // WHERE "status" IN ('pending_team_lead', 'pending_hr', 'approved');
 }
 
 model OvertimeSession {
@@ -265,8 +256,8 @@ model OvertimeSession {
   attendanceRecordId  String
   attendanceRecord    AttendanceRecord      @relation(fields: [attendanceRecordId], references: [id])
   status              OvertimeSessionStatus @default(active)
-  startedAt           DateTime              @default(now())
-  endedAt             DateTime?
+  startedAt           DateTime              @default(now()) @db.Timestamptz(3)
+  endedAt             DateTime?             @db.Timestamptz(3)
   actualMinutes       Int?
   startLocationLabel  String?
   startLatitude       Float?
@@ -278,8 +269,8 @@ model OvertimeSession {
   endLongitude        Float?
   endGpsAccuracy      Float?
   endDistanceMeters   Float?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
 
   @@index([userId, startedAt])
 }
@@ -291,8 +282,8 @@ model CompanyHoliday {
   isActive    Boolean  @default(true)
   createdById String?
   createdBy   User?    @relation("CompanyHolidayCreator", fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 }
 
 model Kpi {
@@ -306,8 +297,8 @@ model Kpi {
   currentValue        Float
   selfAssessmentText  String?
   hasEvidence         Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([userId, createdAt(sort: Desc)])
 }
@@ -318,8 +309,8 @@ model KpiQuarterScore {
   user                User     @relation(fields: [userId], references: [id])
   quarterLabel        String
   averageScorePercent Float
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([userId, quarterLabel(sort: Desc)])
 }
@@ -334,9 +325,9 @@ model AppraisalCycle {
   id                    String                 @id @default(uuid())
   label                 String
   status                AppraisalStatus        @default(upcoming)
-  dueDate               DateTime
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  dueDate               DateTime               @db.Timestamptz(3)
+  createdAt             DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime               @updatedAt @db.Timestamptz(3)
   selfAppraisalAnswers  SelfAppraisalAnswer[]
   peerFeedbacks         PeerFeedback[]
   categoryRatings       AppraisalCategoryRating[]
@@ -351,8 +342,8 @@ model SelfAppraisalAnswer {
   questionId   String
   questionText String
   answerText   String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
 
   @@unique([userId, cycleId, questionId])
 }
@@ -367,8 +358,8 @@ model PeerFeedback {
   cycle        AppraisalCycle @relation(fields: [cycleId], references: [id])
   feedbackText String?
   submitted    Boolean        @default(false)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
 
   @@unique([fromUserId, toUserId, cycleId])
 }
@@ -378,12 +369,12 @@ model AppraisalCategoryRating {
   userId         String
   user           User           @relation(fields: [userId], references: [id])
   cycleId        String
-  cycle          AppraisalCycle @relation(fields: [cycleId], references: [id])
+  cycle        AppraisalCycle @relation(fields: [cycleId], references: [id])
   categoryName   String
   score          Float
   managerComment String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
 
   @@unique([userId, cycleId, categoryName])
 }
@@ -394,8 +385,8 @@ model DevelopmentGoal {
   user            User     @relation(fields: [userId], references: [id])
   title           String
   progressPercent Float
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
 }
 
 enum CareerStepStatus {
@@ -411,8 +402,8 @@ model CareerStep {
   roleTitle String
   status    CareerStepStatus @default(upcoming)
   order     Int
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime         @updatedAt @db.Timestamptz(3)
 }
 
 enum PayslipLineItemType {
@@ -435,8 +426,8 @@ model PayrollRun {
   totalAmount   Decimal       @default(0) @db.Decimal(12, 2)
   employeeCount Int           @default(0)
   payslips      Payslip[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
 }
 
 model Payslip {
@@ -449,8 +440,8 @@ model Payslip {
   payrollRunId String
   payrollRun   PayrollRun        @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
   lineItems    PayslipLineItem[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime          @updatedAt @db.Timestamptz(3)
 
   @@unique([userId, payrollRunId])
   @@index([userId])
@@ -463,8 +454,8 @@ model PayslipLineItem {
   type      PayslipLineItemType
   payslipId String
   payslip   Payslip             @relation(fields: [payslipId], references: [id], onDelete: Cascade)
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
 }
 
 model BonusNotice {
@@ -474,38 +465,38 @@ model BonusNotice {
   monthLabel String
   amount     Decimal  @db.Decimal(12, 2)
   message    String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([userId])
 }
 
 model TrainingCourse {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model JobRequisition {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model Candidate {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model OrgNode {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model NewHireOnboarding {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model OffboardingCase {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }

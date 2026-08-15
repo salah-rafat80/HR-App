@@ -8,11 +8,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { SelfAppraisalAnswerItemDto } from './dto/appraisal.dto';
 
+import { CompanyTimeService } from '../common/time/company-time.service';
+
 @Injectable()
 export class AppraisalService {
   constructor(
     private prisma: PrismaService,
     private events: EventsGateway,
+    private companyTime: CompanyTimeService,
   ) {}
 
   async getCurrentCycle(userId: string) {
@@ -25,7 +28,7 @@ export class AppraisalService {
       return {
         cycleLabel: 'No Active Cycle',
         status: 'completed',
-        dueDate: new Date(),
+        dueDate: this.companyTime.serverNowUtc(),
         selfAppraisalSubmitted: false,
       };
     }

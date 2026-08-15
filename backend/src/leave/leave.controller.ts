@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { LeaveService } from './leave.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
@@ -35,7 +44,10 @@ export class LeaveController {
 
   @Get('pending')
   getPendingApprovals(@Request() req) {
-    return this.leaveService.getPendingApprovals(req.user.role, req.user.userId);
+    return this.leaveService.getPendingApprovals(
+      req.user.role,
+      req.user.userId,
+    );
   }
 
   @Post(':id/approve')

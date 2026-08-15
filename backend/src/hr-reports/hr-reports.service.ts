@@ -29,12 +29,50 @@ interface EmployeeSummary {
   dailyRows: DailyRow[];
 }
 
+import { CompanyTimeService } from '../common/time/company-time.service';
+
+interface DailyRow {
+  date: Date;
+  dayType: 'working' | 'weekend' | 'holiday' | 'leave';
+  attendanceStatus: string;
+  clockIn: Date | null;
+  clockOut: Date | null;
+  normalMinutes: number;
+  overtimeMinutes: number;
+  note: string;
+}
+
+interface EmployeeSummary {
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  department: string;
+  workingDays: number;
+  presentDays: number;
+  absentDays: number;
+  leaveDays: number;
+  normalMinutes: number;
+  overtimeMinutes: number;
+  dailyRows: DailyRow[];
+}
+
 @Injectable()
 export class HrReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly companyTime: CompanyTimeService,
+  ) {}
 
   async getMonthlyReport(query: MonthlyReportQueryDto) {
-    const { monthStart, monthEnd } = this.monthBounds(query.month);
+    const {
+      year,
+      monthNumber,
+      startDateObj,
+      endDateObj,
+      startUtc,
+      endExclusiveUtc,
+    } = this.monthBounds(query.month);
+
     const users = await this.prisma.user.findMany({
       where: {
         isActive: true,
@@ -45,29 +83,32 @@ export class HrReportsService {
       orderBy: [{ department: 'asc' }, { name: 'asc' }],
     });
     const userIds = users.map((user) => user.id);
+
+    // Business Date filtering for AttendanceRecord.date, LeaveRequest.startDate/endDate, CompanyHoliday.date
+    // Timestamptz filtering for OvertimeSession.startedAt using Cairo month UTC bounds
     const [attendance, leaves, holidays, overtime] = await Promise.all([
       this.prisma.attendanceRecord.findMany({
         where: {
           userId: { in: userIds },
-          date: { gte: monthStart, lt: monthEnd },
+          date: { gte: startDateObj, lt: endDateObj },
         },
       }),
       this.prisma.leaveRequest.findMany({
         where: {
           userId: { in: userIds },
           overallStatus: 'approved',
-          startDate: { lt: monthEnd },
-          endDate: { gte: monthStart },
+          startDate: { lt: endDateObj },
+          endDate: { gte: startDateObj },
         },
       }),
       this.prisma.companyHoliday.findMany({
-        where: { isActive: true, date: { gte: monthStart, lt: monthEnd } },
+        where: { isActive: true, date: { gte: startDateObj, lt: endDateObj } },
       }),
       this.prisma.overtimeSession.findMany({
         where: {
           userId: { in: userIds },
           status: OvertimeSessionStatus.completed,
-          startedAt: { gte: monthStart, lt: monthEnd },
+          startedAt: { gte: startUtc, lt: endExclusiveUtc },
         },
       }),
     ]);
@@ -98,14 +139,12 @@ export class HrReportsService {
       let leaveDays = 0;
       let normalMinutes = 0;
       let overtimeMinutes = 0;
-      for (const date of this.monthDates(monthStart, monthEnd)) {
+      for (const date of this.monthDates(startDateObj, endDateObj)) {
         const dateKey = this.dateKey(date);
         const record = attendanceByUserDate.get(`${user.id}:${dateKey}`);
         const holidayName = holidayByDate.get(dateKey);
         const onLeave = leaves.some(
-          (leave) =>
-            date >= this.startOfDay(leave.startDate) &&
-            date <= this.startOfDay(leave.endDate),
+          (leave) => date >= leave.startDate && date <= leave.endDate,
         );
         const overtimeForDay =
           overtimeByUserDate.get(`${user.id}:${dateKey}`) ?? 0;
@@ -316,9 +355,27 @@ export class HrReportsService {
 
   private monthBounds(month: string) {
     const [year, monthNumber] = month.split('-').map(Number);
-    const monthStart = new Date(Date.UTC(year, monthNumber - 1, 1));
-    const monthEnd = new Date(Date.UTC(year, monthNumber, 1));
-    return { monthStart, monthEnd };
+    const startDateStr = `${year}-${String(monthNumber).padStart(2, '0')}-01`;
+    const nextMonthYear = monthNumber === 12 ? year + 1 : year;
+    const nextMonthNum = monthNumber === 12 ? 1 : monthNumber + 1;
+    const endDateStr = `${nextMonthYear}-${String(nextMonthNum).padStart(2, '0')}-01`;
+
+    const startDateObj = new Date(startDateStr);
+    const endDateObj = new Date(endDateStr);
+
+    const { startUtc, endExclusiveUtc } = this.companyTime.companyMonthRange(
+      year,
+      monthNumber,
+    );
+
+    return {
+      year,
+      monthNumber,
+      startDateObj,
+      endDateObj,
+      startUtc,
+      endExclusiveUtc,
+    };
   }
 
   private monthDates(start: Date, end: Date): Date[] {
@@ -332,14 +389,8 @@ export class HrReportsService {
     return dates;
   }
 
-  private startOfDay(date: Date): Date {
-    return new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-    );
-  }
-
   private dateKey(date: Date): string {
-    return this.startOfDay(date).toISOString().slice(0, 10);
+    return this.companyTime.companyBusinessDate(date);
   }
 
   private minutesBetween(start: Date | null, end: Date | null): number {

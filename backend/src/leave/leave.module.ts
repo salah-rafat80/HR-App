@@ -9,7 +9,6 @@ import { NotificationModule } from '../notifications/notification.module';
 @Module({
   imports: [PrismaModule, EventsModule, NotificationModule],
   providers: [LeaveService],
-  controllers: [LeaveController]
+  controllers: [LeaveController],
 })
 export class LeaveModule {}
-

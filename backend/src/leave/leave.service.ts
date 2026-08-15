@@ -8,12 +8,15 @@ import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 
+import { CompanyTimeService } from '../common/time/company-time.service';
+
 @Injectable()
 export class LeaveService {
   constructor(
     private prisma: PrismaService,
     private events: EventsGateway,
     private notifications: NotificationService,
+    private companyTime: CompanyTimeService,
   ) {}
 
   async getBalances(userId: string) {
@@ -34,6 +37,7 @@ export class LeaveService {
   }
 
   async applyLeave(userId: string, data: CreateLeaveRequestDto) {
+    const now = this.companyTime.serverNowUtc();
     const request = await this.prisma.leaveRequest.create({
       data: {
         userId,
@@ -52,19 +56,19 @@ export class LeaveService {
               stepName: 'team_lead',
               status: 'pending',
               stepOrder: 1,
-              timestamp: new Date(),
+              timestamp: now,
             },
             {
               stepName: 'manager',
               status: 'pending',
               stepOrder: 2,
-              timestamp: new Date(),
+              timestamp: now,
             },
             {
               stepName: 'hr',
               status: 'pending',
               stepOrder: 3,
-              timestamp: new Date(),
+              timestamp: now,
             },
           ],
         },

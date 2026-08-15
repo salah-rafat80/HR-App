@@ -1,7 +1,18 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { AppraisalService } from './appraisal.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { StartCycleDto, SubmitSelfAppraisalDto, SubmitPeerFeedbackDto } from './dto/appraisal.dto';
+import {
+  StartCycleDto,
+  SubmitSelfAppraisalDto,
+  SubmitPeerFeedbackDto,
+} from './dto/appraisal.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('appraisal')
@@ -20,7 +31,10 @@ export class AppraisalController {
 
   @Post('self-appraisal/submit')
   submitSelfAppraisal(@Request() req, @Body() data: SubmitSelfAppraisalDto) {
-    return this.appraisalService.submitSelfAppraisal(req.user.userId, data.answers);
+    return this.appraisalService.submitSelfAppraisal(
+      req.user.userId,
+      data.answers,
+    );
   }
 
   @Get('peer-feedback/peers')
@@ -30,7 +44,11 @@ export class AppraisalController {
 
   @Post('peer-feedback/submit')
   submitPeerFeedback(@Request() req, @Body() data: SubmitPeerFeedbackDto) {
-    return this.appraisalService.submitPeerFeedback(req.user.userId, data.colleagueId, data.feedbackText);
+    return this.appraisalService.submitPeerFeedback(
+      req.user.userId,
+      data.colleagueId,
+      data.feedbackText,
+    );
   }
 
   @Get('results/my')

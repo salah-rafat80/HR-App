@@ -5,6 +5,7 @@ import { AttendanceService } from '../attendance/attendance.service';
 import { Role } from '../auth/roles.enum';
 import { EventsGateway } from '../events/events/events.gateway';
 import { PrismaService } from '../prisma/prisma.service';
+import { CompanyTimeService } from '../common/time/company-time.service';
 import { OvertimeService } from './overtime.service';
 
 const employee = { userId: 'employee-1', role: Role.employee };
@@ -12,21 +13,19 @@ const teamLead = { userId: 'lead-1', role: Role.team_lead };
 const hr = { userId: 'hr-1', role: Role.hr };
 
 function nowRequestPayload() {
-  // Use noon of today (local time) to avoid midnight boundary issues in UTC CI.
-  // "+15 min from now" crosses midnight when CI runs at 23:45+ UTC → BadRequestException instead of ConflictException.
-  const d = new Date();
-  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  const companyTime = new CompanyTimeService();
+  const todayStr = companyTime.companyBusinessDate();
   return {
-    requestedStartAt: start.toISOString(),
-    requestedEndAt: end.toISOString(),
+    requestedStartAt: `${todayStr} 12:00:00`,
+    requestedEndAt: `${todayStr} 14:00:00`,
     reason: 'Critical production support',
   };
 }
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const companyTime = new CompanyTimeService();
+  const todayStr = companyTime.companyBusinessDate();
+  const today = new Date(todayStr);
   return {
     id: 'request-1',
     userId: employee.userId,
@@ -114,6 +113,7 @@ describe('OvertimeService (unit)', () => {
       prisma as unknown as PrismaService,
       attendanceService,
       events,
+      new CompanyTimeService(),
     );
   });
 

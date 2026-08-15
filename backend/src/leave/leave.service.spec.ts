@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
 
+import { CompanyTimeService } from '../common/time/company-time.service';
+
 describe('LeaveService', () => {
   let service: LeaveService;
 
@@ -11,6 +13,7 @@ describe('LeaveService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LeaveService,
+        CompanyTimeService,
         {
           provide: PrismaService,
           useValue: {

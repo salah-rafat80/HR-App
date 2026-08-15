@@ -1,4 +1,11 @@
-import { IsEnum, IsBoolean, IsString, IsNotEmpty, IsOptional, IsDateString } from 'class-validator';
+import {
+  IsEnum,
+  IsBoolean,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsDateString,
+} from 'class-validator';
 
 export enum LeaveType {
   annual = 'annual',

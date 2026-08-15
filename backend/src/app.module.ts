@@ -14,9 +14,11 @@ import { AppraisalModule } from './appraisal/appraisal.module';
 import { PayrollModule } from './payroll/payroll.module';
 import { OvertimeModule } from './overtime/overtime.module';
 import { HrReportsModule } from './hr-reports/hr-reports.module';
+import { CompanyTimeModule } from './common/time/company-time.module';
 
 @Module({
   imports: [
+    CompanyTimeModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000,

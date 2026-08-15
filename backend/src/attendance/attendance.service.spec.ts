@@ -11,6 +11,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { AttendanceStatus } from '@prisma/client';
+import { CompanyTimeService } from '../common/time/company-time.service';
 
 function makeActiveBranch(
   overrides: Partial<{
@@ -120,6 +121,7 @@ describe('AttendanceService (unit)', () => {
       prisma as unknown as PrismaService,
       events,
       notifications,
+      new CompanyTimeService(),
     );
   });
 
