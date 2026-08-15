@@ -13,6 +13,7 @@ import {
   CreateOfficeBranchDto,
   UpdateOfficeBranchDto,
 } from './dto/office-branch.dto';
+import { AssignUserBranchDto } from './dto/assign-user-branch.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -41,6 +42,15 @@ export class CompanySettingsController {
     @Body() data: UpdateOfficeBranchDto,
   ) {
     return this.settingsService.updateBranch(id, data);
+  }
+
+  @Patch('users/:userId/branch')
+  @Roles(Role.superAdmin, Role.hrAdmin, Role.hr)
+  async assignUserBranch(
+    @Param('userId') userId: string,
+    @Body() data: AssignUserBranchDto,
+  ) {
+    return this.settingsService.assignUserBranch(userId, data);
   }
 
   @Delete('branches/:id')

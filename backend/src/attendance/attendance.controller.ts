@@ -32,6 +32,7 @@ export class AttendanceController {
 
   @Get('geofence-status')
   async getGeofenceStatus(
+    @Req() req: AuthenticatedRequest,
     @Query('lat', ParseFloatPipe) lat: number,
     @Query('lng', ParseFloatPipe) lng: number,
     @Query('accuracy', ParseFloatPipe) accuracy: number,
@@ -45,7 +46,12 @@ export class AttendanceController {
         'lat, lng, and accuracy must be finite numbers',
       );
     }
-    return this.attendanceService.checkGeofence(lat, lng, accuracy);
+    return this.attendanceService.checkGeofence(
+      req.user.userId,
+      lat,
+      lng,
+      accuracy,
+    );
   }
 
   @Post('clock-in')

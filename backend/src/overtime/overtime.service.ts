@@ -346,6 +346,7 @@ export class OvertimeService {
     }
 
     const geofence = await this.attendanceService.checkGeofence(
+      actor.userId,
       data.lat,
       data.lng,
       data.accuracy,
@@ -404,6 +405,7 @@ export class OvertimeService {
     }
 
     const geofence = await this.attendanceService.checkGeofence(
+      actor.userId,
       data.lat,
       data.lng,
       data.accuracy,

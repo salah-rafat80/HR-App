@@ -66,7 +66,12 @@ function makePrisma(branchOverrides = {}) {
       findMany: jest.fn().mockResolvedValue([]),
     },
     user: {
-      findUnique: jest.fn().mockResolvedValue({ fcmToken: null }),
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'user-1',
+        fcmToken: null,
+        branchId: 'branch-1',
+        branch: makeActiveBranch(branchOverrides),
+      }),
     },
     shiftInfo: { findFirst: jest.fn().mockResolvedValue(null) },
     overtimeRequest: { create: jest.fn() },
@@ -120,42 +125,43 @@ describe('AttendanceService (unit)', () => {
 
   it('rejects NaN lat', async () => {
     await expect(
-      service.checkGeofence(NaN, 46.6753, 10),
+      service.checkGeofence('user-1', NaN, 46.6753, 10),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects Infinity lng', async () => {
     await expect(
-      service.checkGeofence(24.7136, Infinity, 10),
+      service.checkGeofence('user-1', 24.7136, Infinity, 10),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects lat out of range', async () => {
-    await expect(service.checkGeofence(91, 46.6753, 10)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.checkGeofence('user-1', 91, 46.6753, 10),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects lng out of range', async () => {
     await expect(
-      service.checkGeofence(24.7136, -181, 10),
+      service.checkGeofence('user-1', 24.7136, -181, 10),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects non-positive accuracy', async () => {
     await expect(
-      service.checkGeofence(24.7136, 46.6753, 0),
+      service.checkGeofence('user-1', 24.7136, 46.6753, 0),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects accuracy > 50m', async () => {
     await expect(
-      service.checkGeofence(24.7136, 46.6753, 51),
+      service.checkGeofence('user-1', 24.7136, 46.6753, 51),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('returns withinRange=true for inside position', async () => {
     const result = await service.checkGeofence(
+      'user-1',
       INSIDE_LAT,
       INSIDE_LNG,
       INSIDE_ACCURACY,
@@ -166,6 +172,7 @@ describe('AttendanceService (unit)', () => {
 
   it('returns withinRange=false when outside geofence', async () => {
     const result = await service.checkGeofence(
+      'user-1',
       OUTSIDE_LAT,
       OUTSIDE_LNG,
       OUTSIDE_ACCURACY,
@@ -176,6 +183,7 @@ describe('AttendanceService (unit)', () => {
 
   it('rejects boundary where distance + accuracy > radius', async () => {
     const result = await service.checkGeofence(
+      'user-1',
       BOUNDARY_LAT,
       BOUNDARY_LNG,
       BOUNDARY_ACCURACY,
@@ -213,26 +221,22 @@ describe('AttendanceService (unit)', () => {
     );
   });
 
-  it('selects nearest eligible branch when physically nearest branch is ineligible after accuracy margin', async () => {
-    // Branch A: physically ~11m away, radius 15m. Accuracy 10m -> 11 + 10 = 21 > 15 (Ineligible).
-    // Branch B: physically ~33m away, radius 100m. Accuracy 10m -> 33 + 10 = 43 <= 100 (Eligible).
-    const branchA = makeActiveBranch({
-      id: 'branch-a',
-      name: 'Small Annex',
-      latitude: 24.7137,
-      longitude: 46.6753,
-      radiusMeters: 15,
-    });
-    const branchB = makeActiveBranch({
+  it('uses the assigned branch even when another branch is physically closer', async () => {
+    const assignedBranch = makeActiveBranch({
       id: 'branch-b',
       name: 'Main HQ',
       latitude: 24.7139,
       longitude: 46.6753,
       radiusMeters: 100,
     });
-    prisma.officeBranch.findMany.mockResolvedValue([branchA, branchB]);
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      fcmToken: null,
+      branchId: assignedBranch.id,
+      branch: assignedBranch,
+    });
 
-    const res = await service.checkGeofence(24.7136, 46.6753, 10);
+    const res = await service.checkGeofence('user-1', 24.7136, 46.6753, 10);
     expect(res.withinRange).toBe(true);
     expect(res.nearestBranch).toBe('Main HQ');
     expect(res.allowedRadiusMeters).toBe(100);
@@ -269,7 +273,12 @@ describe('AttendanceService (unit)', () => {
   });
 
   it('attempts FCM only after successful DB commit', async () => {
-    prisma.user.findUnique.mockResolvedValue({ fcmToken: 'device-token-abc' });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      fcmToken: 'device-token-abc',
+      branchId: 'branch-1',
+      branch: makeActiveBranch(),
+    });
 
     await service.clockIn('user-1', {
       mode: AttendanceStatus.present,
@@ -290,7 +299,12 @@ describe('AttendanceService (unit)', () => {
   });
 
   it('FCM failure does not throw or roll back the attendance record', async () => {
-    prisma.user.findUnique.mockResolvedValue({ fcmToken: 'device-token' });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      fcmToken: 'device-token',
+      branchId: 'branch-1',
+      branch: makeActiveBranch(),
+    });
     notifications.sendToDevice.mockRejectedValue(
       new Error('FCM network error'),
     );
@@ -306,7 +320,12 @@ describe('AttendanceService (unit)', () => {
   });
 
   it('does not attempt FCM when user has no fcmToken', async () => {
-    prisma.user.findUnique.mockResolvedValue({ fcmToken: null });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      fcmToken: null,
+      branchId: 'branch-1',
+      branch: makeActiveBranch(),
+    });
 
     await service.clockIn('user-1', {
       mode: AttendanceStatus.present,
@@ -320,7 +339,12 @@ describe('AttendanceService (unit)', () => {
   });
 
   it('response does not contain fcmToken field', async () => {
-    prisma.user.findUnique.mockResolvedValue({ fcmToken: 'secret-token' });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      fcmToken: 'secret-token',
+      branchId: 'branch-1',
+      branch: makeActiveBranch(),
+    });
 
     const record = await service.clockIn('user-1', {
       mode: AttendanceStatus.present,

@@ -9,7 +9,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
-import { AttendanceStatus, OfficeBranch } from '@prisma/client';
+import { AttendanceStatus } from '@prisma/client';
 import { ClockInDto } from './dto/clock-in.dto';
 
 const MAX_ACCURACY_METRES = 50;
@@ -124,57 +124,38 @@ export class AttendanceService {
   }
 
   async checkGeofence(
+    userId: string,
     lat: number,
     lng: number,
     accuracy: number,
   ): Promise<GeofenceResult> {
     this.assertCoordinatesValid(lat, lng, accuracy);
 
-    const branches: OfficeBranch[] = await this.prisma.officeBranch.findMany({
-      where: { isActive: true },
+    const employee = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { branch: true },
     });
-
-    const candidates = branches.map((branch) => ({
-      branch,
-      distanceMeters: this.getDistanceFromLatLonInM(
-        lat,
-        lng,
-        branch.latitude,
-        branch.longitude,
-      ),
-    }));
-
-    if (candidates.length === 0) {
-      return {
-        withinRange: false,
-        distanceMeters: 0,
-        allowedRadiusMeters: 200,
-        nearestBranch: 'Branch',
-      };
+    if (!employee) throw new NotFoundException('Employee not found');
+    if (!employee.branchId || !employee.branch) {
+      throw new ForbiddenException(
+        'No office branch is assigned to this employee',
+      );
+    }
+    if (!employee.branch.isActive) {
+      throw new ForbiddenException('The assigned office branch is inactive');
     }
 
-    const eligibleCandidates = candidates.filter(
-      (c) => c.distanceMeters + accuracy <= c.branch.radiusMeters,
+    const distanceMeters = this.getDistanceFromLatLonInM(
+      lat,
+      lng,
+      employee.branch.latitude,
+      employee.branch.longitude,
     );
-
-    if (eligibleCandidates.length > 0) {
-      eligibleCandidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
-      const matched = eligibleCandidates[0];
-      return {
-        withinRange: true,
-        distanceMeters: matched.distanceMeters,
-        allowedRadiusMeters: matched.branch.radiusMeters,
-        nearestBranch: matched.branch.name,
-      };
-    }
-
-    candidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
-    const nearestPhysical = candidates[0];
     return {
-      withinRange: false,
-      distanceMeters: nearestPhysical.distanceMeters,
-      allowedRadiusMeters: nearestPhysical.branch.radiusMeters,
-      nearestBranch: nearestPhysical.branch.name,
+      withinRange: distanceMeters + accuracy <= employee.branch.radiusMeters,
+      distanceMeters,
+      allowedRadiusMeters: employee.branch.radiusMeters,
+      nearestBranch: employee.branch.name,
     };
   }
 
@@ -196,6 +177,7 @@ export class AttendanceService {
     }
 
     const geofence = await this.checkGeofence(
+      userId,
       data.lat,
       data.lng,
       data.accuracy,

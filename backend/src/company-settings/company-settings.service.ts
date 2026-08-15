@@ -4,6 +4,7 @@ import {
   CreateOfficeBranchDto,
   UpdateOfficeBranchDto,
 } from './dto/office-branch.dto';
+import { AssignUserBranchDto } from './dto/assign-user-branch.dto';
 
 @Injectable()
 export class CompanySettingsService {
@@ -44,6 +45,23 @@ export class CompanySettingsService {
       }
       throw error;
     }
+  }
+
+  async assignUserBranch(userId: string, data: AssignUserBranchDto) {
+    const [employee, branch] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId } }),
+      this.prisma.officeBranch.findUnique({ where: { id: data.branchId } }),
+    ]);
+    if (!employee) throw new NotFoundException('Employee not found');
+    if (!branch) throw new NotFoundException('Office branch not found');
+    if (!branch.isActive) {
+      throw new NotFoundException('Office branch is inactive');
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { branchId: data.branchId },
+      include: { branch: true },
+    });
   }
 
   async deleteBranch(id: string) {

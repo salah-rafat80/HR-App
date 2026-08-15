@@ -82,6 +82,8 @@ model User {
   managerId         String?
   manager           User?          @relation("ManagerHierarchy", fields: [managerId], references: [id])
   directReports     User[]         @relation("ManagerHierarchy")
+  branchId          String?
+  branch            OfficeBranch?  @relation("UserOfficeBranch", fields: [branchId], references: [id], onDelete: SetNull)
 
   leaveRequests            LeaveRequest[]
   leaveBalances            LeaveBalance[]
@@ -109,6 +111,7 @@ model User {
 
   @@index([employeeCode])
   @@index([managerId])
+  @@index([branchId])
 }
 
 model AuditLog {
@@ -204,6 +207,7 @@ model OfficeBranch {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  users          User[]   @relation("UserOfficeBranch")
 }
 
 model ShiftInfo {
