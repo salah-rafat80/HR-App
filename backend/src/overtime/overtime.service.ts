@@ -13,6 +13,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OvertimeDecisionDto } from './dto/decision.dto';
 import { OvertimeLocationDto } from './dto/overtime-location.dto';
 import { RequestOvertimeDto } from './dto/request-overtime.dto';
+import {
+  isSameEgyptAttendanceDay,
+  serverNow,
+  startOfEgyptAttendanceDay,
+} from '../common/time/egypt-time.util';
 
 const MAX_REQUESTED_OVERTIME_MINUTES = 12 * 60;
 
@@ -30,20 +35,20 @@ export class OvertimeService {
   ) {}
 
   async requestOvertime(actor: OvertimeActor, data: RequestOvertimeDto) {
+    const now = serverNow();
     const requestedStartAt = new Date(data.requestedStartAt);
     const requestedEndAt = new Date(data.requestedEndAt);
-    const requestDate = this.startOfDay(requestedStartAt);
-    const today = this.startOfDay(new Date());
+    const today = startOfEgyptAttendanceDay(now);
 
-    if (requestDate.getTime() !== today.getTime()) {
+    if (!isSameEgyptAttendanceDay(requestedStartAt, now)) {
       throw new BadRequestException(
-        'Overtime requests must be for the current attendance day',
+        'Overtime requests must be for the current Egypt attendance day',
       );
     }
 
-    if (this.startOfDay(requestedEndAt).getTime() !== requestDate.getTime()) {
+    if (!isSameEgyptAttendanceDay(requestedEndAt, requestedStartAt)) {
       throw new BadRequestException(
-        'Overtime request start and end must be on the same attendance day',
+        'Overtime request start and end must be on the same Egypt attendance day',
       );
     }
 
@@ -203,7 +208,7 @@ export class OvertimeService {
       },
       data: {
         status: OvertimeStatus.pending_hr,
-        teamLeadDecisionAt: new Date(),
+        teamLeadDecisionAt: serverNow(),
         teamLeadComment: this.normaliseComment(data.comment),
       },
     });
@@ -242,7 +247,7 @@ export class OvertimeService {
       },
       data: {
         status: OvertimeStatus.rejected_by_team_lead,
-        teamLeadDecisionAt: new Date(),
+        teamLeadDecisionAt: serverNow(),
         teamLeadComment: this.normaliseComment(data.comment),
       },
     });
@@ -270,7 +275,7 @@ export class OvertimeService {
       data: {
         status: OvertimeStatus.approved,
         hrApproverId: actor.userId,
-        hrDecisionAt: new Date(),
+        hrDecisionAt: serverNow(),
         hrComment: this.normaliseComment(data.comment),
       },
     });
@@ -298,7 +303,7 @@ export class OvertimeService {
       data: {
         status: OvertimeStatus.rejected_by_hr,
         hrApproverId: actor.userId,
-        hrDecisionAt: new Date(),
+        hrDecisionAt: serverNow(),
         hrComment: this.normaliseComment(data.comment),
       },
     });
@@ -314,6 +319,7 @@ export class OvertimeService {
     actor: OvertimeActor,
     data: OvertimeLocationDto,
   ) {
+    const now = serverNow();
     const request = await this.prisma.overtimeRequest.findUnique({
       where: { id: requestId },
       include: {
@@ -334,7 +340,7 @@ export class OvertimeService {
         'An overtime session already exists for request',
       );
     }
-    if (!this.isToday(request.date)) {
+    if (!this.isToday(request.date, now)) {
       throw new ConflictException(
         'Overtime can start only on its request date',
       );
@@ -364,6 +370,7 @@ export class OvertimeService {
           userId: actor.userId,
           attendanceRecordId: request.attendanceRecord.id,
           status: OvertimeSessionStatus.active,
+          startedAt: now,
           startLocationLabel: geofence.nearestBranch,
           startLatitude: data.lat,
           startLongitude: data.lng,
@@ -416,7 +423,7 @@ export class OvertimeService {
       );
     }
 
-    const endedAt = new Date();
+    const endedAt = serverNow();
     const actualMinutes = Math.floor(
       (endedAt.getTime() - session.startedAt.getTime()) / 60000,
     );
@@ -497,14 +504,8 @@ export class OvertimeService {
       .includes(role);
   }
 
-  private startOfDay(value: Date): Date {
-    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  }
-
-  private isToday(value: Date): boolean {
-    return (
-      this.startOfDay(value).getTime() === this.startOfDay(new Date()).getTime()
-    );
+  private isToday(value: Date, now: Date = serverNow()): boolean {
+    return isSameEgyptAttendanceDay(value, now);
   }
 
   private normaliseComment(comment?: string): string | null {

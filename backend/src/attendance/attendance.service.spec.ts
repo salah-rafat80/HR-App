@@ -358,6 +358,31 @@ describe('AttendanceService (unit)', () => {
     expect(serialised).not.toContain('secret-token');
   });
 
+  it('stores clock-in time from the backend clock and uses the Egypt attendance date', async () => {
+    const serverInstant = new Date('2026-08-14T22:30:00.000Z');
+    jest.useFakeTimers().setSystemTime(serverInstant);
+
+    try {
+      await service.clockIn('user-1', {
+        mode: AttendanceStatus.present,
+        lat: INSIDE_LAT,
+        lng: INSIDE_LNG,
+        accuracy: INSIDE_ACCURACY,
+      });
+
+      expect(prisma.attendanceRecord.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            clockInTime: serverInstant,
+            date: new Date('2026-08-15T00:00:00.000Z'),
+          }),
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   describe('Single-Shift Attendance Lifecycle Enforcement', () => {
     it('a) first clock-in succeeds when no record exists today', async () => {
       prisma.attendanceRecord.findFirst.mockResolvedValue(null);
@@ -569,6 +594,18 @@ describe('ClockInDto ValidationPipe (DTO validation)', () => {
         lng: 46.6753,
         accuracy: 10,
         locationLabel: 'Hacker Office',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rejects a client-supplied attendance timestamp', async () => {
+    await expect(
+      transform({
+        mode: 'present',
+        lat: 24.7136,
+        lng: 46.6753,
+        accuracy: 10,
+        clockInTime: '2000-01-01T00:00:00.000Z',
       }),
     ).rejects.toThrow(BadRequestException);
   });

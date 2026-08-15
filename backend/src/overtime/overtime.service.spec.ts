@@ -267,6 +267,37 @@ describe('OvertimeService (unit)', () => {
     );
   });
 
+  it('stores overtime session start time from the backend clock', async () => {
+    const serverInstant = new Date('2026-08-15T18:30:00.000Z');
+    jest.useFakeTimers().setSystemTime(serverInstant);
+
+    try {
+      prisma.overtimeRequest.findUnique.mockResolvedValue(
+        makeRequest({ status: OvertimeStatus.approved }),
+      );
+      prisma.overtimeSession.create.mockResolvedValue({
+        id: 'session-1',
+        overtimeRequestId: 'request-1',
+        userId: employee.userId,
+        status: OvertimeSessionStatus.active,
+      });
+
+      await service.startSession('request-1', employee, {
+        lat: 24.7136,
+        lng: 46.6753,
+        accuracy: 10,
+      });
+
+      expect(prisma.overtimeSession.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ startedAt: serverInstant }),
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('ends the active session once and marks the request completed atomically', async () => {
     const startedAt = new Date(Date.now() - 5 * 60 * 1000);
     prisma.overtimeSession.findUnique.mockResolvedValue({

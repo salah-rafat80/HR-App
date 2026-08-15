@@ -11,6 +11,11 @@ import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
 import { AttendanceStatus } from '@prisma/client';
 import { ClockInDto } from './dto/clock-in.dto';
+import {
+  formatEgyptTime,
+  serverNow,
+  startOfEgyptAttendanceDay,
+} from '../common/time/egypt-time.util';
 
 const MAX_ACCURACY_METRES = 50;
 
@@ -42,21 +47,21 @@ export class AttendanceService {
   ) {}
 
   async getTodayStatus(userId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = serverNow();
+    const today = startOfEgyptAttendanceDay(now);
 
     const activeLeaves = await this.prisma.leaveRequest.findMany({
       where: {
         userId,
         overallStatus: 'approved',
-        startDate: { lte: new Date() },
-        endDate: { gte: new Date(today) },
+        startDate: { lte: today },
+        endDate: { gte: today },
       },
     });
 
     if (activeLeaves.length > 0) {
       return {
-        date: new Date(),
+        date: today,
         status: AttendanceStatus.onLeave,
         locationLabel: 'none',
       };
@@ -71,7 +76,7 @@ export class AttendanceService {
     }
 
     return {
-      date: new Date(),
+      date: today,
       status: AttendanceStatus.none,
       locationLabel: 'none',
     };
@@ -160,8 +165,8 @@ export class AttendanceService {
   }
 
   async clockIn(userId: string, data: ClockInDto): Promise<ClockInResponse> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = serverNow();
+    const today = startOfEgyptAttendanceDay(now);
 
     let record = await this.prisma.attendanceRecord.findFirst({
       where: { userId, date: today },
@@ -192,7 +197,7 @@ export class AttendanceService {
     const locationLabel = geofence.nearestBranch;
 
     const updateData = {
-      clockInTime: new Date(),
+      clockInTime: now,
       status: data.mode || AttendanceStatus.present,
       locationLabel,
       clockInLat: data.lat,
@@ -245,10 +250,7 @@ export class AttendanceService {
       });
       if (!user?.fcmToken) return;
 
-      const timeStr = clockInTime.toLocaleTimeString('ar-EG', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+      const timeStr = formatEgyptTime(clockInTime);
 
       await this.notifications.sendToDevice({
         token: user.fcmToken,
@@ -264,9 +266,8 @@ export class AttendanceService {
   }
 
   async clockOut(userId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const now = new Date();
+    const now = serverNow();
+    const today = startOfEgyptAttendanceDay(now);
 
     const record = await this.prisma.attendanceRecord.findFirst({
       where: { userId, date: today },
