@@ -44,6 +44,12 @@ export class CompanySettingsController {
     return this.settingsService.updateBranch(id, data);
   }
 
+  @Get('users')
+  @Roles(Role.superAdmin, Role.hrAdmin, Role.hr)
+  getUsersForBranchAssignment() {
+    return this.settingsService.getUsersForBranchAssignment();
+  }
+
   @Patch('users/:userId/branch')
   @Roles(Role.superAdmin, Role.hrAdmin, Role.hr)
   async assignUserBranch(

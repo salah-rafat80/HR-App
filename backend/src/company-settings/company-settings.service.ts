@@ -47,6 +47,22 @@ export class CompanySettingsService {
     }
   }
 
+  getUsersForBranchAssignment() {
+    return this.prisma.user.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        employeeCode: true,
+        name: true,
+        department: true,
+        role: true,
+        branchId: true,
+        branch: { select: { id: true, name: true, isActive: true } },
+      },
+      orderBy: [{ department: 'asc' }, { name: 'asc' }],
+    });
+  }
+
   async assignUserBranch(userId: string, data: AssignUserBranchDto) {
     const [employee, branch] = await Promise.all([
       this.prisma.user.findUnique({ where: { id: userId } }),

@@ -2,6 +2,7 @@ import 'package:hr_core/core/enums/role_enums.dart';
 import 'package:hr_core/features/admin/domain/entities/system_config_entities.dart';
 import 'package:hr_core/features/admin/domain/repositories/system_config_repository.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_enums.dart';
+
 import '../../../../core/bloc/web_cubits.dart';
 
 class SystemConfigState {
@@ -12,6 +13,7 @@ class SystemConfigState {
   final CompanySettings companySettings;
   final List<IntegrationToggle> integrations;
   final List<OfficeBranch> branches;
+  final List<BranchAssignedEmployee> branchAssignedEmployees;
 
   const SystemConfigState({
     required this.leaveTypes,
@@ -21,6 +23,7 @@ class SystemConfigState {
     required this.companySettings,
     required this.integrations,
     required this.branches,
+    required this.branchAssignedEmployees,
   });
 
   SystemConfigState copyWith({
@@ -31,6 +34,7 @@ class SystemConfigState {
     CompanySettings? companySettings,
     List<IntegrationToggle>? integrations,
     List<OfficeBranch>? branches,
+    List<BranchAssignedEmployee>? branchAssignedEmployees,
   }) {
     return SystemConfigState(
       leaveTypes: leaveTypes ?? this.leaveTypes,
@@ -40,6 +44,8 @@ class SystemConfigState {
       companySettings: companySettings ?? this.companySettings,
       integrations: integrations ?? this.integrations,
       branches: branches ?? this.branches,
+      branchAssignedEmployees:
+          branchAssignedEmployees ?? this.branchAssignedEmployees,
     );
   }
 }
@@ -57,6 +63,7 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
     final companySettings = await repo.getCompanySettings();
     final integrations = await repo.getIntegrations();
     final branches = await repo.getBranches();
+    final branchAssignedEmployees = await repo.getUsersForBranchAssignment();
     return SystemConfigState(
       leaveTypes: leaveTypes,
       holidays: holidays,
@@ -65,14 +72,21 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
       companySettings: companySettings,
       integrations: integrations,
       branches: branches,
+      branchAssignedEmployees: branchAssignedEmployees,
     );
   }
 
   Future<void> updateLeaveType(LeaveType type, int days) async {
     await _repo.updateLeaveTypeConfig(type, days);
-    _updateState((s) => s.copyWith(
-      leaveTypes: s.leaveTypes.map((l) => l.type == type ? l.copyWith(defaultDaysPerYear: days) : l).toList(),
-    ));
+    _updateState(
+      (s) => s.copyWith(
+        leaveTypes: s.leaveTypes
+            .map(
+              (l) => l.type == type ? l.copyWith(defaultDaysPerYear: days) : l,
+            )
+            .toList(),
+      ),
+    );
   }
 
   Future<void> addHoliday(String name, DateTime date) async {
@@ -82,19 +96,27 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
 
   Future<void> addDepartment(String name) async {
     await _repo.addDepartment(name);
-    _updateState((s) => s.copyWith(
-      departments: [...s.departments, DepartmentConfig(name: name, headcount: 0)],
-    ));
+    _updateState(
+      (s) => s.copyWith(
+        departments: [
+          ...s.departments,
+          DepartmentConfig(name: name, headcount: 0),
+        ],
+      ),
+    );
   }
 
   Future<void> toggleRolePermission(UserRole role, String featureKey) async {
     await _repo.toggleRolePermission(role, featureKey);
-    _updateState((s) => s.copyWith(
-      rolePermissions: s.rolePermissions.map((r) {
-        if (r.role == role && r.featureKey == featureKey) return r.copyWith(allowed: !r.allowed);
-        return r;
-      }).toList(),
-    ));
+    _updateState(
+      (s) => s.copyWith(
+        rolePermissions: s.rolePermissions.map((r) {
+          if (r.role == role && r.featureKey == featureKey)
+            return r.copyWith(allowed: !r.allowed);
+          return r;
+        }).toList(),
+      ),
+    );
   }
 
   Future<void> updateCompanySettings(CompanySettings settings) async {
@@ -104,9 +126,13 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
 
   Future<void> toggleIntegration(String name) async {
     await _repo.toggleIntegration(name);
-    _updateState((s) => s.copyWith(
-      integrations: s.integrations.map((i) => i.name == name ? i.copyWith(enabled: !i.enabled) : i).toList(),
-    ));
+    _updateState(
+      (s) => s.copyWith(
+        integrations: s.integrations
+            .map((i) => i.name == name ? i.copyWith(enabled: !i.enabled) : i)
+            .toList(),
+      ),
+    );
   }
 
   Future<void> addBranch(OfficeBranch branch) async {
@@ -125,6 +151,11 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
     } catch (e) {
       rethrow;
     }
+  }
+
+  Future<void> assignUserBranch(String userId, String branchId) async {
+    await _repo.assignUserBranch(userId, branchId);
+    await load();
   }
 
   Future<void> deleteBranch(String id) async {
