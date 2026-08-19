@@ -178,9 +178,6 @@ class SessionCubit extends Cubit<WebSessionState> {
       case 'superadmin':
       case 'admin':
         return UserRole.superAdmin;
-      case 'c_level':
-      case 'clevel':
-        return UserRole.cLevel;
       case 'employee':
       default:
         return UserRole.employee;

@@ -64,14 +64,8 @@ export class HrReportsService {
   ) {}
 
   async getMonthlyReport(query: MonthlyReportQueryDto) {
-    const {
-      year,
-      monthNumber,
-      startDateObj,
-      endDateObj,
-      startUtc,
-      endExclusiveUtc,
-    } = this.monthBounds(query.month);
+    const { startDateObj, endDateObj, startUtc, endExclusiveUtc } =
+      this.monthBounds(query.month);
 
     const users = await this.prisma.user.findMany({
       where: {
@@ -143,9 +137,11 @@ export class HrReportsService {
         const dateKey = this.dateKey(date);
         const record = attendanceByUserDate.get(`${user.id}:${dateKey}`);
         const holidayName = holidayByDate.get(dateKey);
-        const onLeave = leaves.some(
-          (leave) => date >= leave.startDate && date <= leave.endDate,
-        );
+        const onLeave = leaves.some((leave) => {
+          const startStr = this.dateKey(leave.startDate);
+          const endStr = this.dateKey(leave.endDate);
+          return dateKey >= startStr && dateKey <= endStr;
+        });
         const overtimeForDay =
           overtimeByUserDate.get(`${user.id}:${dateKey}`) ?? 0;
         const weekend = date.getUTCDay() === 5;
@@ -162,6 +158,7 @@ export class HrReportsService {
           dayType = 'leave';
           status = AttendanceStatus.onLeave;
           leaveDays++;
+          note = 'Approved Leave';
         } else {
           workingDays++;
           if (record?.clockInTime) presentDays++;

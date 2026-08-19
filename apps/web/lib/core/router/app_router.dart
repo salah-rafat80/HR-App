@@ -22,6 +22,7 @@ import '../../features/offboarding/presentation/pages/offboarding_screen.dart';
 import '../../features/system_config/presentation/pages/system_config_screen.dart';
 import '../../features/appraisal/presentation/pages/appraisal_screen.dart';
 import '../../features/executive/presentation/pages/executive_screen.dart';
+import '../../features/leave_management/presentation/pages/leave_management_screen.dart';
 import '../bloc/session_cubit.dart';
 
 import 'package:hr_core/core/enums/role_enums.dart';
@@ -37,11 +38,10 @@ String _firstRouteForRole(UserRole role) {
     case UserRole.teamLead:
     case UserRole.manager:
       return AppRoutes.overtimeApprovals;
+    case UserRole.hr:
     case UserRole.hrAdmin:
     case UserRole.superAdmin:
       return AppRoutes.hrReports;
-    case UserRole.cLevel:
-      return AppRoutes.executiveDashboard;
     case UserRole.employee:
       return AppRoutes.dashboard;
   }
@@ -75,6 +75,14 @@ class AppRouter {
       if (sessionState.isAuthenticated) {
         final role = sessionState.role ?? UserRole.employee;
         final loc = state.matchedLocation;
+
+        // Leave Management is HR only
+        final isHrRole = role == UserRole.hr ||
+            role == UserRole.hrAdmin ||
+            role == UserRole.superAdmin;
+        if (loc == AppRoutes.leaveManagement && !isHrRole) {
+          return _firstRouteForRole(role);
+        }
 
         // Employees cannot access overtime approvals, hr reports, or system config
         if (role == UserRole.employee) {
@@ -181,6 +189,11 @@ class AppRouter {
             path: AppRoutes.executiveDashboard,
             parentNavigatorKey: _shellNavigatorKey,
             builder: (context, state) => const ExecutiveScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.leaveManagement,
+            parentNavigatorKey: _shellNavigatorKey,
+            builder: (context, state) => const LeaveManagementScreen(),
           ),
         ],
       ),

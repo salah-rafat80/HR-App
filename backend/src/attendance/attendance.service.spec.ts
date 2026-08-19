@@ -75,6 +75,7 @@ function makePrisma(branchOverrides = {}) {
     },
     shiftInfo: { findFirst: jest.fn().mockResolvedValue(null) },
     overtimeRequest: { create: jest.fn() },
+    companyHoliday: { findFirst: jest.fn().mockResolvedValue(null) },
   };
 }
 
@@ -515,6 +516,89 @@ describe('AttendanceService (unit)', () => {
           where: expect.objectContaining({ userId: 'user-888' }),
         }),
       );
+    });
+
+    it('blocks clockIn on working days if on approved leave', async () => {
+      // Mock today as a working day (Thursday, 2026-08-20)
+      const serverInstant = new Date('2026-08-20T10:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(serverInstant);
+
+      try {
+        prisma.companyHoliday.findFirst.mockResolvedValue(null); // Not a holiday
+        prisma.leaveRequest.findMany.mockResolvedValue([
+          { id: 'leave-1', overallStatus: 'approved' },
+        ]);
+
+        await expect(
+          service.clockIn('user-1', {
+            mode: AttendanceStatus.present,
+            lat: INSIDE_LAT,
+            lng: INSIDE_LNG,
+            accuracy: INSIDE_ACCURACY,
+          }),
+        ).rejects.toThrow('APPROVED_LEAVE_ACTIVE');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does NOT block clockIn on holiday even if leave is active', async () => {
+      const serverInstant = new Date('2026-08-20T10:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(serverInstant);
+
+      try {
+        prisma.companyHoliday.findFirst.mockResolvedValue({ id: 'holiday-1' }); // Is a holiday
+        prisma.leaveRequest.findMany.mockResolvedValue([
+          { id: 'leave-1', overallStatus: 'approved' },
+        ]);
+
+        prisma.attendanceRecord.findFirst.mockResolvedValue(null);
+
+        const result = await service.clockIn('user-1', {
+          mode: AttendanceStatus.present,
+          lat: INSIDE_LAT,
+          lng: INSIDE_LNG,
+          accuracy: INSIDE_ACCURACY,
+        });
+        expect(result.id).toBe('rec-1');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('returns onLeave status in getTodayStatus on working day', async () => {
+      const serverInstant = new Date('2026-08-20T10:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(serverInstant);
+
+      try {
+        prisma.companyHoliday.findFirst.mockResolvedValue(null);
+        prisma.leaveRequest.findMany.mockResolvedValue([
+          { id: 'leave-1', overallStatus: 'approved' },
+        ]);
+
+        const status = await service.getTodayStatus('user-1');
+        expect(status.status).toBe(AttendanceStatus.onLeave);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does NOT return onLeave status in getTodayStatus on Friday weekend', async () => {
+      // 2026-08-21 is Friday
+      const serverInstant = new Date('2026-08-21T10:00:00.000Z');
+      jest.useFakeTimers().setSystemTime(serverInstant);
+
+      try {
+        prisma.companyHoliday.findFirst.mockResolvedValue(null);
+        prisma.leaveRequest.findMany.mockResolvedValue([
+          { id: 'leave-1', overallStatus: 'approved' },
+        ]);
+
+        const status = await service.getTodayStatus('user-1');
+        expect(status.status).not.toBe(AttendanceStatus.onLeave);
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 });

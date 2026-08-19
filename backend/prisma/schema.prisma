@@ -88,6 +88,8 @@ model User {
   leaveRequests            LeaveRequest[]
   leaveBalances            LeaveBalance[]
   attendanceRecords        AttendanceRecord[]
+  expectedApprovals        LeaveApprovalStep[] @relation("ExpectedApprover")
+  configuredHrApprovals    CompanyLeaveApprovalConfiguration[] @relation("FinalHrApprover")
   shiftInfos               ShiftInfo[]
   overtimeRequests         OvertimeRequest[]         @relation("OvertimeEmployee")
   teamLeadOvertimeRequests OvertimeRequest[]         @relation("OvertimeTeamLead")
@@ -130,12 +132,20 @@ model AuditLog {
 }
 
 model LeaveBalance {
-  id        String    @id @default(uuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id])
-  type      LeaveType
-  daysUsed  Int       @default(0)
-  daysTotal Int
+  id             String                   @id @default(uuid())
+  userId         String
+  user           User                     @relation(fields: [userId], references: [id])
+  type           LeaveType
+  daysUsed       Int                      @default(0)
+  daysTotal      Int
+  year           Int?
+  entitledDays   Decimal?                 @db.Decimal(12, 2)
+  adjustmentDays Decimal?                 @default(0) @db.Decimal(12, 2)
+  reservedDays   Decimal?                 @default(0) @db.Decimal(12, 2)
+  usedDays       Decimal?                 @default(0) @db.Decimal(12, 2)
+  adjustments    LeaveBalanceAdjustment[]
+
+  @@unique([userId, type, year], name: "LeaveBalance_userId_type_year_key")
 }
 
 model LeaveRequest {
@@ -152,6 +162,7 @@ model LeaveRequest {
   overallStatus    LeaveStatus         @default(pending)
   currentStepOrder Int                 @default(1)
   approvalSteps    LeaveApprovalStep[]
+  workingDays      Decimal?            @db.Decimal(12, 2)
   createdAt        DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
 
@@ -159,13 +170,17 @@ model LeaveRequest {
 }
 
 model LeaveApprovalStep {
-  id        String             @id @default(uuid())
-  requestId String
-  request   LeaveRequest       @relation(fields: [requestId], references: [id])
-  stepName  String
-  status    ApprovalStepStatus
-  stepOrder Int                @default(0)
-  timestamp DateTime           @db.Timestamptz(3)
+  id                 String             @id @default(uuid())
+  requestId          String
+  request            LeaveRequest       @relation(fields: [requestId], references: [id])
+  stepName           String
+  status             ApprovalStepStatus
+  stepOrder          Int                @default(0)
+  timestamp          DateTime           @db.Timestamptz(3)
+  expectedApproverId String?
+  expectedApprover   User?              @relation("ExpectedApprover", fields: [expectedApproverId], references: [id], onDelete: SetNull)
+
+  @@index([expectedApproverId])
 }
 
 model AttendanceRecord {
@@ -503,4 +518,36 @@ model NewHireOnboarding {
 model OffboardingCase {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model LeavePolicy {
+  id                String    @id @default(uuid())
+  type              LeaveType @unique
+  displayNameAr     String
+  annualEntitlement Decimal   @db.Decimal(12, 2)
+  isPaid            Boolean   @default(true)
+  requiresBalance   Boolean   @default(true)
+  allowHalfDay      Boolean   @default(true)
+  minimumNoticeDays Int       @default(0)
+  requiresReason    Boolean   @default(true)
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+model LeaveBalanceAdjustment {
+  id             String       @id @default(uuid())
+  balanceId      String
+  balance        LeaveBalance @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+  adjustmentDays Decimal      @db.Decimal(12, 2)
+  reason         String
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+}
+
+model CompanyLeaveApprovalConfiguration {
+  id                String   @id @default("default")
+  finalHrApproverId String?
+  finalHrApprover   User?    @relation("FinalHrApprover", fields: [finalHrApproverId], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
 }

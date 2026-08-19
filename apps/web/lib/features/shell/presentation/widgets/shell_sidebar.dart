@@ -54,9 +54,8 @@ class Sidebar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (role != UserRole.cLevel) ...[
-                    NavItem(
-                      icon: Iconsax.home_2,
+                  NavItem(
+                    icon: Iconsax.home_2,
                       activeIcon: Iconsax.home_2_copy,
                       label: 'Dashboard',
                       route: AppRoutes.dashboard,
@@ -86,7 +85,6 @@ class Sidebar extends StatelessWidget {
                       route: AppRoutes.teamKpi,
                       isWide: isWide,
                     ),
-                  ],
                   if (role == UserRole.manager ||
                       role == UserRole.hrAdmin ||
                       role == UserRole.superAdmin) ...[
@@ -111,7 +109,8 @@ class Sidebar extends StatelessWidget {
                       isWide: isWide,
                     ),
                   ],
-                  if (role == UserRole.hrAdmin ||
+                  if (role == UserRole.hr ||
+                      role == UserRole.hrAdmin ||
                       role == UserRole.superAdmin) ...[
                     const SizedBox(height: 16),
                     if (isWide)
@@ -168,13 +167,11 @@ class Sidebar extends StatelessWidget {
                       route: AppRoutes.systemConfig,
                       isWide: isWide,
                     ),
-                  ],
-                  if (role == UserRole.cLevel) ...[
                     NavItem(
-                      icon: Iconsax.chart_square,
-                      activeIcon: Iconsax.chart_square_copy,
-                      label: 'Executive',
-                      route: AppRoutes.executiveDashboard,
+                      icon: Icons.calendar_month_outlined,
+                      activeIcon: Icons.calendar_month,
+                      label: 'Leave Management',
+                      route: AppRoutes.leaveManagement,
                       isWide: isWide,
                     ),
                   ],

@@ -138,4 +138,9 @@ export class CompanyTimeService {
     const dt = DateTime.fromJSDate(new Date(instant)).setZone(COMPANY_TIMEZONE);
     return dt.toFormat(format);
   }
+
+  companyBusinessYear(instant?: Date | string | number): number {
+    const dateStr = this.companyBusinessDate(instant);
+    return DateTime.fromISO(dateStr).year;
+  }
 }

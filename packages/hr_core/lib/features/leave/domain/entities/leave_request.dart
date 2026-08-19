@@ -4,22 +4,30 @@ class LeaveApprovalStep {
   final String stepName;
   final LeaveStatus status;
   final DateTime timestamp;
+  final String? expectedApproverId;
+  final String? expectedApproverName;
 
   const LeaveApprovalStep({
     required this.stepName,
     required this.status,
     required this.timestamp,
+    this.expectedApproverId,
+    this.expectedApproverName,
   });
 
   LeaveApprovalStep copyWith({
     String? stepName,
     LeaveStatus? status,
     DateTime? timestamp,
+    String? expectedApproverId,
+    String? expectedApproverName,
   }) {
     return LeaveApprovalStep(
       stepName: stepName ?? this.stepName,
       status: status ?? this.status,
       timestamp: timestamp ?? this.timestamp,
+      expectedApproverId: expectedApproverId ?? this.expectedApproverId,
+      expectedApproverName: expectedApproverName ?? this.expectedApproverName,
     );
   }
 
@@ -31,6 +39,8 @@ class LeaveApprovalStep {
         orElse: () => LeaveStatus.pending,
       ),
       timestamp: DateTime.parse(json['timestamp'] as String),
+      expectedApproverId: json['expectedApproverId'] as String?,
+      expectedApproverName: json['expectedApprover']?['name'] as String?,
     );
   }
 
@@ -39,6 +49,7 @@ class LeaveApprovalStep {
       'stepName': stepName,
       'status': status.name,
       'timestamp': timestamp.toIso8601String(),
+      if (expectedApproverId != null) 'expectedApproverId': expectedApproverId,
     };
   }
 }
@@ -58,6 +69,7 @@ class LeaveRequest {
   final bool hasAttachment;
   final LeaveStatus overallStatus;
   final List<LeaveApprovalStep> approvalSteps;
+  final double? workingDays;
 
   const LeaveRequest({
     required this.id,
@@ -74,6 +86,7 @@ class LeaveRequest {
     required this.hasAttachment,
     required this.overallStatus,
     required this.approvalSteps,
+    this.workingDays,
   });
 
   String get displayStatus {
@@ -83,7 +96,6 @@ class LeaveRequest {
     final pendingStepIndex = approvalSteps.indexWhere((s) => s.status == LeaveStatus.pending);
     if (pendingStepIndex != -1) {
       final step = approvalSteps[pendingStepIndex];
-      // stepName is like 'manager', 'hr', 'final_approval'
       final name = step.stepName.replaceAll('_', ' ');
       return 'pending $name';
     }
@@ -93,6 +105,7 @@ class LeaveRequest {
   LeaveRequest copyWith({
     LeaveStatus? overallStatus,
     List<LeaveApprovalStep>? approvalSteps,
+    double? workingDays,
   }) {
     return LeaveRequest(
       id: id,
@@ -109,6 +122,7 @@ class LeaveRequest {
       hasAttachment: hasAttachment,
       overallStatus: overallStatus ?? this.overallStatus,
       approvalSteps: approvalSteps ?? this.approvalSteps,
+      workingDays: workingDays ?? this.workingDays,
     );
   }
 
@@ -137,6 +151,7 @@ class LeaveRequest {
               ?.map((e) => LeaveApprovalStep.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      workingDays: double.tryParse(json['workingDays']?.toString() ?? ''),
     );
   }
 
@@ -153,6 +168,7 @@ class LeaveRequest {
       'hasAttachment': hasAttachment,
       'overallStatus': overallStatus.name,
       'approvalSteps': approvalSteps.map((e) => e.toJson()).toList(),
+      if (workingDays != null) 'workingDays': workingDays,
     };
   }
 }

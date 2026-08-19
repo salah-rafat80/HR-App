@@ -122,9 +122,6 @@ class _WebLoginFormState extends State<WebLoginForm> {
       case 'superadmin':
       case 'admin':
         return UserRole.superAdmin;
-      case 'c_level':
-      case 'clevel':
-        return UserRole.cLevel;
       default:
         return UserRole.employee;
     }

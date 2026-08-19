@@ -50,21 +50,29 @@ export class AttendanceService {
     const now = serverNow();
     const today = startOfEgyptAttendanceDay(now);
 
-    const activeLeaves = await this.prisma.leaveRequest.findMany({
-      where: {
-        userId,
-        overallStatus: 'approved',
-        startDate: { lte: today },
-        endDate: { gte: today },
-      },
+    const isFriday = today.getUTCDay() === 5;
+    const isHoliday = await this.prisma.companyHoliday.findFirst({
+      where: { isActive: true, date: today },
     });
+    const isWorkingDay = !isFriday && !isHoliday;
 
-    if (activeLeaves.length > 0) {
-      return {
-        date: today,
-        status: AttendanceStatus.onLeave,
-        locationLabel: 'none',
-      };
+    if (isWorkingDay) {
+      const activeLeaves = await this.prisma.leaveRequest.findMany({
+        where: {
+          userId,
+          overallStatus: 'approved',
+          startDate: { lte: today },
+          endDate: { gte: today },
+        },
+      });
+
+      if (activeLeaves.length > 0) {
+        return {
+          date: today,
+          status: AttendanceStatus.onLeave,
+          locationLabel: 'none',
+        };
+      }
     }
 
     const record = await this.prisma.attendanceRecord.findFirst({
@@ -172,6 +180,27 @@ export class AttendanceService {
   async clockIn(userId: string, data: ClockInDto): Promise<ClockInResponse> {
     const now = serverNow();
     const today = startOfEgyptAttendanceDay(now);
+
+    const isFriday = today.getUTCDay() === 5;
+    const isHoliday = await this.prisma.companyHoliday.findFirst({
+      where: { isActive: true, date: today },
+    });
+    const isWorkingDay = !isFriday && !isHoliday;
+
+    if (isWorkingDay) {
+      const activeLeaves = await this.prisma.leaveRequest.findMany({
+        where: {
+          userId,
+          overallStatus: 'approved',
+          startDate: { lte: today },
+          endDate: { gte: today },
+        },
+      });
+
+      if (activeLeaves.length > 0) {
+        throw new ForbiddenException('APPROVED_LEAVE_ACTIVE');
+      }
+    }
 
     let record = await this.prisma.attendanceRecord.findFirst({
       where: { userId, date: today },

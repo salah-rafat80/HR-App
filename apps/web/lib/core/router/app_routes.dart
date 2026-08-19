@@ -15,4 +15,5 @@ class AppRoutes {
   static const String systemConfig = '/system-config';
   static const String newAppraisal = '/new-appraisal';
   static const String executiveDashboard = '/executive-dashboard';
+  static const String leaveManagement = '/leave-management';
 }
