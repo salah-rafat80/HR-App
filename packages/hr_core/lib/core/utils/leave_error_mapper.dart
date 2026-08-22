@@ -66,6 +66,15 @@ class LeaveErrorMapper {
     if (clean.contains('INSUFFICIENT_LEAVE_BALANCE')) {
       return 'رصيد الإجازات المتاح غير كافٍ لإتمام الطلب.';
     }
+    if (clean.contains('MISSING_TEAM_LEAD_APPROVER')) {
+      return 'سلسلة الموافقات غير مكتملة: لم يتم تعيين قائد الفريق (Team Lead) الخاص بك.';
+    }
+    if (clean.contains('MISSING_MANAGER_APPROVER')) {
+      return 'سلسلة الموافقات غير مكتملة: لم يتم تعيين المدير المباشر (Manager) الخاص بك.';
+    }
+    if (clean.contains('MISSING_FINAL_HR_APPROVER')) {
+      return 'سلسلة الموافقات غير مكتملة: لم يتم تحديد مسؤول الموارد البشرية النهائي (Final HR) للشركة.';
+    }
     if (clean.contains('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED')) {
       return 'سلسلة الموافقات غير مهيأة (يرجى التأكد من تعيين المدير المباشر، مدير الإدارة، وتعيين مسؤول HR المعتمد للشركة).';
     }

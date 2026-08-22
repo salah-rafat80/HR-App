@@ -108,7 +108,7 @@ describe('LeaveService', () => {
   });
 
   describe('Approval Chain & Config Validation', () => {
-    it('should throw if final HR configuration is missing', async () => {
+    it('should throw MISSING_FINAL_HR_APPROVER if final HR configuration is missing', async () => {
       mockPrisma.companyLeaveApprovalConfiguration.findUnique.mockResolvedValue(
         null,
       );
@@ -121,7 +121,53 @@ describe('LeaveService', () => {
           isHalfDay: false,
           reason: 'Vacation',
         }),
-      ).rejects.toThrow('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED');
+      ).rejects.toThrow('MISSING_FINAL_HR_APPROVER');
+    });
+
+    it('should throw MISSING_TEAM_LEAD_APPROVER if employee has no assigned Team Lead', async () => {
+      mockPrisma.companyLeaveApprovalConfiguration.findUnique.mockResolvedValue(
+        { finalHrApproverId: 'hr-approver-id' },
+      );
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        role: 'employee',
+        manager: null,
+      });
+
+      await expect(
+        service.applyLeave('user-1', {
+          type: LeaveType.annual,
+          startDate: '2026-08-20',
+          endDate: '2026-08-21',
+          isHalfDay: false,
+          reason: 'Vacation',
+        }),
+      ).rejects.toThrow('MISSING_TEAM_LEAD_APPROVER');
+    });
+
+    it('should throw MISSING_MANAGER_APPROVER if employee Team Lead has no assigned Manager', async () => {
+      mockPrisma.companyLeaveApprovalConfiguration.findUnique.mockResolvedValue(
+        { finalHrApproverId: 'hr-approver-id' },
+      );
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        role: 'employee',
+        manager: {
+          id: 'tl-1',
+          role: 'team_lead',
+          manager: null,
+        },
+      });
+
+      await expect(
+        service.applyLeave('user-1', {
+          type: LeaveType.annual,
+          startDate: '2026-08-20',
+          endDate: '2026-08-21',
+          isHalfDay: false,
+          reason: 'Vacation',
+        }),
+      ).rejects.toThrow('MISSING_MANAGER_APPROVER');
     });
 
     it('should reject submission from HR, hrAdmin, or superAdmin to prevent self-approval', async () => {

@@ -1,6 +1,7 @@
 import 'package:hr_core/core/enums/role_enums.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_request.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
+import 'package:hr_core/core/utils/leave_error_mapper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../../../../core/bloc/web_cubits.dart';
@@ -13,11 +14,11 @@ class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
 
   bool isInFlight(String id) => _inFlightIds.contains(id);
 
-  ApprovalsCubit(this._repo, this._socket, String userId, String role) : super(() => _repo.getPendingApprovals(ApprovalScope.all)) {
+  ApprovalsCubit(this._repo, this._socket, String userId, String role)
+    : super(() => _repo.getPendingApprovals(ApprovalScope.all)) {
     _socket.on('entity.updated.$userId', _onEntityUpdated);
     _socket.on('entity.updated.$role', _onEntityUpdated);
   }
-
 
   void _onEntityUpdated(data) {
     if (data['entity'] == 'LeaveRequest' && !isClosed) {
@@ -42,20 +43,40 @@ class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
     return super.close();
   }
 
-  Future<void> approve(String id, {void Function(String)? onError}) async {
-    await _performAction(id, _repo.approveRequest, onError);
+  Future<void> approve(
+    String id, {
+    String? comment,
+    void Function(String)? onError,
+  }) async {
+    await _performAction(
+      id,
+      (reqId) => _repo.approveRequestWithComment(reqId, comment),
+      onError,
+    );
   }
 
-  Future<void> reject(String id, {void Function(String)? onError}) async {
-    await _performAction(id, _repo.rejectRequest, onError);
+  Future<void> reject(
+    String id, {
+    required String comment,
+    void Function(String)? onError,
+  }) async {
+    await _performAction(
+      id,
+      (reqId) => _repo.rejectRequestWithComment(reqId, comment),
+      onError,
+    );
   }
 
-  Future<void> _performAction(String id, Future<void> Function(String) action, void Function(String)? onError) async {
+  Future<void> _performAction(
+    String id,
+    Future<void> Function(String) action,
+    void Function(String)? onError,
+  ) async {
     if (state is WebSuccess<List<LeaveRequest>>) {
       final currentList = (state as WebSuccess<List<LeaveRequest>>).data;
       _inFlightIds.add(id);
       emit(WebSuccess<List<LeaveRequest>>(List.from(currentList)));
-      
+
       try {
         await action(id);
         _inFlightIds.remove(id);
@@ -63,12 +84,15 @@ class ApprovalsCubit extends WebCubit<List<LeaveRequest>> {
       } catch (e) {
         _inFlightIds.remove(id);
         emit(WebSuccess<List<LeaveRequest>>(List.from(currentList)));
-        onError?.call(e.toString());
+        onError?.call(LeaveErrorMapper.map(e));
       }
     } else {
-      await action(id);
-      load();
+      try {
+        await action(id);
+        load();
+      } catch (e) {
+        onError?.call(LeaveErrorMapper.map(e));
+      }
     }
   }
 }
-

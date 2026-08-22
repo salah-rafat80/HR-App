@@ -667,7 +667,7 @@ export class LeaveService {
         where: { id: 'default' },
       });
     if (!config || !config.finalHrApproverId) {
-      throw new BadRequestException('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED');
+      throw new BadRequestException('MISSING_FINAL_HR_APPROVER');
     }
     const finalHrApproverId = config.finalHrApproverId;
 
@@ -725,12 +725,12 @@ export class LeaveService {
     if (requester.role === 'employee') {
       const tl = requester.manager;
       if (!tl || tl.role !== 'team_lead') {
-        throw new BadRequestException('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED');
+        throw new BadRequestException('MISSING_TEAM_LEAD_APPROVER');
       }
 
       const mgr = tl.manager;
       if (!mgr || mgr.role !== 'manager') {
-        throw new BadRequestException('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED');
+        throw new BadRequestException('MISSING_MANAGER_APPROVER');
       }
 
       if (
@@ -750,7 +750,7 @@ export class LeaveService {
     } else if (requester.role === 'team_lead') {
       const mgr = requester.manager;
       if (!mgr || mgr.role !== 'manager') {
-        throw new BadRequestException('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED');
+        throw new BadRequestException('MISSING_MANAGER_APPROVER');
       }
 
       if (finalHrApproverId === userId || finalHrApproverId === mgr.id) {

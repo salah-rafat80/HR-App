@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_enums.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_request.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/di/injection.dart';
 import '../bloc/leave_management_cubit.dart';
 
 class PendingRequestsTab extends StatelessWidget {
@@ -85,6 +87,9 @@ class PendingRequestsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final prefs = getIt<SharedPreferences>();
+    final currentUserId = prefs.getString('user_id') ?? '';
+
     if (pendingRequestsError != null && requests.isEmpty) {
       return Center(
         child: Column(
@@ -124,6 +129,14 @@ class PendingRequestsTab extends StatelessWidget {
         final startStr = DateFormat('yyyy-MM-dd').format(req.startDate);
         final endStr = DateFormat('yyyy-MM-dd').format(req.endDate);
 
+        final activeSteps = req.approvalSteps.where(
+          (s) => s.stepOrder == req.currentStepOrder,
+        );
+        final activeStep = activeSteps.isNotEmpty ? activeSteps.first : null;
+        final isCurrentApprover =
+            activeStep != null &&
+            activeStep.expectedApproverId == currentUserId;
+
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
           shape: RoundedRectangleBorder(
@@ -141,7 +154,7 @@ class PendingRequestsTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${req.employeeName ?? 'employee_default'.tr()} - ${req.type.name.tr()}',
+                          '${req.employeeName ?? 'employee_default'.tr()} ${req.employeeCode != null ? '(${req.employeeCode})' : ''} - ${req.type.name.tr()}',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -155,31 +168,53 @@ class PendingRequestsTab extends StatelessWidget {
                         Text('${'reason'.tr()}: ${req.reason}'),
                       ],
                     ),
-                    Row(
-                      children: [
-                        ElevatedButton(
-                          onPressed: isSubmitting
-                              ? null
-                              : () => _showDecisionDialog(context, req, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
+                    if (isCurrentApprover)
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () => _showDecisionDialog(context, req, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text('approve'.tr()),
                           ),
-                          child: Text('approve'.tr()),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: isSubmitting
-                              ? null
-                              : () => _showDecisionDialog(context, req, false),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: isSubmitting
+                                ? null
+                                : () =>
+                                      _showDecisionDialog(context, req, false),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text('reject'.tr()),
                           ),
-                          child: Text('reject'.tr()),
+                        ],
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
                         ),
-                      ],
-                    ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Text(
+                          'pending_approval_text'.tr(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
                 const Divider(height: 24),

@@ -48,19 +48,26 @@ class MockLeaveRepository implements LeaveRepository {
   Future<void> advanceApprovalStep(String requestId) async {}
 
   @override
-  Future<List<LeaveRequest>> getPendingApprovals(ApprovalScope scope) async => [];
+  Future<List<LeaveRequest>> getPendingApprovals(ApprovalScope scope) async =>
+      [];
 
   @override
   Future<void> approveRequest(String requestId) async {}
 
   @override
-  Future<void> approveRequestWithComment(String requestId, String? comment) async {}
+  Future<void> approveRequestWithComment(
+    String requestId,
+    String? comment,
+  ) async {}
 
   @override
   Future<void> rejectRequest(String requestId) async {}
 
   @override
-  Future<void> rejectRequestWithComment(String requestId, String comment) async {}
+  Future<void> rejectRequestWithComment(
+    String requestId,
+    String comment,
+  ) async {}
 
   @override
   Future<void> updatePolicy(LeaveType type, Map<String, dynamic> data) async {}
@@ -135,7 +142,10 @@ void main() {
 
     setUp(() {
       mockRepo = MockLeaveRepository();
-      socket = io.io('http://localhost', io.OptionBuilder().disableAutoConnect().build());
+      socket = io.io(
+        'http://localhost',
+        io.OptionBuilder().disableAutoConnect().build(),
+      );
       cubit = LeaveCubit(mockRepo, socket);
     });
 
@@ -149,71 +159,74 @@ void main() {
         designSize: const Size(390, 844),
         builder: (context, _) => MaterialApp(
           home: Scaffold(
-            body: BlocProvider.value(
-              value: cubit,
-              child: child,
-            ),
+            body: BlocProvider.value(value: cubit, child: child),
           ),
         ),
       );
     }
 
-    testWidgets('empty backend balances renders localized empty state without static demo cards',
-        (WidgetTester tester) async {
-      mockRepo.balancesToReturn = [];
-      await cubit.loadData();
+    testWidgets(
+      'empty backend balances renders localized empty state without static demo cards',
+      (WidgetTester tester) async {
+        mockRepo.balancesToReturn = [];
+        await cubit.loadData();
 
-      await tester.pumpWidget(buildTestWidget(const LeaveOverviewTab()));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(buildTestWidget(const LeaveOverviewTab()));
+        await tester.pumpAndSettle();
 
-      // No hardcoded 18, 9, 5 static demo cards
-      expect(find.text('18 days'), findsNothing);
-      expect(find.text('9 days'), findsNothing);
-      expect(find.text('5 days'), findsNothing);
+        // No hardcoded 18, 9, 5 static demo cards
+        expect(find.text('18 days'), findsNothing);
+        expect(find.text('9 days'), findsNothing);
+        expect(find.text('5 days'), findsNothing);
 
-      // Localized empty state is rendered
-      expect(find.text('no_balances_configured_hr'), findsOneWidget);
-    });
+        // Localized empty state is rendered
+        expect(find.text('no_balances_configured_hr'), findsOneWidget);
+      },
+    );
 
-    testWidgets('real backend balances render exclusively without static demo cards',
-        (WidgetTester tester) async {
-      mockRepo.balancesToReturn = const [
-        LeaveBalance(
-          type: LeaveType.annual,
-          daysUsed: 2,
-          daysTotal: 21,
-          entitledDays: 21,
-          usedDays: 2,
-        ),
-      ];
-      await cubit.loadData();
+    testWidgets(
+      'real backend balances render exclusively without static demo cards',
+      (WidgetTester tester) async {
+        mockRepo.balancesToReturn = const [
+          LeaveBalance(
+            type: LeaveType.annual,
+            daysUsed: 2,
+            daysTotal: 21,
+            entitledDays: 21,
+            usedDays: 2,
+          ),
+        ];
+        await cubit.loadData();
 
-      await tester.pumpWidget(buildTestWidget(const LeaveOverviewTab()));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(buildTestWidget(const LeaveOverviewTab()));
+        await tester.pumpAndSettle();
 
-      // Renders real balance: 19.0 days
-      expect(find.text('19.0 days'), findsOneWidget);
-      expect(find.text('no_balances_configured_hr'), findsNothing);
-    });
+        // Renders real balance: 19.0 days
+        expect(find.text('19.0 days'), findsOneWidget);
+        expect(find.text('no_balances_configured_hr'), findsNothing);
+      },
+    );
 
-    testWidgets('opening LeaveApplyModal debounces preview calls and prevents rapid spammed requests',
-        (WidgetTester tester) async {
-      await cubit.loadData();
-      await tester.pumpWidget(buildTestWidget(const LeaveApplyModal()));
+    testWidgets(
+      'opening LeaveApplyModal debounces preview calls and prevents rapid spammed requests',
+      (WidgetTester tester) async {
+        await cubit.loadData();
+        await tester.pumpWidget(buildTestWidget(const LeaveApplyModal()));
 
-      // Immediately after opening, debouncing timer hasn't fired yet
-      expect(mockRepo.previewCallCount, equals(0));
+        // Immediately after opening, debouncing timer hasn't fired yet
+        expect(mockRepo.previewCallCount, equals(0));
 
-      // Pump 200ms - still not fired (debounce duration is 500ms)
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(mockRepo.previewCallCount, equals(0));
+        // Pump 200ms - still not fired (debounce duration is 500ms)
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(mockRepo.previewCallCount, equals(0));
 
-      // Fast forward past 500ms debounce
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pumpAndSettle();
+        // Fast forward past 500ms debounce
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pumpAndSettle();
 
-      // Fired exactly once
-      expect(mockRepo.previewCallCount, equals(1));
-    });
+        // Fired exactly once
+        expect(mockRepo.previewCallCount, equals(1));
+      },
+    );
   });
 }
