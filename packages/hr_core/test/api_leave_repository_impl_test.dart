@@ -1,11 +1,14 @@
 import 'dart:convert';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 import 'package:dio/dio.dart';
 import 'package:hr_core/features/leave/data/datasources/api_leave_repository_impl.dart';
+import 'package:hr_core/features/leave/domain/entities/leave_enums.dart';
+import 'package:hr_core/features/leave/domain/entities/leave_policy.dart';
 import 'package:hr_core/core/enums/role_enums.dart';
 
 class FakeDioAdapter implements HttpClientAdapter {
   ResponseBody? responseBody;
+  RequestOptions? lastRequestOptions;
 
   @override
   Future<ResponseBody> fetch(
@@ -13,6 +16,7 @@ class FakeDioAdapter implements HttpClientAdapter {
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    lastRequestOptions = options;
     if (responseBody == null) {
       throw StateError('FakeDioAdapter responseBody not set');
     }
@@ -31,6 +35,39 @@ void main() {
     setUp(() {
       dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000'));
       repository = ApiLeaveRepositoryImpl(dio: dio);
+    });
+
+    test('createPolicy sends POST body without id property', () async {
+      final adapter = FakeDioAdapter();
+      adapter.responseBody = ResponseBody.fromString(
+        jsonEncode({'success': true}),
+        201,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+      dio.httpClientAdapter = adapter;
+
+      const policy = LeavePolicy(
+        id: 'should-be-omitted',
+        type: LeaveType.annual,
+        displayNameAr: 'إجازة سنوية',
+        annualEntitlement: 21.0,
+        isPaid: true,
+        requiresBalance: true,
+        allowHalfDay: true,
+        minimumNoticeDays: 3,
+        requiresReason: true,
+        isActive: true,
+      );
+
+      await repository.createPolicy(policy);
+
+      expect(adapter.lastRequestOptions, isNotNull);
+      final body = adapter.lastRequestOptions!.data as Map<String, dynamic>;
+      expect(body.containsKey('id'), isFalse);
+      expect(body['type'], equals('annual'));
+      expect(body['displayNameAr'], equals('إجازة سنوية'));
     });
 
     test('getPendingApprovals parses valid pagination envelope', () async {

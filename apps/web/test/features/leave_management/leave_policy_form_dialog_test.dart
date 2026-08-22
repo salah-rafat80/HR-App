@@ -8,7 +8,7 @@ import 'package:hr_core/features/leave/domain/entities/leave_request.dart';
 import 'package:hr_core/features/leave/domain/entities/team_leave_entry.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
 import 'package:hr_web/features/leave_management/presentation/bloc/leave_management_cubit.dart';
-import 'package:hr_web/features/leave_management/presentation/pages/leave_management_screen.dart';
+import 'package:hr_web/features/leave_management/presentation/widgets/leave_policy_form_dialog.dart';
 
 class MockLeaveRepository implements LeaveRepository {
   bool shouldSucceed = true;

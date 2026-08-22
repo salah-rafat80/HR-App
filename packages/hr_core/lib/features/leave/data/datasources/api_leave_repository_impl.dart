@@ -169,7 +169,8 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
 
   @override
   Future<void> createPolicy(LeavePolicy policy) async {
-    await dio.post('/leave/policies', data: policy.toJson());
+    final payload = policy.toJson()..remove('id');
+    await dio.post('/leave/policies', data: payload);
   }
 
   @override

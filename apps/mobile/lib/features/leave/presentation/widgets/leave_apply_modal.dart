@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -28,16 +29,45 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
   String? _previewError;
   bool _isLoadingPreview = false;
 
+  Timer? _debounceTimer;
+  int _previewRequestId = 0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _schedulePreview();
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _reason.dispose();
+    super.dispose();
+  }
+
+  void _schedulePreview() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _loadPreview();
     });
   }
 
   void _loadPreview() async {
     if (!mounted) return;
+
+    if (_end.isBefore(_start)) {
+      setState(() {
+        _previewError = 'تاريخ الانتهاء يجب أن يكون بعد أو يساوي تاريخ البدء.';
+        _isLoadingPreview = false;
+        _previewWorkingDays = null;
+      });
+      return;
+    }
+
+    final requestId = ++_previewRequestId;
+
     setState(() {
       _isLoadingPreview = true;
       _previewError = null;
@@ -51,10 +81,12 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
       endDate: _end,
       isHalfDay: _isHalfDay,
       halfDayPeriod: _isHalfDay ? _halfDayPeriod : null,
-      reason: _reason.text.trim().isEmpty ? 'Leave request' : _reason.text.trim(),
+      reason: _reason.text.trim().isEmpty
+          ? 'Leave request'
+          : _reason.text.trim(),
     );
 
-    if (!mounted) return;
+    if (!mounted || requestId != _previewRequestId) return;
 
     if (res.containsKey('error')) {
       setState(() {
@@ -63,7 +95,9 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
       });
     } else {
       setState(() {
-        _previewWorkingDays = double.tryParse(res['workingDays']?.toString() ?? '');
+        _previewWorkingDays = double.tryParse(
+          res['workingDays']?.toString() ?? '',
+        );
         _isLoadingPreview = false;
       });
     }
@@ -79,12 +113,11 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
     if (picked != null && picked != _start) {
       setState(() {
         _start = picked;
-        // Keep end date at least at start date
         if (_end.isBefore(_start)) {
           _end = _start;
         }
       });
-      _loadPreview();
+      _schedulePreview();
     }
   }
 
@@ -99,7 +132,7 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
       setState(() {
         _end = picked;
       });
-      _loadPreview();
+      _schedulePreview();
     }
   }
 
@@ -149,7 +182,9 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                       ? policies.map((p) => p.type).toList()
                       : LeaveType.values;
 
-                  final currentType = availableTypes.contains(_type) ? _type : availableTypes.first;
+                  final currentType = availableTypes.contains(_type)
+                      ? _type
+                      : availableTypes.first;
 
                   return DropdownButtonFormField<LeaveType>(
                     value: currentType,
@@ -179,7 +214,7 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                         setState(() {
                           _type = v;
                         });
-                        _loadPreview();
+                        _schedulePreview();
                       }
                     },
                     decoration: InputDecoration(
@@ -227,11 +262,10 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                   setState(() {
                     _isHalfDay = val ?? false;
                     if (_isHalfDay) {
-                      // Half day must span exactly one day client-side
                       _end = _start;
                     }
                   });
-                  _loadPreview();
+                  _schedulePreview();
                 },
                 controlAffinity: ListTileControlAffinity.leading,
                 activeColor: AppColors.primary,
@@ -241,14 +275,20 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                 DropdownButtonFormField<String>(
                   value: _halfDayPeriod,
                   items: [
-                    DropdownMenuItem(value: 'morning', child: Text('morning'.tr())),
-                    DropdownMenuItem(value: 'afternoon', child: Text('afternoon'.tr())),
+                    DropdownMenuItem(
+                      value: 'morning',
+                      child: Text('morning'.tr()),
+                    ),
+                    DropdownMenuItem(
+                      value: 'afternoon',
+                      child: Text('afternoon'.tr()),
+                    ),
                   ],
                   onChanged: (val) {
                     setState(() {
                       _halfDayPeriod = val!;
                     });
-                    _loadPreview();
+                    _schedulePreview();
                   },
                   decoration: InputDecoration(
                     labelText: 'period'.tr(),
@@ -265,7 +305,7 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                   border: const OutlineInputBorder(),
                 ),
                 onChanged: (_) {
-                  _loadPreview();
+                  _schedulePreview();
                 },
               ),
               SizedBox(height: 16.h),
@@ -283,7 +323,10 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                   children: [
                     Text(
                       'preflight_preview'.tr(),
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13.sp,
+                      ),
                     ),
                     SizedBox(height: 8.h),
                     if (_isLoadingPreview)
@@ -291,7 +334,11 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                     else if (_previewError != null)
                       Text(
                         _previewError!,
-                        style: TextStyle(color: Colors.red, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       )
                     else
                       Text(
@@ -307,40 +354,63 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
               ),
               SizedBox(height: 24.h),
 
-              ElevatedButton(
-                onPressed: _previewError != null || _isLoadingPreview
-                    ? null
-                    : () {
-                        final reasonText = _reason.text.trim();
-                        context.read<LeaveCubit>().applyLeave(
-                              type: _type,
-                              start: _start,
-                              end: _end,
-                              isHalfDay: _isHalfDay,
-                              halfDayPeriod: _isHalfDay ? _halfDayPeriod : null,
-                              reason: reasonText.isEmpty ? 'Leave request' : reasonText,
-                            );
-                      },
-                child: BlocBuilder<LeaveCubit, LeaveState>(
-                  builder: (context, state) {
-                    return (state is LeaveLoaded && state.isApplying)
-                        ? const AppLoader(size: 24)
-                        : Text('submit_request'.tr());
-                  },
-                ),
-              ),
               BlocBuilder<LeaveCubit, LeaveState>(
                 builder: (context, state) {
-                  if (state is LeaveLoaded && state.applyError != null) {
-                    return Padding(
-                      padding: EdgeInsets.only(top: 8.h),
-                      child: Text(
-                        state.applyError!,
-                        style: TextStyle(color: Colors.red, fontSize: 12.sp),
+                  final isApplying = state is LeaveLoaded && state.isApplying;
+                  final applyError = state is LeaveLoaded
+                      ? state.applyError
+                      : null;
+
+                  return Column(
+                    children: [
+                      if (applyError != null) ...[
+                        Text(
+                          applyError,
+                          style: TextStyle(color: Colors.red, fontSize: 13.sp),
+                        ),
+                        SizedBox(height: 12.h),
+                      ],
+                      ElevatedButton(
+                        onPressed: isApplying
+                            ? null
+                            : () {
+                                if (_reason.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('reason_required'.tr()),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                context.read<LeaveCubit>().applyLeave(
+                                  type: _type,
+                                  start: _start,
+                                  end: _end,
+                                  isHalfDay: _isHalfDay,
+                                  halfDayPeriod: _isHalfDay
+                                      ? _halfDayPeriod
+                                      : null,
+                                  reason: _reason.text.trim(),
+                                );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          backgroundColor: AppColors.primary,
+                        ),
+                        child: isApplying
+                            ? const AppLoader(size: 20)
+                            : Text(
+                                'submit_request'.tr(),
+                                style: TextStyle(
+                                  fontSize: 16.sp,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
-                    );
-                  }
-                  return const SizedBox.shrink();
+                    ],
+                  );
                 },
               ),
             ],

@@ -191,5 +191,6 @@
   "retry": "Retry",
   "preflight_preview": "Leave Preview Details",
   "calculated_working_days": "Calculated Working Days",
-  "period": "Period"
+  "period": "Period",
+  "no_balances_configured_hr": "HR has not configured your leave balances yet."
 }

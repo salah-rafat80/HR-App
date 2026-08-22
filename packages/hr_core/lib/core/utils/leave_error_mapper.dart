@@ -80,6 +80,12 @@ class LeaveErrorMapper {
       return 'فشلت العملية: ستؤدي إلى حالة رصيد غير صالحة أو رصيد سالب.';
     }
 
+    if (clean.contains('THROTTLEREXCEPTION') ||
+        clean.contains('TOO MANY REQUESTS') ||
+        errorString.contains('429')) {
+      return 'تم إرسال طلبات كثيرة جداً خلال فترة قصيرة. يرجى الانتظار بضع ثوانٍ والإعادة.';
+    }
+
     if (errorString.contains('DioException') ||
         errorString.contains('status code of 400')) {
       return 'تعذر تنفيذ المعاينة: يرجى التأكد من اختيار نوع إجازة متاح وتاريخ جديد بدون تداخل.';

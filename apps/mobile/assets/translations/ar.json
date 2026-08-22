@@ -191,5 +191,6 @@
   "retry": "إعادة المحاولة",
   "preflight_preview": "تفاصيل حساب الطلب",
   "calculated_working_days": "أيام العمل المحسوبة",
-  "period": "الفترة"
+  "period": "الفترة",
+  "no_balances_configured_hr": "لم يقم قسم الموارد البشرية بتهيئـة رصيد إجازاتك بعد."
 }
