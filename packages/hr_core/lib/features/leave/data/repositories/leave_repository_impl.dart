@@ -13,7 +13,8 @@ class LeaveRepositoryImpl implements LeaveRepository {
   LeaveRepositoryImpl(this._dataSource);
 
   @override
-  Future<void> advanceApprovalStep(String requestId) => _dataSource.advanceApprovalStep(requestId);
+  Future<void> advanceApprovalStep(String requestId) =>
+      _dataSource.advanceApprovalStep(requestId);
 
   @override
   Future<void> applyLeave(LeaveRequest draft) => _dataSource.applyLeave(draft);
@@ -28,19 +29,24 @@ class LeaveRepositoryImpl implements LeaveRepository {
   Future<List<LeaveRequest>> getMyRequests() => _dataSource.getMyRequests();
 
   @override
-  Future<List<TeamLeaveEntry>> getTeamCalendar() => _dataSource.getTeamCalendar();
+  Future<List<TeamLeaveEntry>> getTeamCalendar() =>
+      _dataSource.getTeamCalendar();
 
   @override
-  Future<void> requestEncashment(LeaveType type, int days) => _dataSource.requestEncashment(type, days);
+  Future<void> requestEncashment(LeaveType type, int days) =>
+      _dataSource.requestEncashment(type, days);
 
   @override
-  Future<List<LeaveRequest>> getPendingApprovals(ApprovalScope scope) => _dataSource.getPendingApprovals(scope);
+  Future<List<LeaveRequest>> getPendingApprovals(ApprovalScope scope) =>
+      _dataSource.getPendingApprovals(scope);
 
   @override
-  Future<void> approveRequest(String requestId) => _dataSource.approveRequest(requestId);
+  Future<void> approveRequest(String requestId) =>
+      _dataSource.approveRequest(requestId);
 
   @override
-  Future<void> rejectRequest(String requestId) => _dataSource.rejectRequest(requestId);
+  Future<void> rejectRequest(String requestId) =>
+      _dataSource.rejectRequest(requestId);
 
   // ==========================================
   // New Interface Implementations (Stubs)
@@ -48,17 +54,20 @@ class LeaveRepositoryImpl implements LeaveRepository {
 
   @override
   Future<void> cancelRequestWithReason(String id, String reason) {
-    throw UnimplementedError('cancelRequestWithReason not implemented in Fake repository');
+    throw UnimplementedError(
+        'cancelRequestWithReason not implemented in Fake repository');
   }
 
   @override
   Future<void> approveRequestWithComment(String requestId, String? comment) {
-    throw UnimplementedError('approveRequestWithComment not implemented in Fake repository');
+    throw UnimplementedError(
+        'approveRequestWithComment not implemented in Fake repository');
   }
 
   @override
   Future<void> rejectRequestWithComment(String requestId, String comment) {
-    throw UnimplementedError('rejectRequestWithComment not implemented in Fake repository');
+    throw UnimplementedError(
+        'rejectRequestWithComment not implemented in Fake repository');
   }
 
   @override
@@ -90,7 +99,8 @@ class LeaveRepositoryImpl implements LeaveRepository {
     String? branchId,
     int? year,
   }) {
-    throw UnimplementedError('getBalancesAdmin not implemented in Fake repository');
+    throw UnimplementedError(
+        'getBalancesAdmin not implemented in Fake repository');
   }
 
   @override
@@ -100,7 +110,8 @@ class LeaveRepositoryImpl implements LeaveRepository {
     required int year,
     required double entitledDays,
   }) {
-    throw UnimplementedError('createBalance not implemented in Fake repository');
+    throw UnimplementedError(
+        'createBalance not implemented in Fake repository');
   }
 
   @override
@@ -109,17 +120,20 @@ class LeaveRepositoryImpl implements LeaveRepository {
     required double adjustmentDays,
     required String reason,
   }) {
-    throw UnimplementedError('adjustBalance not implemented in Fake repository');
+    throw UnimplementedError(
+        'adjustBalance not implemented in Fake repository');
   }
 
   @override
   Future<Map<String, dynamic>> getCompanyApprovalConfig() {
-    throw UnimplementedError('getCompanyApprovalConfig not implemented in Fake repository');
+    throw UnimplementedError(
+        'getCompanyApprovalConfig not implemented in Fake repository');
   }
 
   @override
   Future<void> updateCompanyApprovalConfig(String? finalHrApproverId) {
-    throw UnimplementedError('updateCompanyApprovalConfig not implemented in Fake repository');
+    throw UnimplementedError(
+        'updateCompanyApprovalConfig not implemented in Fake repository');
   }
 
   @override
@@ -132,5 +146,11 @@ class LeaveRepositoryImpl implements LeaveRepository {
     required String reason,
   }) {
     throw UnimplementedError('previewLeave not implemented in Fake repository');
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getEmployeesForPicker() {
+    throw UnimplementedError(
+        'getEmployeesForPicker not implemented in Fake repository');
   }
 }

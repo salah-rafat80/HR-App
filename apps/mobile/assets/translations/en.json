@@ -186,5 +186,10 @@
   "executive_dashboard": "Executive Dashboard",
   "leave_apply_success": "Leave request submitted successfully",
   "language": "Language",
-  "dark_mode": "Dark Mode"
+  "dark_mode": "Dark Mode",
+  "dashboard_load_failed": "Failed to load dashboard data",
+  "retry": "Retry",
+  "preflight_preview": "Leave Preview Details",
+  "calculated_working_days": "Calculated Working Days",
+  "period": "Period"
 }

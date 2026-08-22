@@ -538,6 +538,21 @@ export class LeaveService {
     return { ...result, configured: true };
   }
 
+  async getEmployeesForPicker() {
+    return this.prisma.user.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        employeeCode: true,
+        department: true,
+        branchId: true,
+        role: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   // ==========================================
   // Employee Leave Actions
   // ==========================================

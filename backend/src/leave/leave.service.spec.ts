@@ -7,10 +7,12 @@ import { EventsGateway } from '../events/events/events.gateway';
 import { NotificationService } from '../notifications/notification.service';
 import { CompanyTimeService } from '../common/time/company-time.service';
 import { Prisma, LeaveType } from '@prisma/client';
+import { DateTime } from 'luxon';
 
 describe('LeaveService', () => {
   let service: LeaveService;
   let calendar: LeaveCalendarService;
+  let companyTime: CompanyTimeService;
 
   const mockPrisma = {
     leavePolicy: {
@@ -98,6 +100,7 @@ describe('LeaveService', () => {
     }).compile();
 
     service = module.get<LeaveService>(LeaveService);
+    companyTime = module.get<CompanyTimeService>(CompanyTimeService);
     calendar = module.get<LeaveCalendarService>(LeaveCalendarService);
 
     // Clear mock histories
@@ -192,10 +195,13 @@ describe('LeaveService', () => {
         };
       });
 
+      const today = companyTime.companyBusinessDate();
+      const tomorrow = DateTime.fromISO(today).plus({ days: 1 }).toISODate()!;
+
       const req = await service.applyLeave('employee-id', {
         type: LeaveType.annual,
-        startDate: '2026-08-20',
-        endDate: '2026-08-21',
+        startDate: today,
+        endDate: tomorrow,
         isHalfDay: false,
         reason: 'Vacation',
       });
@@ -345,10 +351,13 @@ describe('LeaveService', () => {
         ...args.data,
       }));
 
+      const today = companyTime.companyBusinessDate();
+      const tomorrow = DateTime.fromISO(today).plus({ days: 1 }).toISODate()!;
+
       await service.applyLeave('employee-id', {
         type: LeaveType.annual,
-        startDate: '2026-08-20',
-        endDate: '2026-08-21',
+        startDate: today,
+        endDate: tomorrow,
         isHalfDay: false,
         reason: 'Vacation',
       });
@@ -618,6 +627,36 @@ describe('LeaveService', () => {
       ]);
       const balances = await service.getBalancesAdmin(1, 10);
       expect(balances.total).toBe(1);
+    });
+
+    it('should return minimal safe fields for employee picker without exposing sensitive fields', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([
+        {
+          id: 'user-1',
+          name: 'Jane Doe',
+          employeeCode: 'EMP001',
+          department: 'Engineering',
+          branchId: 'branch-1',
+          role: 'employee',
+        },
+      ]);
+
+      const employees = await service.getEmployeesForPicker();
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          employeeCode: true,
+          department: true,
+          branchId: true,
+          role: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+      expect(employees).toHaveLength(1);
+      expect(employees[0]).not.toHaveProperty('password');
+      expect(employees[0]).not.toHaveProperty('fcmToken');
     });
   });
 });

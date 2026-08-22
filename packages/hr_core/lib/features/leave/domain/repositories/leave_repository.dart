@@ -60,4 +60,7 @@ abstract class LeaveRepository {
     String? halfDayPeriod,
     required String reason,
   });
+
+  // Safe Employee Picker
+  Future<List<Map<String, dynamic>>> getEmployeesForPicker();
 }

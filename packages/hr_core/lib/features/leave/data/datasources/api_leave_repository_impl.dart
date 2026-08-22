@@ -19,13 +19,31 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
   @override
   Future<List<LeaveBalance>> getBalances() async {
     final response = await dio.get('/leave/balances');
-    return (response.data as List).map((e) => LeaveBalance.fromJson(e)).toList();
+    final data = response.data;
+    if (data is! List) {
+      throw StateError('Invalid /leave/balances response: expected List');
+    }
+    return data.map((item) {
+      if (item is! Map) {
+        throw StateError('Invalid /leave/balances item: expected Map');
+      }
+      return LeaveBalance.fromJson(Map<String, dynamic>.from(item));
+    }).toList();
   }
 
   @override
   Future<List<LeaveRequest>> getMyRequests() async {
     final response = await dio.get('/leave/my-requests');
-    return (response.data as List).map((e) => LeaveRequest.fromJson(e)).toList();
+    final data = response.data;
+    if (data is! List) {
+      throw StateError('Invalid /leave/my-requests response: expected List');
+    }
+    return data.map((item) {
+      if (item is! Map) {
+        throw StateError('Invalid /leave/my-requests item: expected Map');
+      }
+      return LeaveRequest.fromJson(Map<String, dynamic>.from(item));
+    }).toList();
   }
 
   @override
@@ -60,7 +78,16 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
   @override
   Future<List<TeamLeaveEntry>> getTeamCalendar() async {
     final response = await dio.get('/leave/team-calendar');
-    return (response.data as List).map((e) => TeamLeaveEntry.fromJson(e)).toList();
+    final data = response.data;
+    if (data is! List) {
+      throw StateError('Invalid /leave/team-calendar response: expected List');
+    }
+    return data.map((item) {
+      if (item is! Map) {
+        throw StateError('Invalid /leave/team-calendar item: expected Map');
+      }
+      return TeamLeaveEntry.fromJson(Map<String, dynamic>.from(item));
+    }).toList();
   }
 
   @override
@@ -76,7 +103,21 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
   @override
   Future<List<LeaveRequest>> getPendingApprovals(ApprovalScope scope) async {
     final response = await dio.get('/leave/pending');
-    return (response.data as List).map((e) => LeaveRequest.fromJson(e)).toList();
+    final payload = response.data;
+    if (payload is! Map) {
+      throw StateError(
+          'Invalid /leave/pending response: expected pagination object');
+    }
+    final items = payload['items'];
+    if (items is! List) {
+      throw StateError('Invalid /leave/pending response: expected items list');
+    }
+    return items.map((item) {
+      if (item is! Map) {
+        throw StateError('Invalid /leave/pending item: expected Map');
+      }
+      return LeaveRequest.fromJson(Map<String, dynamic>.from(item));
+    }).toList();
   }
 
   @override
@@ -85,7 +126,8 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
   }
 
   @override
-  Future<void> approveRequestWithComment(String requestId, String? comment) async {
+  Future<void> approveRequestWithComment(
+      String requestId, String? comment) async {
     await dio.post(
       '/leave/$requestId/approve',
       data: {'comment': comment},
@@ -98,7 +140,8 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
   }
 
   @override
-  Future<void> rejectRequestWithComment(String requestId, String comment) async {
+  Future<void> rejectRequestWithComment(
+      String requestId, String comment) async {
     await dio.post(
       '/leave/$requestId/reject',
       data: {'comment': comment},
@@ -112,7 +155,16 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
   @override
   Future<List<LeavePolicy>> getPolicies() async {
     final response = await dio.get('/leave/policies');
-    return (response.data as List).map((e) => LeavePolicy.fromJson(e)).toList();
+    final data = response.data;
+    if (data is! List) {
+      throw StateError('Invalid /leave/policies response: expected List');
+    }
+    return data.map((item) {
+      if (item is! Map) {
+        throw StateError('Invalid /leave/policies item: expected Map');
+      }
+      return LeavePolicy.fromJson(Map<String, dynamic>.from(item));
+    }).toList();
   }
 
   @override
@@ -151,14 +203,29 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
       if (branchId != null) 'branchId': branchId,
       if (year != null) 'year': year,
     };
-    final response = await dio.get('/leave/balances/admin', queryParameters: queryParameters);
-    final data = response.data as Map<String, dynamic>;
+    final response = await dio.get('/leave/balances/admin',
+        queryParameters: queryParameters);
+    final payload = response.data;
+    if (payload is! Map) {
+      throw StateError(
+          'Invalid /leave/balances/admin response: expected pagination object');
+    }
+    final items = payload['items'];
+    if (items is! List) {
+      throw StateError(
+          'Invalid /leave/balances/admin response: expected items list');
+    }
     return {
-      'total': data['total'],
-      'page': data['page'],
-      'limit': data['limit'],
-      'totalPages': data['totalPages'],
-      'items': (data['items'] as List).map((e) => LeaveBalance.fromJson(e)).toList(),
+      'total': payload['total'] as int? ?? items.length,
+      'page': payload['page'] as int? ?? page,
+      'limit': payload['limit'] as int? ?? limit,
+      'totalPages': payload['totalPages'] as int? ?? 1,
+      'items': items.map((item) {
+        if (item is! Map) {
+          throw StateError('Invalid /leave/balances/admin item: expected Map');
+        }
+        return LeaveBalance.fromJson(Map<String, dynamic>.from(item));
+      }).toList(),
     };
   }
 
@@ -196,6 +263,9 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
   @override
   Future<Map<String, dynamic>> getCompanyApprovalConfig() async {
     final response = await dio.get('/leave/config');
+    if (response.data is! Map) {
+      throw StateError('Invalid /leave/config response: expected object');
+    }
     return response.data as Map<String, dynamic>;
   }
 
@@ -227,6 +297,24 @@ class ApiLeaveRepositoryImpl implements LeaveRepository {
       'halfDayPeriod': halfDayPeriod,
       'reason': reason,
     });
+    if (response.data is! Map) {
+      throw StateError('Invalid /leave/preview response: expected object');
+    }
     return response.data as Map<String, dynamic>;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getEmployeesForPicker() async {
+    final response = await dio.get('/leave/employees');
+    final data = response.data;
+    if (data is! List) {
+      throw StateError('Invalid /leave/employees response: expected List');
+    }
+    return data.map((item) {
+      if (item is! Map) {
+        throw StateError('Invalid /leave/employees item: expected Map');
+      }
+      return Map<String, dynamic>.from(item);
+    }).toList();
   }
 }

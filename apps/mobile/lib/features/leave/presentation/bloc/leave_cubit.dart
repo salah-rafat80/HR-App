@@ -53,7 +53,7 @@ class LeaveCubit extends SafeCubit<LeaveState> {
       }
     } catch (e) {
       if (!isClosed) {
-        emit(LeaveError(LeaveErrorMapper.mapError(e.toString())));
+        emit(LeaveError(LeaveErrorMapper.map(e)));
       }
     }
   }
@@ -100,7 +100,7 @@ class LeaveCubit extends SafeCubit<LeaveState> {
       if (!isClosed) {
         emit(currentState.copyWith(
           isApplying: false,
-          applyError: LeaveErrorMapper.mapError(e.toString()),
+          applyError: LeaveErrorMapper.map(e),
         ));
       }
     }
@@ -125,7 +125,7 @@ class LeaveCubit extends SafeCubit<LeaveState> {
       );
     } catch (e) {
       return {
-        'error': LeaveErrorMapper.mapError(e.toString()),
+        'error': LeaveErrorMapper.map(e),
       };
     }
   }
@@ -146,7 +146,7 @@ class LeaveCubit extends SafeCubit<LeaveState> {
     } catch (e) {
       if (!isClosed) {
         emit(currentState.copyWith(
-          applyError: LeaveErrorMapper.mapError(e.toString()),
+          applyError: LeaveErrorMapper.map(e),
         ));
       }
     }

@@ -186,5 +186,10 @@
   "executive_dashboard": "لوحة القيادة التنفيذية",
   "leave_apply_success": "تم تقديم طلب الإجازة بنجاح",
   "language": "اللغة",
-  "dark_mode": "الوضع الداكن"
+  "dark_mode": "الوضع الداكن",
+  "dashboard_load_failed": "تعذر تحميل بيانات الصفحة الرئيسية",
+  "retry": "إعادة المحاولة",
+  "preflight_preview": "تفاصيل حساب الطلب",
+  "calculated_working_days": "أيام العمل المحسوبة",
+  "period": "الفترة"
 }

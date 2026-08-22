@@ -1,6 +1,7 @@
 import 'leave_enums.dart';
 
 class LeaveBalance {
+  final String? id;
   final LeaveType type;
   final int daysUsed;
   final int daysTotal;
@@ -11,6 +12,7 @@ class LeaveBalance {
   final double? usedDays;
 
   const LeaveBalance({
+    this.id,
     required this.type,
     required this.daysUsed,
     required this.daysTotal,
@@ -33,6 +35,7 @@ class LeaveBalance {
 
   factory LeaveBalance.fromJson(Map<String, dynamic> json) {
     return LeaveBalance(
+      id: json['id'] as String?,
       type: LeaveType.values.firstWhere(
         (e) => e.name.toLowerCase() == json['type']?.toString().toLowerCase(),
         orElse: () => LeaveType.annual,

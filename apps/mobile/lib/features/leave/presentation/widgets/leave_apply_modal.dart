@@ -145,9 +145,15 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                     policies = state.policies.where((p) => p.isActive).toList();
                   }
 
+                  final availableTypes = policies.isNotEmpty
+                      ? policies.map((p) => p.type).toList()
+                      : LeaveType.values;
+
+                  final currentType = availableTypes.contains(_type) ? _type : availableTypes.first;
+
                   return DropdownButtonFormField<LeaveType>(
-                    value: _type,
-                    items: LeaveType.values.map((t) {
+                    value: currentType,
+                    items: availableTypes.map((t) {
                       final policy = policies.firstWhere(
                         (p) => p.type == t,
                         orElse: () => LeavePolicy(
@@ -169,10 +175,12 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                       );
                     }).toList(),
                     onChanged: (v) {
-                      setState(() {
-                        _type = v!;
-                      });
-                      _loadPreview();
+                      if (v != null) {
+                        setState(() {
+                          _type = v;
+                        });
+                        _loadPreview();
+                      }
                     },
                     decoration: InputDecoration(
                       labelText: 'leave_type'.tr(),

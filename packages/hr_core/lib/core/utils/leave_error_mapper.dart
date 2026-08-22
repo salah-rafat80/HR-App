@@ -1,54 +1,88 @@
+import 'package:dio/dio.dart';
+
 class LeaveErrorMapper {
+  static String map(dynamic error) {
+    if (error == null) return '';
+
+    String errorString = '';
+    if (error is DioException) {
+      final data = error.response?.data;
+      if (data is Map) {
+        final msg = data['message'];
+        if (msg is List) {
+          errorString = msg.join(', ');
+        } else if (msg != null) {
+          errorString = msg.toString();
+        } else {
+          errorString = (data['error'] ?? error.message ?? '').toString();
+        }
+      } else if (data is String) {
+        errorString = data;
+      } else {
+        errorString = error.message ?? '';
+      }
+    } else {
+      errorString = error.toString();
+    }
+    return mapError(errorString);
+  }
+
   static String mapError(String errorString) {
     final clean = errorString.toUpperCase();
 
     if (clean.contains('POLICY_NOT_FOUND_OR_INACTIVE')) {
-      return '╪│┘è╪º╪│╪⌐ ╪º┘ä╪Ñ╪¼╪º╪▓╪⌐ ╪║┘è╪▒ ┘à┘ê╪¼┘ê╪»╪⌐ ╪ú┘ê ╪║┘è╪▒ ┘å╪┤╪╖╪⌐ ╪¡╪º┘ä┘è╪º┘ï.';
+      return 'سياسة الإجازة غير موجودة أو غير نشطة حالياً.';
     }
     if (clean.contains('START_DATE_BEFORE_TODAY')) {
-      return '╪¬╪º╪▒┘è╪« ╪¿╪»╪í ╪º┘ä╪Ñ╪¼╪º╪▓╪⌐ ┘ä╪º ┘è┘à┘â┘å ╪ú┘å ┘è┘â┘ê┘å ┘ü┘è ╪º┘ä┘à╪º╪╢┘è.';
+      return 'تاريخ بدء الإجازة لا يمكن أن يكون في الماضي.';
     }
     if (clean.contains('MINIMUM_NOTICE_NOT_MET')) {
-      return '┘ä┘à ┘è╪¬┘à ╪º╪│╪¬┘è┘ü╪º╪í ╪º┘ä╪¡╪» ╪º┘ä╪ú╪»┘å┘ë ┘ä╪ú┘è╪º┘à ╪º┘ä╪Ñ╪┤╪╣╪º╪▒ ╪º┘ä┘à╪│╪¿┘é ╪º┘ä┘à╪╖┘ä┘ê╪¿╪⌐ ┘ä┘ç╪░┘ç ╪º┘ä╪Ñ╪¼╪º╪▓╪⌐.';
+      return 'لم يتم استيفاء الحد الأدنى لأيام الإشعار المسبق المطلوبة لهذه الإجازة.';
     }
     if (clean.contains('REASON_REQUIRED')) {
-      return '╪│╪¿╪¿ ╪º┘ä╪Ñ╪¼╪º╪▓╪⌐ ┘à╪╖┘ä┘ê╪¿ ┘ê┘ä╪º ┘è┘à┘â┘å ╪¬╪▒┘â┘ç ┘ü╪º╪▒╪║╪º┘ï.';
+      return 'سبب الإجازة مطلوب ولا يمكن تركه فارغاً.';
     }
     if (clean.contains('HALFDAY_NOT_ALLOWED')) {
-      return '╪Ñ╪¼╪º╪▓╪⌐ ┘å╪╡┘ü ╪º┘ä┘è┘ê┘à ╪║┘è╪▒ ┘à╪│┘à┘ê╪¡ ╪¿┘ç╪º ┘ä┘ç╪░╪º ╪º┘ä┘å┘ê╪╣ ┘à┘å ╪º┘ä╪Ñ╪¼╪º╪▓╪º╪¬.';
+      return 'إجازة نصف اليوم غير مسموح بها لهذا النوع من الإجازات.';
     }
     if (clean.contains('HALFDAY_MUST_SPAN_ONE_DAY')) {
-      return '╪╖┘ä╪¿ ┘å╪╡┘ü ┘è┘ê┘à ┘è╪¼╪¿ ╪ú┘å ┘è╪¿╪»╪ú ┘ê┘è┘å╪¬┘ç┘è ┘ü┘è ┘å┘ü╪│ ╪º┘ä╪¬╪º╪▒┘è╪«.';
+      return 'طلب نصف يوم يجب أن يبدأ وينتهي في نفس التاريخ.';
     }
     if (clean.contains('HALFDAY_PERIOD_REQUIRED')) {
-      return '┘è╪▒╪¼┘ë ╪¬╪¡╪»┘è╪» ╪º┘ä┘ü╪¬╪▒╪⌐ ╪º┘ä┘à╪╖┘ä┘ê╪¿╪⌐ ┘ä┘å╪╡┘ü ╪º┘ä┘è┘ê┘à (╪╡╪¿╪º╪¡┘è╪⌐/┘à╪│╪º╪ª┘è╪⌐).';
+      return 'يرجى تحديد الفترة المطلوبة لنصف اليوم (صباحية/مسائية).';
     }
     if (clean.contains('NO_WORKING_DAYS_IN_RANGE')) {
-      return '╪º┘ä┘å╪╖╪º┘é ╪º┘ä┘à╪¡╪»╪» ┘è╪¡╪¬┘ê┘è ╪╣┘ä┘ë ╪╣╪╖┘ä╪º╪¬ ╪▒╪│┘à┘è╪⌐ ╪ú┘ê ╪ú╪│╪¿┘ê╪╣┘è╪⌐ ┘ü┘é╪╖.';
+      return 'النطاق المحدد يحتوي على عطلات رسمية أو أسبوعية فقط.';
     }
     if (clean.contains('LEAVE_OVERLAP')) {
-      return '╪¬┘ê╪¼╪» ╪Ñ╪¼╪º╪▓╪⌐ ╪ú╪«╪▒┘ë ┘à╪╣┘ä┘é╪⌐ ╪ú┘ê ┘à╪╣╪¬┘à╪»╪⌐ ┘à╪¬╪»╪º╪«┘ä╪⌐ ┘à╪╣ ┘ç╪░┘ç ╪º┘ä╪¬┘ê╪º╪▒┘è╪«.';
+      return 'توجد إجازة أخرى معلقة أو معتمدة متداخلة مع هذه التواريخ.';
     }
     if (clean.contains('ATTENDANCE_CONFLICT')) {
-      return '┘è┘ê╪¼╪» ╪│╪¼┘ä ╪¡╪╢┘ê╪▒ ┘à╪│╪¼┘ä ╪¿╪º┘ä┘ü╪╣┘ä ┘ü┘è ╪ú╪¡╪» ╪ú┘è╪º┘à ╪º┘ä╪╣┘à┘ä ╪º┘ä┘à╪¡╪»╪»╪⌐.';
+      return 'يوجد سجل حضور مسجل بالفعل في أحد أيام العمل المحددة.';
     }
     if (clean.contains('LEAVE_BALANCE_NOT_FOUND')) {
-      return '┘ä╪º ┘è┘ê╪¼╪» ╪▒╪╡┘è╪» ╪Ñ╪¼╪º╪▓╪º╪¬ ┘à┘ç┘è╪ú ┘ä┘ç╪░╪º ╪º┘ä┘à╪│╪¬╪«╪»┘à ┘ä┘ç╪░╪º ╪º┘ä╪╣╪º┘à.';
+      return 'لا يوجد رصيد إجازات مهيأ لهذا المستخدم لهذا العام.';
     }
     if (clean.contains('INSUFFICIENT_LEAVE_BALANCE')) {
-      return '╪▒╪╡┘è╪» ╪º┘ä╪Ñ╪¼╪º╪▓╪º╪¬ ╪º┘ä┘à╪¬╪º╪¡ ╪║┘è╪▒ ┘â╪º┘ü┘ì ┘ä╪Ñ╪¬┘à╪º┘à ╪º┘ä╪╖┘ä╪¿.';
+      return 'رصيد الإجازات المتاح غير كافٍ لإتمام الطلب.';
     }
     if (clean.contains('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED')) {
-      return '╪│┘ä╪│┘ä╪⌐ ╪º┘ä┘à┘ê╪º┘ü┘é╪º╪¬ ╪║┘è╪▒ ┘à┘ç┘è╪ú╪⌐ (┘è╪▒╪¼┘ë ╪º┘ä╪¬╪ú┘â╪» ┘à┘å ╪¬╪╣┘è┘è┘å ╪º┘ä┘à╪»┘è╪▒ ╪º┘ä┘à╪¿╪º╪┤╪▒╪î ┘à╪»┘è╪▒ ╪º┘ä╪Ñ╪»╪º╪▒╪⌐╪î ┘ê╪¬╪╣┘è┘è┘å ┘à╪│╪ñ┘ê┘ä HR ╪º┘ä┘à╪╣╪¬┘à╪» ┘ä┘ä╪┤╪▒┘â╪⌐).';
+      return 'سلسلة الموافقات غير مهيأة (يرجى التأكد من تعيين المدير المباشر، مدير الإدارة، وتعيين مسؤول HR المعتمد للشركة).';
     }
     if (clean.contains('APPROVED_LEAVE_ACTIVE')) {
-      return '┘ä╪º ┘è┘à┘â┘å┘â ╪¬╪│╪¼┘è┘ä ╪º┘ä╪¡╪╢┘ê╪▒ ╪º┘ä┘è┘ê┘à ┘å╪╕╪▒╪º┘ï ┘ä┘ê╪¼┘ê╪» ╪Ñ╪¼╪º╪▓╪⌐ ┘à╪╣╪¬┘à╪»╪⌐ ┘ê┘å╪┤╪╖╪⌐.';
+      return 'لا يمكنك تسجيل الحضور اليوم نظراً لوجود إجازة معتمدة ونشطة.';
     }
     if (clean.contains('REJECTION_REASON_REQUIRED')) {
-      return '╪│╪¿╪¿ ╪º┘ä╪▒┘ü╪╢ ┘à╪╖┘ä┘ê╪¿ ┘ê╪Ñ┘ä╪▓╪º┘à┘è ┘ä╪Ñ╪¬┘à╪º┘à ╪º┘ä╪╣┘à┘ä┘è╪⌐.';
+      return 'سبب الرفض مطلوب وإلزامي لإتمام العملية.';
     }
-    if (clean.contains('INVALID_BALANCE_STATE') || clean.contains('INVALID_BALANCE')) {
-      return '┘ü╪┤┘ä╪¬ ╪º┘ä╪╣┘à┘ä┘è╪⌐: ╪│╪¬╪ñ╪»┘è ╪Ñ┘ä┘ë ╪¡╪º┘ä╪⌐ ╪▒╪╡┘è╪» ╪║┘è╪▒ ╪╡╪º┘ä╪¡╪⌐ ╪ú┘ê ╪▒╪╡┘è╪» ╪│╪º┘ä╪¿.';
+    if (clean.contains('INVALID_BALANCE_STATE') ||
+        clean.contains('INVALID_BALANCE')) {
+      return 'فشلت العملية: ستؤدي إلى حالة رصيد غير صالحة أو رصيد سالب.';
+    }
+
+    if (errorString.contains('DioException') ||
+        errorString.contains('status code of 400')) {
+      return 'تعذر تنفيذ المعاينة: يرجى التأكد من اختيار نوع إجازة متاح وتاريخ جديد بدون تداخل.';
     }
 
     return errorString;

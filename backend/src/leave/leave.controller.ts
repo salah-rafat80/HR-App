@@ -131,6 +131,12 @@ export class LeaveController {
     );
   }
 
+  @Get('employees')
+  @Roles(Role.hr, Role.hrAdmin, Role.superAdmin)
+  getEmployeesForPicker() {
+    return this.leaveService.getEmployeesForPicker();
+  }
+
   // ==========================================
   // Employee Leave Requests & Actions
   // ==========================================
