@@ -66,4 +66,22 @@ class ApiSystemConfigDataSource {
       throw Exception('Failed to assign employee branch: $e');
     }
   }
+
+  Future<void> updateUserHierarchy(
+    String userId,
+    String? department,
+    String? managerId,
+  ) async {
+    try {
+      await dio.patch(
+        '/company-settings/users/$userId/hierarchy',
+        data: {
+          'department': department,
+          'managerId': managerId,
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to update employee hierarchy: $e');
+    }
+  }
 }

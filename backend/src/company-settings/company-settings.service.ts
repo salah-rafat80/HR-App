@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateOfficeBranchDto,
   UpdateOfficeBranchDto,
 } from './dto/office-branch.dto';
 import { AssignUserBranchDto } from './dto/assign-user-branch.dto';
+import { UpdateUserHierarchyDto } from './dto/update-user-hierarchy.dto';
 
 @Injectable()
 export class CompanySettingsService {
@@ -58,8 +59,38 @@ export class CompanySettingsService {
         role: true,
         branchId: true,
         branch: { select: { id: true, name: true, isActive: true } },
+        managerId: true,
+        manager: { select: { id: true, name: true, role: true } },
       },
       orderBy: [{ department: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async updateUserHierarchy(userId: string, data: UpdateUserHierarchyDto) {
+    const employee = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    if (data.managerId && data.managerId === userId) {
+      throw new BadRequestException('Self-assignment is not allowed');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        department: data.department !== undefined ? data.department : undefined,
+        managerId: data.managerId !== undefined ? data.managerId : undefined,
+      },
+      select: {
+        id: true,
+        employeeCode: true,
+        name: true,
+        department: true,
+        role: true,
+        branchId: true,
+        branch: { select: { id: true, name: true, isActive: true } },
+        managerId: true,
+        manager: { select: { id: true, name: true, role: true } },
+      },
     });
   }
 

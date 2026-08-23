@@ -18,6 +18,7 @@ import '../widgets/system_config_company.dart';
 import '../widgets/system_config_integrations.dart';
 import '../widgets/system_config_branches.dart';
 import '../widgets/employee_branch_assignments.dart';
+import '../widgets/employee_hierarchy_assignments.dart';
 
 class SystemConfigScreen extends StatelessWidget {
   const SystemConfigScreen({super.key});
@@ -91,6 +92,7 @@ class _SystemConfigViewState extends State<_SystemConfigView>
       if (isSuperAdmin) _TabDef('Company Settings', Iconsax.building),
       if (isHrOrAdmin) _TabDef(AppLocals.officeBranches.tr(), Iconsax.map),
       if (isHrOrAdmin) _TabDef('Employee Branches', Iconsax.people),
+      if (isHrOrAdmin) _TabDef('Employee Hierarchy', Iconsax.user_tick),
       if (isSuperAdmin) _TabDef('Integrations', Iconsax.cpu),
     ];
 
@@ -101,12 +103,14 @@ class _SystemConfigViewState extends State<_SystemConfigView>
             width: 240,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               border: Border(
                 right: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant
-                      .withValues(alpha: 0.5),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.5),
                 ),
               ),
             ),
@@ -229,6 +233,12 @@ class _SystemConfigViewState extends State<_SystemConfigView>
           'Employee Branches',
           Iconsax.people,
           (ctx) => const EmployeeBranchAssignments(),
+        ),
+      if (isHrOrAdmin)
+        _ContentDef(
+          'Employee Hierarchy',
+          Iconsax.user_tick,
+          (ctx) => const EmployeeHierarchyAssignments(),
         ),
       if (isSuperAdmin)
         _ContentDef(

@@ -27,4 +27,9 @@ abstract class SystemConfigRepository {
   Future<void> deleteBranch(String id);
   Future<List<BranchAssignedEmployee>> getUsersForBranchAssignment();
   Future<void> assignUserBranch(String userId, String branchId);
+  Future<void> updateUserHierarchy(
+    String userId,
+    String? department,
+    String? managerId,
+  );
 }

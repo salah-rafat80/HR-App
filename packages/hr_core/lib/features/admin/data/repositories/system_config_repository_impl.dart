@@ -87,4 +87,13 @@ class SystemConfigRepositoryImpl implements SystemConfigRepository {
   Future<void> assignUserBranch(String userId, String branchId) async {
     await _apiDataSource.assignUserBranch(userId, branchId);
   }
+
+  @override
+  Future<void> updateUserHierarchy(
+    String userId,
+    String? department,
+    String? managerId,
+  ) async {
+    await _apiDataSource.updateUserHierarchy(userId, department, managerId);
+  }
 }

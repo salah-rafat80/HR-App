@@ -158,6 +158,15 @@ class SystemConfigCubit extends WebCubit<SystemConfigState> {
     await load();
   }
 
+  Future<void> updateUserHierarchy(
+    String userId,
+    String? department,
+    String? managerId,
+  ) async {
+    await _repo.updateUserHierarchy(userId, department, managerId);
+    await load();
+  }
+
   Future<void> deleteBranch(String id) async {
     try {
       await _repo.deleteBranch(id);

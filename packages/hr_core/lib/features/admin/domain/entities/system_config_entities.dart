@@ -95,6 +95,8 @@ class BranchAssignedEmployee extends Equatable {
   final String role;
   final String? branchId;
   final String? branchName;
+  final String? managerId;
+  final String? managerName;
 
   const BranchAssignedEmployee({
     required this.id,
@@ -104,10 +106,13 @@ class BranchAssignedEmployee extends Equatable {
     required this.role,
     required this.branchId,
     required this.branchName,
+    this.managerId,
+    this.managerName,
   });
 
   factory BranchAssignedEmployee.fromJson(Map<String, dynamic> json) {
     final branch = json['branch'] as Map<String, dynamic>?;
+    final manager = json['manager'] as Map<String, dynamic>?;
     return BranchAssignedEmployee(
       id: json['id'] as String,
       employeeCode: json['employeeCode'] as String? ?? '',
@@ -116,6 +121,32 @@ class BranchAssignedEmployee extends Equatable {
       role: json['role'] as String,
       branchId: json['branchId'] as String?,
       branchName: branch?['name'] as String?,
+      managerId: json['managerId'] as String?,
+      managerName: manager?['name'] as String?,
+    );
+  }
+
+  BranchAssignedEmployee copyWith({
+    String? id,
+    String? employeeCode,
+    String? name,
+    String? department,
+    String? role,
+    String? branchId,
+    String? branchName,
+    String? managerId,
+    String? managerName,
+  }) {
+    return BranchAssignedEmployee(
+      id: id ?? this.id,
+      employeeCode: employeeCode ?? this.employeeCode,
+      name: name ?? this.name,
+      department: department ?? this.department,
+      role: role ?? this.role,
+      branchId: branchId ?? this.branchId,
+      branchName: branchName ?? this.branchName,
+      managerId: managerId ?? this.managerId,
+      managerName: managerName ?? this.managerName,
     );
   }
 
@@ -128,6 +159,8 @@ class BranchAssignedEmployee extends Equatable {
         role,
         branchId,
         branchName,
+        managerId,
+        managerName,
       ];
 }
 
