@@ -256,5 +256,15 @@
   "employee_default": "الموظف",
   "request_type": "نوع الطلب",
   "actions": "الإجراءات",
-  "status": "الحالة"
+  "status": "الحالة",
+  "dashboard": "لوحة التحكم",
+  "welcome_back": "مرحباً بك في بوابة الموارد البشرية",
+  "my_balances": "أرصدة إجازاتي",
+  "my_recent_requests": "طلباتي الأخيرة",
+  "available": "متاح",
+  "used": "مستهلك",
+  "error": "خطأ",
+  "refresh": "تحديث",
+  "view_all": "عرض الكل",
+  "to": "إلى"
 }

@@ -170,6 +170,37 @@ describe('LeaveService', () => {
       ).rejects.toThrow('MISSING_MANAGER_APPROVER');
     });
 
+    it('should throw MISSING_TEAM_LEAD_APPROVER if employee Team Lead belongs to a different department', async () => {
+      mockPrisma.companyLeaveApprovalConfiguration.findUnique.mockResolvedValue(
+        { finalHrApproverId: 'hr-approver-id' },
+      );
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        role: 'employee',
+        department: 'Engineering',
+        manager: {
+          id: 'tl-1',
+          role: 'team_lead',
+          department: 'Sales',
+          manager: {
+            id: 'mgr-1',
+            role: 'manager',
+            department: 'Engineering',
+          },
+        },
+      });
+
+      await expect(
+        service.applyLeave('user-1', {
+          type: LeaveType.annual,
+          startDate: '2026-08-20',
+          endDate: '2026-08-21',
+          isHalfDay: false,
+          reason: 'Vacation',
+        }),
+      ).rejects.toThrow('MISSING_TEAM_LEAD_APPROVER');
+    });
+
     it('should reject submission from HR, hrAdmin, or superAdmin to prevent self-approval', async () => {
       mockPrisma.companyLeaveApprovalConfiguration.findUnique.mockResolvedValue(
         {

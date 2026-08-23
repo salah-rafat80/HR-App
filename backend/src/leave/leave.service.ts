@@ -689,6 +689,7 @@ export class LeaveService {
             name: true,
             role: true,
             isActive: true,
+            department: true,
             managerId: true,
             manager: {
               select: {
@@ -696,6 +697,7 @@ export class LeaveService {
                 name: true,
                 role: true,
                 isActive: true,
+                department: true,
               },
             },
           },
@@ -724,7 +726,7 @@ export class LeaveService {
 
     if (requester.role === 'employee') {
       const tl = requester.manager;
-      if (!tl || tl.role !== 'team_lead') {
+      if (!tl || tl.role !== 'team_lead' || tl.department !== requester.department) {
         throw new BadRequestException('MISSING_TEAM_LEAD_APPROVER');
       }
 

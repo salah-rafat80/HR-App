@@ -256,5 +256,15 @@
   "employee_default": "Employee",
   "request_type": "Request Type",
   "actions": "Actions",
-  "status": "Status"
+  "status": "Status",
+  "dashboard": "Dashboard",
+  "welcome_back": "Welcome back to HR Portal",
+  "my_balances": "My Leave Balances",
+  "my_recent_requests": "My Recent Requests",
+  "available": "Available",
+  "used": "Used",
+  "error": "Error",
+  "refresh": "Refresh",
+  "view_all": "View All",
+  "to": "to"
 }
