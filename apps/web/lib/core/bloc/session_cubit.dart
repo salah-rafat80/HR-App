@@ -17,11 +17,7 @@ class WebSessionState extends Equatable {
   final UserRole? role;
   final String? errorMessage;
 
-  const WebSessionState({
-    required this.status,
-    this.role,
-    this.errorMessage,
-  });
+  const WebSessionState({required this.status, this.role, this.errorMessage});
 
   factory WebSessionState.initial() =>
       const WebSessionState(status: WebSessionStatus.initial);
@@ -29,8 +25,10 @@ class WebSessionState extends Equatable {
       WebSessionState(status: WebSessionStatus.authenticated, role: role);
   factory WebSessionState.unauthenticated() =>
       const WebSessionState(status: WebSessionStatus.unauthenticated);
-  factory WebSessionState.sessionUnknown(String msg) =>
-      WebSessionState(status: WebSessionStatus.sessionUnknown, errorMessage: msg);
+  factory WebSessionState.sessionUnknown(String msg) => WebSessionState(
+    status: WebSessionStatus.sessionUnknown,
+    errorMessage: msg,
+  );
 
   bool get isAuthenticated => status == WebSessionStatus.authenticated;
 
@@ -43,9 +41,9 @@ class SessionCubit extends Cubit<WebSessionState> {
   final Dio? _dio;
 
   SessionCubit({TokenStorage? tokenStorage, Dio? dio})
-      : _tokenStorage = tokenStorage,
-        _dio = dio,
-        super(WebSessionState.initial());
+    : _tokenStorage = tokenStorage,
+      _dio = dio,
+      super(WebSessionState.initial());
 
   TokenStorage get tokenStorage =>
       _tokenStorage ??
@@ -68,8 +66,9 @@ class SessionCubit extends Cubit<WebSessionState> {
 
     final client = dio;
     if (client == null) {
-      final newState =
-          WebSessionState.sessionUnknown('HTTP Client not initialized');
+      final newState = WebSessionState.sessionUnknown(
+        'HTTP Client not initialized',
+      );
       emit(newState);
       return newState;
     }
@@ -124,7 +123,9 @@ class SessionCubit extends Cubit<WebSessionState> {
             if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
               await tokenStorage.saveRefreshToken(newRefreshToken);
             }
-            final roleStr = userData != null ? userData['role'] as String? : null;
+            final roleStr = userData != null
+                ? userData['role'] as String?
+                : null;
             final role = parseUserRole(roleStr);
             final newState = WebSessionState.authenticated(role);
             emit(newState);
@@ -159,8 +160,8 @@ class SessionCubit extends Cubit<WebSessionState> {
   }
 
   Future<void> logout() async {
-    await tokenStorage.clearAllTokens();
     emit(WebSessionState.unauthenticated());
+    await tokenStorage.clearAllTokens();
   }
 
   UserRole parseUserRole(String? roleStr) {

@@ -56,35 +56,35 @@ class Sidebar extends StatelessWidget {
                 children: [
                   NavItem(
                     icon: Iconsax.home_2,
-                      activeIcon: Iconsax.home_2_copy,
-                      label: 'Dashboard',
-                      route: AppRoutes.dashboard,
-                      isWide: isWide,
-                    ),
+                    activeIcon: Iconsax.home_2_copy,
+                    label: 'Dashboard',
+                    route: AppRoutes.dashboard,
+                    isWide: isWide,
+                  ),
+                  NavItem(
+                    icon: Iconsax.tick_circle,
+                    activeIcon: Iconsax.tick_circle_copy,
+                    label: 'Approvals',
+                    route: AppRoutes.approvals,
+                    isWide: isWide,
+                  ),
+                  if (role == UserRole.teamLead ||
+                      role == UserRole.hrAdmin ||
+                      role == UserRole.superAdmin)
                     NavItem(
-                      icon: Iconsax.tick_circle,
-                      activeIcon: Iconsax.tick_circle_copy,
-                      label: 'Approvals',
-                      route: AppRoutes.approvals,
+                      icon: Icons.timer_outlined,
+                      activeIcon: Icons.timer,
+                      label: 'Overtime',
+                      route: AppRoutes.overtimeApprovals,
                       isWide: isWide,
                     ),
-                    if (role == UserRole.teamLead ||
-                        role == UserRole.hrAdmin ||
-                        role == UserRole.superAdmin)
-                      NavItem(
-                        icon: Icons.timer_outlined,
-                        activeIcon: Icons.timer,
-                        label: 'Overtime',
-                        route: AppRoutes.overtimeApprovals,
-                        isWide: isWide,
-                      ),
-                    NavItem(
-                      icon: Iconsax.chart_2,
-                      activeIcon: Iconsax.chart_2_copy,
-                      label: 'KPI Overview',
-                      route: AppRoutes.teamKpi,
-                      isWide: isWide,
-                    ),
+                  NavItem(
+                    icon: Iconsax.chart_2,
+                    activeIcon: Iconsax.chart_2_copy,
+                    label: 'KPI Overview',
+                    route: AppRoutes.teamKpi,
+                    isWide: isWide,
+                  ),
                   if (role == UserRole.manager ||
                       role == UserRole.hrAdmin ||
                       role == UserRole.superAdmin) ...[
@@ -187,9 +187,11 @@ class Sidebar extends StatelessWidget {
               label: 'Logout',
               route: AppRoutes.login,
               isWide: isWide,
-              onTap: () {
-                context.read<SessionCubit>().logout();
-                context.go(AppRoutes.login);
+              onTap: () async {
+                await context.read<SessionCubit>().logout();
+                if (context.mounted) {
+                  context.go(AppRoutes.login);
+                }
               },
             ),
           ),
