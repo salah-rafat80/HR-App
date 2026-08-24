@@ -17,8 +17,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<HomeCubit>()..loadDashboard(),
+    return BlocProvider.value(
+      value: getIt<HomeCubit>()..loadDashboard(),
       child: Scaffold(
         body: SafeArea(
           child: BlocBuilder<HomeCubit, HomeState>(

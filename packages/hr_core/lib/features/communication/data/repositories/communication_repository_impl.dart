@@ -11,6 +11,10 @@ class CommunicationRepositoryImpl implements CommunicationRepository {
   Future<List<Announcement>> getAnnouncements() => _dataSource.getAnnouncements();
 
   @override
+  Future<Announcement> createAnnouncement(String title, String body, {String? department}) =>
+      _dataSource.addAnnouncement(title, body, department: department);
+
+  @override
   Future<List<ChatMessage>> getChatMessages() => _dataSource.getChatMessages();
 
   @override

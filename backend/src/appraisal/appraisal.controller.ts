@@ -14,7 +14,11 @@ import {
   SubmitPeerFeedbackDto,
 } from './dto/appraisal.dto';
 
-@UseGuards(JwtAuthGuard)
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Role } from '../auth/roles.enum';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('appraisal')
 export class AppraisalController {
   constructor(private readonly appraisalService: AppraisalService) {}
@@ -67,6 +71,7 @@ export class AppraisalController {
   }
 
   @Post('cycle/start')
+  @Roles(Role.hr, Role.hrAdmin, Role.superAdmin)
   startNewCycle(@Request() req, @Body() data: StartCycleDto) {
     return this.appraisalService.startNewCycle(
       req.user.userId,

@@ -131,6 +131,19 @@ export class NotificationService implements OnModuleInit {
     });
   }
 
+  async notifyLeaveStepApproved(
+    token: string,
+    employeeName: string,
+    id: string,
+  ) {
+    return this.sendToDevice({
+      token,
+      title: '⏳ جاري مراجعة طلبك',
+      body: `مرحباً ${employeeName}، تمت الموافقة على خطوة وطلبك في انتظار الموافقة التالية`,
+      data: { type: 'leave_step_approved', id },
+    });
+  }
+
   async notifyLeaveRejected(token: string, employeeName: string, id: string) {
     return this.sendToDevice({
       token,
@@ -169,5 +182,37 @@ export class NotificationService implements OnModuleInit {
       body: `تم تحديث مؤشر "${kpiTitle}" الخاص بك`,
       data: { type: 'kpi_updated', ...(id ? { id } : {}) },
     });
+  }
+
+  async notifyNewAnnouncement(
+    tokens: string[],
+    title: string,
+    body: string,
+    id?: string,
+  ) {
+    if (!this.isReady || !this.app || !tokens.length) return;
+    try {
+      await getMessaging(this.app).sendEachForMulticast({
+        tokens,
+        notification: {
+          title: `📢 إعلان جديد: ${title}`,
+          body,
+        },
+        data: { type: 'new_announcement', ...(id ? { id } : {}) },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'hr_app_high_importance_v2',
+            sound: 'default',
+            color: '#0B6E64',
+          },
+        },
+      });
+      this.logger.log(
+        `Broadcast announcement push sent: "${title}" to ${tokens.length} devices`,
+      );
+    } catch (err) {
+      this.logger.error(`Broadcast push failed: ${err}`);
+    }
   }
 }

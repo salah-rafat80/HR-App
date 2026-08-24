@@ -75,16 +75,15 @@ class _LoginFormState extends State<LoginForm> {
       }
 
       String? role;
+      dynamic meData;
       try {
         final me = await dio.get('/auth/me');
-        if (me.data is Map) role = me.data['role']?.toString();
-      } catch (_) {
-        // The backend remains the authorization source; a missing role only
-        // hides role-specific navigation until the next verified session check.
-      }
+        meData = me.data;
+        if (meData is Map) role = meData['role']?.toString();
+      } catch (_) {}
 
       if (!mounted) return;
-      context.read<SessionCubit>().setAuthenticated(true, role: role);
+      context.read<SessionCubit>().setAuthenticated(true, role: role, userData: meData);
       context.go(AppRoutes.home);
     } catch (e) {
       if (!mounted) return;

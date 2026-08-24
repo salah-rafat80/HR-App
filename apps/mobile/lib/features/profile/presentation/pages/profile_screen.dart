@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:hr_app_demo/core/widgets/app_custom_bar.dart';
-import 'package:hr_app_demo/core/theme/app_icons.dart';
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/router/app_routes.dart';
-import '../../../../core/theme/app_colors.dart';
-
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/bloc/session_cubit.dart';
+import '../../../../core/widgets/app_custom_bar.dart';
+import '../widgets/profile_header_card.dart';
+import '../widgets/profile_info_card.dart';
+import '../widgets/profile_settings_card.dart';
+import '../widgets/logout_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -18,68 +19,75 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<ThemeCubit, ThemeMode>(
       builder: (context, themeMode) {
-        return Scaffold(
-          
-        appBar: AppCustomBar(automaticallyImplyLeading: false, title: Text('profile'.tr())),
-          body: ListView(
-            padding: EdgeInsets.all(16.w),
-            children: [
-              CircleAvatar(
-                radius: 50.w,
-                backgroundColor: AppColors.primary,
-                child: const Icon(AppIcons.profile, color: Colors.white, size: 50),
+        return BlocBuilder<SessionCubit, SessionState>(
+          builder: (context, sessionState) {
+            final profile = sessionState.userProfile;
+            final name = profile?.name.isNotEmpty == true
+                ? profile!.name
+                : 'employee'.tr();
+            final title = profile?.title?.isNotEmpty == true
+                ? profile!.title!
+                : (profile?.role.isNotEmpty == true ? profile!.role.tr() : 'employee'.tr());
+            final employeeCode = profile?.employeeCode ?? '---';
+            final department = profile?.department ?? 'none'.tr();
+            final email = profile?.email ?? '---';
+            final roleName = profile?.role ?? 'employee';
+
+            return Scaffold(
+              appBar: AppCustomBar(
+                automaticallyImplyLeading: false,
+                title: Text('profile'.tr()),
               ),
-              SizedBox(height: 16.h),
-              Text(
-                'John Doe',
-                style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                'Senior Flutter Developer',
-                style: TextStyle(fontSize: 16.sp, color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 32.h),
-              ListTile(
-                leading: const Icon(AppIcons.communication),
-                title: Text('language'.tr()),
-                trailing: DropdownButton<String>(
-                  value: context.locale.languageCode,
-                  items: const [
-                    DropdownMenuItem(value: 'ar', child: Text('العربية')),
-                    DropdownMenuItem(value: 'en', child: Text('English')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) context.setLocale(Locale(val));
-                  },
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(AppIcons.admin),
-                title: Text('dark_mode'.tr()),
-                trailing: Switch(
-                  value: themeMode == ThemeMode.dark,
-                  onChanged: (val) {
-                    context.read<ThemeCubit>().toggleTheme();
-                  },
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                leading: Icon(AppIcons.back, color: AppColors.error),
-                title: Text('logout'.tr(), style: TextStyle(color: AppColors.error)),
-                onTap: () async {
-                  await context.read<SessionCubit>().logout();
-                  if (!context.mounted) return;
-                  context.go(AppRoutes.login);
+              body: RefreshIndicator(
+                onRefresh: () async {
+                  await context.read<SessionCubit>().checkStoredSession();
                 },
+                child: ListView(
+                  padding: EdgeInsets.all(16.w),
+                  children: [
+                    ProfileHeaderCard(
+                      name: name,
+                      title: title,
+                      employeeCode: employeeCode,
+                      department: department,
+                    ),
+                    SizedBox(height: 16.h),
+                    ProfileInfoCard(
+                      email: email,
+                      employeeCode: employeeCode,
+                      department: department,
+                      roleName: roleName,
+                    ),
+                    SizedBox(height: 16.h),
+                    ProfileSettingsCard(themeMode: themeMode),
+                    SizedBox(height: 24.h),
+                    ElevatedButton.icon(
+                      onPressed: () => LogoutDialog.show(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                        minimumSize: Size(double.infinity, 48.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                      ),
+                      icon: const Icon(Icons.logout),
+                      label: Text(
+                        'logout'.tr(),
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 24.h),
+                  ],
+                ),
               ),
-            ],
-          ),
+            );
+          },
         );
-      }
+      },
     );
   }
 }

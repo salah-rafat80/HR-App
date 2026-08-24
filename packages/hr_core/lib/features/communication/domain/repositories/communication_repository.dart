@@ -2,6 +2,7 @@ import '../entities/communication_entities.dart';
 
 abstract class CommunicationRepository {
   Future<List<Announcement>> getAnnouncements();
+  Future<Announcement> createAnnouncement(String title, String body, {String? department});
   Future<List<ChatMessage>> getChatMessages();
   Future<void> sendChatMessage(String text);
   Future<List<Poll>> getPolls();

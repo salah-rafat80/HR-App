@@ -4,6 +4,8 @@ import 'package:hr_core/core/enums/role_enums.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_balance.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_request.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
+import 'package:hr_core/features/communication/domain/entities/communication_entities.dart';
+import 'package:hr_core/features/communication/domain/repositories/communication_repository.dart';
 import 'package:hr_core/core/utils/leave_error_mapper.dart';
 
 class DashboardState extends Equatable {
@@ -11,6 +13,7 @@ class DashboardState extends Equatable {
   final List<LeaveBalance> balances;
   final List<LeaveRequest> myRequests;
   final List<LeaveRequest> pendingApprovals;
+  final List<Announcement> announcements;
   final String? errorMessage;
 
   const DashboardState({
@@ -18,6 +21,7 @@ class DashboardState extends Equatable {
     required this.balances,
     required this.myRequests,
     required this.pendingApprovals,
+    required this.announcements,
     this.errorMessage,
   });
 
@@ -27,6 +31,7 @@ class DashboardState extends Equatable {
       balances: [],
       myRequests: [],
       pendingApprovals: [],
+      announcements: [],
       errorMessage: null,
     );
   }
@@ -36,6 +41,7 @@ class DashboardState extends Equatable {
     List<LeaveBalance>? balances,
     List<LeaveRequest>? myRequests,
     List<LeaveRequest>? pendingApprovals,
+    List<Announcement>? announcements,
     String? errorMessage,
   }) {
     return DashboardState(
@@ -43,24 +49,28 @@ class DashboardState extends Equatable {
       balances: balances ?? this.balances,
       myRequests: myRequests ?? this.myRequests,
       pendingApprovals: pendingApprovals ?? this.pendingApprovals,
+      announcements: announcements ?? this.announcements,
       errorMessage: errorMessage,
     );
   }
 
   @override
   List<Object?> get props => [
-    isLoading,
-    balances,
-    myRequests,
-    pendingApprovals,
-    errorMessage,
-  ];
+        isLoading,
+        balances,
+        myRequests,
+        pendingApprovals,
+        announcements,
+        errorMessage,
+      ];
 }
 
 class DashboardCubit extends Cubit<DashboardState> {
   final LeaveRepository _leaveRepo;
+  final CommunicationRepository _commRepo;
 
-  DashboardCubit(this._leaveRepo) : super(DashboardState.initial());
+  DashboardCubit(this._leaveRepo, this._commRepo)
+      : super(DashboardState.initial());
 
   Future<void> loadDashboard(UserRole role) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
@@ -68,6 +78,11 @@ class DashboardCubit extends Cubit<DashboardState> {
       List<LeaveBalance> balances = [];
       List<LeaveRequest> myRequests = [];
       List<LeaveRequest> pendingApprovals = [];
+      List<Announcement> announcements = [];
+
+      try {
+        announcements = await _commRepo.getAnnouncements();
+      } catch (_) {}
 
       if (role == UserRole.employee) {
         balances = await _leaveRepo.getBalances();
@@ -88,13 +103,31 @@ class DashboardCubit extends Cubit<DashboardState> {
           balances: balances,
           myRequests: myRequests,
           pendingApprovals: pendingApprovals,
+          announcements: announcements,
           errorMessage: null,
         ),
       );
     } catch (e) {
       emit(
-        state.copyWith(isLoading: false, errorMessage: LeaveErrorMapper.map(e)),
+        state.copyWith(
+          isLoading: false,
+          errorMessage: LeaveErrorMapper.map(e),
+        ),
       );
+    }
+  }
+
+  Future<void> createAnnouncement(
+    String title,
+    String body, {
+    String? department,
+  }) async {
+    try {
+      await _commRepo.createAnnouncement(title, body, department: department);
+      final announcements = await _commRepo.getAnnouncements();
+      emit(state.copyWith(announcements: announcements));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: e.toString()));
     }
   }
 }

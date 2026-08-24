@@ -86,7 +86,7 @@ class LeaveRequestDetailModal extends StatelessWidget {
               ),
               SizedBox(height: 16.h),
               Text(
-                '${'duration'.tr()}: ${DateFormat('yyyy-MM-dd').format(currentReq.startDate)} ${'to'.tr()} ${DateFormat('yyyy-MM-dd').format(currentReq.endDate)}',
+                '${'duration'.tr()}: ${DateFormat('yyyy-MM-dd', context.locale.languageCode).format(currentReq.startDate)} ${'to'.tr()} ${DateFormat('yyyy-MM-dd', context.locale.languageCode).format(currentReq.endDate)}',
                 style: TextStyle(
                   fontSize: 14.sp,
                   color: AppColors.textSecondary,
@@ -110,6 +110,8 @@ class LeaveRequestDetailModal extends StatelessWidget {
               ),
               SizedBox(height: 8.h),
               ...currentReq.approvalSteps.map((s) {
+                final normalizedStepKey = s.stepName.toLowerCase().replaceAll(' ', '_');
+                final stepLabel = normalizedStepKey.tr();
                 final approverText = s.expectedApproverName != null
                     ? '\n${'expected_approver'.tr()}: ${s.expectedApproverName}'
                     : '';
@@ -127,7 +129,7 @@ class LeaveRequestDetailModal extends StatelessWidget {
                         : AppColors.warning,
                   ),
                   title: Text(
-                    s.stepName.tr(),
+                    stepLabel,
                     style: TextStyle(fontSize: 14.sp),
                   ),
                   subtitle: Text(

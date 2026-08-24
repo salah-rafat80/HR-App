@@ -5,6 +5,9 @@ import 'package:hr_core/features/communication/domain/entities/it_request_entiti
 import 'package:hr_core/features/communication/domain/repositories/communication_repository.dart';
 import 'package:hr_core/features/communication/domain/repositories/it_request_repository.dart';
 
+import '../../../../core/di/injection.dart';
+import '../../../home/presentation/bloc/home_cubit.dart';
+
 class CommunicationCubit extends SafeCubit<CommunicationState> {
   final CommunicationRepository _commRepo;
   final ItRequestRepository _itRepo;
@@ -31,6 +34,27 @@ class CommunicationCubit extends SafeCubit<CommunicationState> {
       )); }
     } catch (e) {
       if (!isClosed) { emit(CommunicationError(e.toString())); }
+    }
+  }
+
+  Future<void> createAnnouncement(String title, String body, {String? department}) async {
+    if (state is! CommunicationLoaded) return;
+    final currentState = state as CommunicationLoaded;
+    try {
+      await _commRepo.createAnnouncement(title, body, department: department);
+      final announcements = await _commRepo.getAnnouncements();
+      if (!isClosed) {
+        emit(currentState.copyWith(announcements: announcements));
+      }
+      try {
+        if (getIt.isRegistered<HomeCubit>()) {
+          getIt<HomeCubit>().loadDashboard();
+        }
+      } catch (_) {}
+    } catch (e) {
+      if (!isClosed) {
+        emit(CommunicationError(e.toString()));
+      }
     }
   }
 

@@ -8,6 +8,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/floating_nav_bar.dart';
 import '../../../../core/services/fcm_service.dart';
 
+import '../../../../core/di/injection.dart';
+import '../../../../core/bloc/session_cubit.dart';
+import '../bloc/home_cubit.dart';
+import '../../../attendance/presentation/bloc/attendance_cubit.dart';
+import '../../../leave/presentation/bloc/leave_cubit.dart';
+
 class MainShell extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -63,6 +69,26 @@ class _MainShellState extends State<MainShell> {
       index,
       initialLocation: index == widget.navigationShell.currentIndex,
     );
+    _refreshActiveTab(index);
+  }
+
+  void _refreshActiveTab(int index) {
+    try {
+      switch (index) {
+        case 0:
+          getIt<HomeCubit>().loadDashboard();
+          break;
+        case 1:
+          getIt<AttendanceCubit>().loadAttendanceData();
+          break;
+        case 2:
+          getIt<LeaveCubit>().loadData();
+          break;
+        case 4:
+          getIt<SessionCubit>().checkStoredSession();
+          break;
+      }
+    } catch (_) {}
   }
 }
 

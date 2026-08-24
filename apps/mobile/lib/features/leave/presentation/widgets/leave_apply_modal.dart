@@ -314,9 +314,15 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
               Container(
                 padding: EdgeInsets.all(12.w),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: AppColors.isDarkMode
+                      ? const Color(0xFF1E2830)
+                      : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(
+                    color: AppColors.isDarkMode
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.grey.shade300,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,6 +332,7 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13.sp,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                     SizedBox(height: 8.h),
@@ -335,7 +342,7 @@ class _LeaveApplyModalState extends State<LeaveApplyModal> {
                       Text(
                         _previewError!,
                         style: TextStyle(
-                          color: Colors.red,
+                          color: AppColors.error,
                           fontSize: 12.sp,
                           fontWeight: FontWeight.w600,
                         ),

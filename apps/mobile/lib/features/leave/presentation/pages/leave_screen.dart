@@ -14,33 +14,39 @@ class LeaveScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<LeaveCubit>()..loadData(),
+    return BlocProvider.value(
+      value: getIt<LeaveCubit>()..loadData(),
       child: DefaultTabController(
         length: 3,
-        child: Scaffold(
-          
-        appBar: AppCustomBar(
-            automaticallyImplyLeading: false,
-            title: Text('leave_overview'.tr()),
-            bottom: TabBar(
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primary,
-              tabs: [
-                Tab(text: 'leave_overview'.tr()),
-                Tab(text: 'my_requests'.tr()),
-                Tab(text: 'team_calendar'.tr()),
-              ],
-            ),
-          ),
-          body: const TabBarView(
-            children: [
-              LeaveOverviewTab(),
-              LeaveRequestsTab(),
-              LeaveTeamCalendarTab(),
-            ],
-          ),
+        child: Builder(
+          builder: (context) {
+            return Scaffold(
+              appBar: AppCustomBar(
+                automaticallyImplyLeading: false,
+                title: Text('leave_overview'.tr()),
+                bottom: TabBar(
+                  onTap: (_) {
+                    getIt<LeaveCubit>().loadData();
+                  },
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.primary,
+                  tabs: [
+                    Tab(text: 'leave_overview'.tr()),
+                    Tab(text: 'my_requests'.tr()),
+                    Tab(text: 'team_calendar'.tr()),
+                  ],
+                ),
+              ),
+              body: const TabBarView(
+                children: [
+                  LeaveOverviewTab(),
+                  LeaveRequestsTab(),
+                  LeaveTeamCalendarTab(),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

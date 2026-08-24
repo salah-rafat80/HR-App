@@ -55,6 +55,10 @@ class LeaveOverviewTab extends StatelessWidget {
                 onPressed: () => showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
+                  backgroundColor: Theme.of(context).cardColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                  ),
                   builder: (_) => BlocProvider.value(
                     value: context.read<LeaveCubit>(),
                     child: const LeaveApplyModal(),

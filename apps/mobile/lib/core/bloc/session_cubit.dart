@@ -8,17 +8,62 @@ import 'package:hr_core/core/services/token_storage.dart';
 
 enum SessionStatus { initial, authenticated, unauthenticated, sessionUnknown }
 
+class UserProfile extends Equatable {
+  final String id;
+  final String employeeCode;
+  final String name;
+  final String email;
+  final String role;
+  final String? department;
+  final String? title;
+
+  const UserProfile({
+    required this.id,
+    required this.employeeCode,
+    required this.name,
+    required this.email,
+    required this.role,
+    this.department,
+    this.title,
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: json['id']?.toString() ?? '',
+      employeeCode: json['employeeCode']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'employee',
+      department: json['department']?.toString(),
+      title: json['title']?.toString(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, employeeCode, name, email, role, department, title];
+}
+
 class SessionState extends Equatable {
   final SessionStatus status;
   final String? errorMessage;
   final String? role;
+  final UserProfile? userProfile;
 
-  const SessionState({required this.status, this.errorMessage, this.role});
+  const SessionState({
+    required this.status,
+    this.errorMessage,
+    this.role,
+    this.userProfile,
+  });
 
   factory SessionState.initial() =>
       const SessionState(status: SessionStatus.initial);
-  factory SessionState.authenticated({String? role}) =>
-      SessionState(status: SessionStatus.authenticated, role: role);
+  factory SessionState.authenticated({String? role, UserProfile? userProfile}) =>
+      SessionState(
+        status: SessionStatus.authenticated,
+        role: role ?? userProfile?.role,
+        userProfile: userProfile,
+      );
   factory SessionState.unauthenticated() =>
       const SessionState(status: SessionStatus.unauthenticated);
   factory SessionState.sessionUnknown(String msg) =>
@@ -27,7 +72,7 @@ class SessionState extends Equatable {
   bool get isAuthenticated => status == SessionStatus.authenticated;
 
   @override
-  List<Object?> get props => [status, errorMessage, role];
+  List<Object?> get props => [status, errorMessage, role, userProfile];
 }
 
 class SessionCubit extends Cubit<SessionState> {
@@ -46,6 +91,15 @@ class SessionCubit extends Cubit<SessionState> {
           : SecureTokenStorage());
 
   Dio? get dio => _dio ?? (getIt.isRegistered<Dio>() ? getIt<Dio>() : null);
+
+  UserProfile? _parseProfile(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return UserProfile.fromJson(data);
+    } else if (data is Map) {
+      return UserProfile.fromJson(Map<String, dynamic>.from(data));
+    }
+    return null;
+  }
 
   Future<SessionState> checkStoredSession() async {
     final accessToken = await tokenStorage.getAccessToken();
@@ -72,8 +126,10 @@ class SessionCubit extends Cubit<SessionState> {
       try {
         final response = await client.get('/auth/me');
         if (response.statusCode == 200) {
+          final profile = _parseProfile(response.data);
           final newState = SessionState.authenticated(
-            role: _roleFromAuthMe(response.data),
+            role: profile?.role ?? _roleFromAuthMe(response.data),
+            userProfile: profile,
           );
           emit(newState);
           return newState;
@@ -117,8 +173,10 @@ class SessionCubit extends Cubit<SessionState> {
               await tokenStorage.saveRefreshToken(newRefreshToken);
             }
             final me = await client.get('/auth/me');
+            final profile = _parseProfile(me.data);
             final newState = SessionState.authenticated(
-              role: _roleFromAuthMe(me.data),
+              role: profile?.role ?? _roleFromAuthMe(me.data),
+              userProfile: profile,
             );
             emit(newState);
             return newState;
@@ -155,9 +213,10 @@ class SessionCubit extends Cubit<SessionState> {
     return null;
   }
 
-  void setAuthenticated(bool isAuthenticated, {String? role}) {
+  void setAuthenticated(bool isAuthenticated, {String? role, UserProfile? userProfile, dynamic userData}) {
     if (isAuthenticated) {
-      emit(SessionState.authenticated(role: role));
+      final profile = userProfile ?? _parseProfile(userData);
+      emit(SessionState.authenticated(role: role ?? profile?.role, userProfile: profile));
     } else {
       emit(SessionState.unauthenticated());
     }

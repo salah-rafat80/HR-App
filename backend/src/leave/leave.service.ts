@@ -1587,12 +1587,7 @@ export class LeaveService {
           .catch(() => undefined);
       } else {
         void this.notifications
-          .sendToDevice({
-            token: empToken,
-            title: 'ΓÅ│ ╪¼╪º╪▒┘è ┘à╪▒╪º╪¼╪╣╪⌐ ╪╖┘ä╪¿┘â',
-            body: `┘à╪▒╪¡╪¿╪º┘ï ${empName}╪î ╪¬┘à╪¬ ╪º┘ä┘à┘ê╪º┘ü┘é╪⌐ ╪╣┘ä┘ë ╪«╪╖┘ê╪⌐ ┘ê╪╖┘ä╪¿┘â ┘ü┘è ╪º┘å╪¬╪╕╪º╪▒ ╪º┘ä┘à┘ê╪º┘ü┘é╪⌐ ╪º┘ä╪¬╪º┘ä┘è╪⌐`,
-            data: { type: 'leave_step_approved', id: result.id },
-          })
+          .notifyLeaveStepApproved(empToken, empName, result.id)
           .catch(() => undefined);
       }
     }

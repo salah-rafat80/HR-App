@@ -48,6 +48,19 @@ class FakeCommunicationDataSource {
     return _announcements;
   }
 
+  Future<Announcement> addAnnouncement(String title, String body, {String? department}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final item = Announcement(
+      id: 'a_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      body: body,
+      date: DateTime.now(),
+      department: (department != null && department.trim().isNotEmpty) ? department.trim() : null,
+    );
+    _announcements.insert(0, item);
+    return item;
+  }
+
   Future<List<ChatMessage>> getChatMessages() async {
     await Future.delayed(const Duration(milliseconds: 200));
     return _messages;

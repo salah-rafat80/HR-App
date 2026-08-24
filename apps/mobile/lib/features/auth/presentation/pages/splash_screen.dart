@@ -31,25 +31,30 @@ class _SplashScreenState extends State<SplashScreen> {
       final sessionState = await context
           .read<SessionCubit>()
           .checkStoredSession()
-          .timeout(const Duration(seconds: 5), onTimeout: () {
-        return const SessionState(
-          status: SessionStatus.sessionUnknown,
-          errorMessage: 'Server connection timeout. Retrying recommended.',
-        );
-      });
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              return const SessionState(
+                status: SessionStatus.sessionUnknown,
+                errorMessage:
+                    'Server connection timeout. Retrying recommended.',
+              );
+            },
+          );
 
       if (!mounted) return;
 
       if (sessionState.status == SessionStatus.authenticated) {
-        final notificationConsumed =
-            await FcmService.instance.consumePendingNotification(context);
+        final notificationConsumed = await FcmService.instance
+            .consumePendingNotification(context);
         if (!notificationConsumed && mounted) {
           context.go(AppRoutes.home);
         }
       } else if (sessionState.status == SessionStatus.sessionUnknown) {
         if (mounted) {
           setState(() {
-            _errorMessage = sessionState.errorMessage ??
+            _errorMessage =
+                sessionState.errorMessage ??
                 'Session verification unavailable. Check connection.';
           });
         }

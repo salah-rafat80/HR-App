@@ -257,8 +257,44 @@ class _WebLoginFormState extends State<WebLoginForm> {
                           TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 16),
+          Text('Quick Login (Testing Only)', style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildQuickLoginChip('Super Admin (IT)', 'TEST-SA-001', 'HrTest!2026-F4', Colors.purple),
+              _buildQuickLoginChip('HR Admin', 'TEST-HRA-001', 'HrTest!2026-E8', Colors.red),
+              _buildQuickLoginChip('HR', 'TEST-HR-001', 'HrTest!2026-D5', Colors.pink),
+              _buildQuickLoginChip('Manager (Fin)', 'TEST-MGR-001', 'HrTest!2026-B7', Colors.orange),
+              _buildQuickLoginChip('TL (IT)', 'TEST-TL-001', 'HrTest!2026-C3', Colors.blue),
+              _buildQuickLoginChip('TL (Fin)', 'TEST-TL-002', 'HrTest!2026-I3', Colors.cyan),
+              _buildQuickLoginChip('Emp (IT)', 'TEST-EMP-001', 'HrTest!2026-A9', Colors.green),
+              _buildQuickLoginChip('Emp (Fin)', 'TEST-EMP-004', 'HrTest!2026-J4', Colors.teal),
+              _buildQuickLoginChip('Emp (HR)', 'TEST-EMP-006', 'HrTest!2026-L6', Colors.lightGreen),
+            ],
+          ),
         ],
       ),
+    );
+  }
+
+  void _quickLogin(String code, String password) {
+    _employeeCodeController.text = code;
+    _passwordController.text = password;
+    _handleLogin();
+  }
+
+  Widget _buildQuickLoginChip(String label, String code, String password, Color color) {
+    return ActionChip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      backgroundColor: color.withValues(alpha: 0.1),
+      side: BorderSide(color: color.withValues(alpha: 0.5)),
+      labelStyle: TextStyle(color: color, fontWeight: FontWeight.bold),
+      onPressed: () => _quickLogin(code, password),
     );
   }
 }

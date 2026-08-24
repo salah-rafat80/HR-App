@@ -42,6 +42,10 @@ class LeaveRequestsTab extends StatelessWidget {
                 onTap: () => showModalBottomSheet(
                   context: context, 
                   isScrollControlled: true, 
+                  backgroundColor: Theme.of(context).cardColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                  ),
                   builder: (_) => BlocProvider.value(value: context.read<LeaveCubit>(), child: LeaveRequestDetailModal(request: req))
                 ),
                 title: Text(req.type.name.tr(), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),

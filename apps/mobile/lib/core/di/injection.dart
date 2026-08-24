@@ -147,11 +147,11 @@ Future<void> initDI({String? overrideBaseUrl}) async {
       () => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
 
   // Cubits
-  getIt.registerFactory(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>()));
-  getIt.registerFactory(() => HomeCubit(
+  getIt.registerLazySingleton(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>()));
+  getIt.registerLazySingleton(() => HomeCubit(
       getIt<HomeRepository>(), getIt<AttendanceRepository>(), getIt<LeaveRepository>(), getIt<KpiRepository>(), getIt<TrainingRepository>()));
-  getIt.registerFactory(() => LeaveCubit(getIt<LeaveRepository>(), getIt<io.Socket>()));
-  getIt.registerFactory(() => KpiCubit(getIt<KpiRepository>(), getIt<io.Socket>()));
+  getIt.registerLazySingleton(() => LeaveCubit(getIt<LeaveRepository>(), getIt<io.Socket>()));
+  getIt.registerLazySingleton(() => KpiCubit(getIt<KpiRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => AppraisalCubit(getIt<AppraisalRepository>(), getIt<KpiRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => PayrollCubit(getIt<PayrollRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => TrainingCubit(getIt<TrainingRepository>()));

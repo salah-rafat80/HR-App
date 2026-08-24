@@ -68,27 +68,35 @@ export class AppraisalService {
       throw new NotFoundException('No active appraisal cycle in progress');
     }
 
-    for (const ans of answers) {
-      await this.prisma.selfAppraisalAnswer.upsert({
-        where: {
-          userId_cycleId_questionId: {
+    const validQuestions = this.getSelfAppraisalQuestions().map((q) => q.id);
+    const invalidIds = answers.filter((a) => !validQuestions.includes(a.id));
+    if (invalidIds.length > 0) {
+      throw new BadRequestException('INVALID_QUESTION_ID');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const ans of answers) {
+        await tx.selfAppraisalAnswer.upsert({
+          where: {
+            userId_cycleId_questionId: {
+              userId,
+              cycleId: cycle.id,
+              questionId: ans.id,
+            },
+          },
+          create: {
             userId,
             cycleId: cycle.id,
             questionId: ans.id,
+            questionText: ans.questionText,
+            answerText: ans.answerText || '',
           },
-        },
-        create: {
-          userId,
-          cycleId: cycle.id,
-          questionId: ans.id,
-          questionText: ans.questionText,
-          answerText: ans.answerText || '',
-        },
-        update: {
-          answerText: ans.answerText || '',
-        },
-      });
-    }
+          update: {
+            answerText: ans.answerText || '',
+          },
+        });
+      }
+    });
 
     const updatedStatus = await this.getCurrentCycle(userId);
 
@@ -98,9 +106,23 @@ export class AppraisalService {
   }
 
   async getPeersForFeedback(userId: string) {
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { department: true, branchId: true },
+    });
+
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+
     const colleagues = await this.prisma.user.findMany({
-      where: { id: { not: userId } },
-      take: 5,
+      where: {
+        id: { not: userId },
+        isActive: true,
+        department: currentUser.department,
+        branchId: currentUser.branchId,
+      },
+      take: 20,
     });
 
     const cycle = await this.prisma.appraisalCycle.findFirst({
@@ -118,6 +140,7 @@ export class AppraisalService {
       feedbackText: string | null;
       submitted: boolean;
     }> = [];
+
     for (const col of colleagues) {
       const feedback = cycle
         ? await this.prisma.peerFeedback.findUnique({

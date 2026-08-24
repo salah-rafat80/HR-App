@@ -14,33 +14,39 @@ class AttendanceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AttendanceCubit>()..loadAttendanceData(),
+    return BlocProvider.value(
+      value: getIt<AttendanceCubit>()..loadAttendanceData(),
       child: DefaultTabController(
         length: 3,
-        child: Scaffold(
-          
-        appBar: AppCustomBar(
-            automaticallyImplyLeading: false,
-            title: Text('attendance_title'.tr()),
-            bottom: TabBar(
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primary,
-              tabs: [
-                Tab(text: 'today_tab'.tr()),
-                Tab(text: 'history_tab'.tr()),
-                Tab(text: 'requests_tab'.tr()),
-              ],
-            ),
-          ),
-          body: const TabBarView(
-            children: [
-              AttendanceTodayTab(),
-              AttendanceHistoryTab(),
-              AttendanceRequestsTab(),
-            ],
-          ),
+        child: Builder(
+          builder: (context) {
+            return Scaffold(
+              appBar: AppCustomBar(
+                automaticallyImplyLeading: false,
+                title: Text('attendance_title'.tr()),
+                bottom: TabBar(
+                  onTap: (_) {
+                    getIt<AttendanceCubit>().loadAttendanceData();
+                  },
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.primary,
+                  tabs: [
+                    Tab(text: 'today_tab'.tr()),
+                    Tab(text: 'history_tab'.tr()),
+                    Tab(text: 'requests_tab'.tr()),
+                  ],
+                ),
+              ),
+              body: const TabBarView(
+                children: [
+                  AttendanceTodayTab(),
+                  AttendanceHistoryTab(),
+                  AttendanceRequestsTab(),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
