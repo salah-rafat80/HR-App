@@ -28,7 +28,7 @@ jobs:
         run: |
           cd packages/hr_core
           flutter pub get
-          cd ../../apps/web
+          cd $GITHUB_WORKSPACE/apps/web
           flutter pub get
 
       - name: Setup Pages
@@ -38,7 +38,15 @@ jobs:
       - name: Build Flutter Web App
         run: |
           cd apps/web
-          flutter build web --release --base-href "${{ steps.pages.outputs.base_path }}/" --dart-define=API_BASE_URL=https://hr-crm-backend.up.railway.app
+          BASE_HREF="${{ steps.pages.outputs.base_path }}"
+          if [ -z "$BASE_HREF" ]; then
+            BASE_HREF="/"
+          else
+            BASE_HREF="${BASE_HREF}/"
+          fi
+          BASE_HREF=$(echo "$BASE_HREF" | sed 's#//#/#g')
+          echo "Building with base-href: $BASE_HREF"
+          flutter build web --release --base-href "$BASE_HREF" --dart-define=API_BASE_URL=https://hr-crm-backend.up.railway.app
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
