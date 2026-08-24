@@ -3,6 +3,7 @@ name: Deploy Flutter Web to GitHub Pages
 on:
   push:
     branches: [ main, master, feat/appraisal-backend-migration ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,38 +18,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      - name: Install Monorepo Dependencies
+      - name: Install Dependencies
         run: |
           cd packages/hr_core
           flutter pub get
           cd $GITHUB_WORKSPACE/apps/web
           flutter pub get
 
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v5
-
-      - name: Build Flutter Web App
+      - name: Build Web App
         run: |
           cd apps/web
-          BASE_HREF="${{ steps.pages.outputs.base_path }}"
-          if [ -z "$BASE_HREF" ]; then
-            BASE_HREF="/"
-          else
-            BASE_HREF="${BASE_HREF}/"
-          fi
-          BASE_HREF=$(echo "$BASE_HREF" | sed 's#//#/#g')
-          echo "Building with base-href: $BASE_HREF"
-          flutter build web --release --base-href "$BASE_HREF" --dart-define=API_BASE_URL=https://hr-crm-backend.up.railway.app
+          flutter build web --release --base-href /HR-App/ --no-tree-shake-icons --dart-define=API_BASE_URL=https://hr-crm-backend.up.railway.app
 
-      - name: Upload Artifact
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: apps/web/build/web
