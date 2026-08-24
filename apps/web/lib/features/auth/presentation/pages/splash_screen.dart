@@ -45,11 +45,11 @@ class _WebSplashScreenState extends State<WebSplashScreen> {
         switch (role) {
           case UserRole.teamLead:
           case UserRole.manager:
+          case UserRole.hr:
           case UserRole.hrAdmin:
             targetRoute = AppRoutes.approvals;
             break;
           case UserRole.superAdmin:
-          case UserRole.cLevel:
             targetRoute = AppRoutes.executiveDashboard;
             break;
           case UserRole.employee:

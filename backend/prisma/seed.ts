@@ -13,6 +13,48 @@ async function main() {
 
   console.log('Seeding database...');
 
+  // Seed the 13 required test users
+  const requiredUsers = [
+    { employeeCode: 'TEST-EMP-001', name: 'جنى حسن', role: 'employee', department: 'IT', title: 'QA Engineer', passwordRaw: 'HrTest!2026-A9' },
+    { employeeCode: 'TEST-MGR-001', name: 'محمود فوزي', role: 'manager', department: 'الحسابات', title: 'Accounting Manager', passwordRaw: 'HrTest!2026-B7' },
+    { employeeCode: 'TEST-TL-001', name: 'عمر نبيل', role: 'team_lead', department: 'IT', title: 'Engineering Team Lead', passwordRaw: 'HrTest!2026-C3' },
+    { employeeCode: 'TEST-HR-001', name: 'سلمى عادل', role: 'hr', department: 'HR', title: 'HR Operations Specialist', passwordRaw: 'HrTest!2026-D5' },
+    { employeeCode: 'TEST-HRA-001', name: 'داليا مصطفى', role: 'hrAdmin', department: 'HR', title: 'HR Administration Lead', passwordRaw: 'HrTest!2026-E8' },
+    { employeeCode: 'TEST-SA-001', name: 'طارق أمين', role: 'superAdmin', department: 'IT', title: 'System Administrator', passwordRaw: 'HrTest!2026-F4' },
+    { employeeCode: 'TEST-EMP-002', name: 'حسام محمود', role: 'employee', department: 'IT', title: 'Flutter Developer', passwordRaw: 'HrTest!2026-G1' },
+    { employeeCode: 'TEST-EMP-003', name: 'نور شريف', role: 'employee', department: 'IT', title: 'Backend Developer', passwordRaw: 'HrTest!2026-H2' },
+    { employeeCode: 'TEST-TL-002', name: 'أميرة وائل', role: 'team_lead', department: 'الحسابات', title: 'Finance Team Lead', passwordRaw: 'HrTest!2026-I3' },
+    { employeeCode: 'TEST-EMP-004', name: 'يوسف عادل', role: 'employee', department: 'الحسابات', title: 'Senior Accountant', passwordRaw: 'HrTest!2026-J4' },
+    { employeeCode: 'TEST-EMP-005', name: 'مريم هاني', role: 'employee', department: 'الحسابات', title: 'Accounts Payable Accountant', passwordRaw: 'HrTest!2026-K5' },
+    { employeeCode: 'TEST-EMP-006', name: 'ريم أحمد', role: 'employee', department: 'HR', title: 'HR Coordinator', passwordRaw: 'HrTest!2026-L6' },
+    { employeeCode: 'TEST-EMP-007', name: 'خالد سعد', role: 'employee', department: 'HR', title: 'Talent Acquisition Specialist', passwordRaw: 'HrTest!2026-M7' },
+  ];
+
+  for (const u of requiredUsers) {
+    const hashedPassword = await bcrypt.hash(u.passwordRaw, saltRounds);
+    const email = `${u.employeeCode.toLowerCase()}@demo.com`;
+    await prisma.user.upsert({
+      where: { email },
+      update: {
+        employeeCode: u.employeeCode,
+        name: u.name,
+        role: u.role,
+        department: u.department,
+        title: u.title,
+        password: hashedPassword,
+      },
+      create: {
+        email,
+        employeeCode: u.employeeCode,
+        name: u.name,
+        role: u.role,
+        department: u.department,
+        title: u.title,
+        password: hashedPassword,
+      },
+    });
+  }
+
   // 1. Create Users
   const hrAdmin = await prisma.user.upsert({
     where: { email: 'hr@demo.com' },

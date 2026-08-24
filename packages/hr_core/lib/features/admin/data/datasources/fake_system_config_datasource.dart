@@ -22,9 +22,11 @@ class FakeSystemConfigDataSource {
   ];
 
   final List<DepartmentConfig> _departments = [
+    const DepartmentConfig(name: 'IT', headcount: 15),
+    const DepartmentConfig(name: 'الحسابات', headcount: 12),
+    const DepartmentConfig(name: 'HR', headcount: 8),
     const DepartmentConfig(name: 'Engineering', headcount: 45),
     const DepartmentConfig(name: 'Sales', headcount: 20),
-    const DepartmentConfig(name: 'HR', headcount: 5),
     const DepartmentConfig(name: 'Finance', headcount: 8),
   ];
 

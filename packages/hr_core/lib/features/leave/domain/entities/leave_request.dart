@@ -4,22 +4,38 @@ class LeaveApprovalStep {
   final String stepName;
   final LeaveStatus status;
   final DateTime timestamp;
+  final int? stepOrder;
+  final String? expectedApproverId;
+  final String? expectedApproverName;
+  final Map<String, dynamic>? expectedApprover;
 
   const LeaveApprovalStep({
     required this.stepName,
     required this.status,
     required this.timestamp,
+    this.stepOrder,
+    this.expectedApproverId,
+    this.expectedApproverName,
+    this.expectedApprover,
   });
 
   LeaveApprovalStep copyWith({
     String? stepName,
     LeaveStatus? status,
     DateTime? timestamp,
+    int? stepOrder,
+    String? expectedApproverId,
+    String? expectedApproverName,
+    Map<String, dynamic>? expectedApprover,
   }) {
     return LeaveApprovalStep(
       stepName: stepName ?? this.stepName,
       status: status ?? this.status,
       timestamp: timestamp ?? this.timestamp,
+      stepOrder: stepOrder ?? this.stepOrder,
+      expectedApproverId: expectedApproverId ?? this.expectedApproverId,
+      expectedApproverName: expectedApproverName ?? this.expectedApproverName,
+      expectedApprover: expectedApprover ?? this.expectedApprover,
     );
   }
 
@@ -30,7 +46,15 @@ class LeaveApprovalStep {
         (e) => e.name.toLowerCase() == json['status']?.toString().toLowerCase(),
         orElse: () => LeaveStatus.pending,
       ),
-      timestamp: DateTime.parse(json['timestamp'] as String),
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'] as String)
+          : DateTime.now(),
+      stepOrder: json['stepOrder'] as int?,
+      expectedApproverId: json['expectedApproverId'] as String?,
+      expectedApproverName: json['expectedApprover']?['name'] as String?,
+      expectedApprover: json['expectedApprover'] is Map<String, dynamic>
+          ? json['expectedApprover'] as Map<String, dynamic>
+          : null,
     );
   }
 
@@ -39,6 +63,9 @@ class LeaveApprovalStep {
       'stepName': stepName,
       'status': status.name,
       'timestamp': timestamp.toIso8601String(),
+      if (stepOrder != null) 'stepOrder': stepOrder,
+      if (expectedApproverId != null) 'expectedApproverId': expectedApproverId,
+      if (expectedApprover != null) 'expectedApprover': expectedApprover,
     };
   }
 }
@@ -57,7 +84,9 @@ class LeaveRequest {
   final String reason;
   final bool hasAttachment;
   final LeaveStatus overallStatus;
+  final int? currentStepOrder;
   final List<LeaveApprovalStep> approvalSteps;
+  final double? workingDays;
 
   const LeaveRequest({
     required this.id,
@@ -73,17 +102,19 @@ class LeaveRequest {
     required this.reason,
     required this.hasAttachment,
     required this.overallStatus,
+    this.currentStepOrder,
     required this.approvalSteps,
+    this.workingDays,
   });
 
   String get displayStatus {
     if (overallStatus != LeaveStatus.pending) {
       return overallStatus.name;
     }
-    final pendingStepIndex = approvalSteps.indexWhere((s) => s.status == LeaveStatus.pending);
+    final pendingStepIndex =
+        approvalSteps.indexWhere((s) => s.status == LeaveStatus.pending);
     if (pendingStepIndex != -1) {
       final step = approvalSteps[pendingStepIndex];
-      // stepName is like 'manager', 'hr', 'final_approval'
       final name = step.stepName.replaceAll('_', ' ');
       return 'pending $name';
     }
@@ -93,6 +124,7 @@ class LeaveRequest {
   LeaveRequest copyWith({
     LeaveStatus? overallStatus,
     List<LeaveApprovalStep>? approvalSteps,
+    double? workingDays,
   }) {
     return LeaveRequest(
       id: id,
@@ -109,6 +141,7 @@ class LeaveRequest {
       hasAttachment: hasAttachment,
       overallStatus: overallStatus ?? this.overallStatus,
       approvalSteps: approvalSteps ?? this.approvalSteps,
+      workingDays: workingDays ?? this.workingDays,
     );
   }
 
@@ -130,13 +163,18 @@ class LeaveRequest {
       reason: json['reason'] as String? ?? '',
       hasAttachment: json['hasAttachment'] as bool? ?? false,
       overallStatus: LeaveStatus.values.firstWhere(
-        (e) => e.name.toLowerCase() == json['overallStatus']?.toString().toLowerCase(),
+        (e) =>
+            e.name.toLowerCase() ==
+            json['overallStatus']?.toString().toLowerCase(),
         orElse: () => LeaveStatus.pending,
       ),
+      currentStepOrder: json['currentStepOrder'] as int?,
       approvalSteps: (json['approvalSteps'] as List<dynamic>?)
-              ?.map((e) => LeaveApprovalStep.fromJson(e as Map<String, dynamic>))
+              ?.map(
+                  (e) => LeaveApprovalStep.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      workingDays: double.tryParse(json['workingDays']?.toString() ?? ''),
     );
   }
 
@@ -153,6 +191,7 @@ class LeaveRequest {
       'hasAttachment': hasAttachment,
       'overallStatus': overallStatus.name,
       'approvalSteps': approvalSteps.map((e) => e.toJson()).toList(),
+      if (workingDays != null) 'workingDays': workingDays,
     };
   }
 }

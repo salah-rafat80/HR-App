@@ -13,10 +13,10 @@ abstract class SystemConfigRepository {
   // Full forms:
   Future<List<RolePermission>> getRolePermissions();
   Future<void> toggleRolePermission(UserRole role, String featureKey);
-  
+
   Future<CompanySettings> getCompanySettings();
   Future<void> updateCompanySettings(CompanySettings draft);
-  
+
   Future<List<IntegrationToggle>> getIntegrations();
   Future<void> toggleIntegration(String name);
 
@@ -25,4 +25,11 @@ abstract class SystemConfigRepository {
   Future<void> addBranch(OfficeBranch branch);
   Future<void> updateBranch(OfficeBranch branch);
   Future<void> deleteBranch(String id);
+  Future<List<BranchAssignedEmployee>> getUsersForBranchAssignment();
+  Future<void> assignUserBranch(String userId, String branchId);
+  Future<void> updateUserHierarchy(
+    String userId,
+    String? department,
+    String? managerId,
+  );
 }

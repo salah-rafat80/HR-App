@@ -8,6 +8,8 @@ import { EventsGateway } from '../events/events/events.gateway';
 import { AssignKpiDto } from './dto/kpi.dto';
 import { Kpi, KpiQuarterScore } from '@prisma/client';
 
+import { CompanyTimeService } from '../common/time/company-time.service';
+
 export interface TeamMember {
   id: string;
   name: string;
@@ -22,6 +24,7 @@ export class KpiService {
   constructor(
     private prisma: PrismaService,
     private events: EventsGateway,
+    private companyTime: CompanyTimeService,
   ) {}
 
   async getCurrentKpis(userId: string): Promise<Kpi[]> {
@@ -186,20 +189,9 @@ export class KpiService {
     if (users.length === 0) return [];
 
     const userIds = users.map((u) => u.id);
-    const today = new Date();
-    const startOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-    );
-    const endOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
-      23,
-      59,
-      59,
-    );
+    const now = this.companyTime.serverNowUtc();
+    const todayStr = this.companyTime.companyBusinessDate(now);
+    const todayDateObj = new Date(todayStr);
 
     // Perform bulk queries in parallel for active leave & WFH attendance to avoid N+1 queries
     const [activeLeaves, wfhRecords] = await Promise.all([
@@ -207,8 +199,8 @@ export class KpiService {
         where: {
           userId: { in: userIds },
           overallStatus: 'approved',
-          startDate: { lte: today },
-          endDate: { gte: today },
+          startDate: { lte: todayDateObj },
+          endDate: { gte: todayDateObj },
         },
         select: { userId: true },
       }),
@@ -216,7 +208,7 @@ export class KpiService {
         where: {
           userId: { in: userIds },
           status: 'workFromHome',
-          date: { gte: startOfDay, lte: endOfDay },
+          date: todayDateObj,
         },
         select: { userId: true },
       }),

@@ -2,9 +2,9 @@ enum UserRole {
   employee,
   teamLead,
   manager,
+  hr,
   hrAdmin,
-  superAdmin,
-  cLevel
+  superAdmin
 }
 
 enum ApprovalScope {

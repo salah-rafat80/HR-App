@@ -6,17 +6,21 @@ import { Role } from '../auth/roles.enum';
 import { EventsGateway } from '../events/events/events.gateway';
 import { PrismaService } from '../prisma/prisma.service';
 import { OvertimeService } from './overtime.service';
+import {
+  serverNow,
+  startOfEgyptAttendanceDay,
+} from '../common/time/egypt-time.util';
 
 const employee = { userId: 'employee-1', role: Role.employee };
 const teamLead = { userId: 'lead-1', role: Role.team_lead };
 const hr = { userId: 'hr-1', role: Role.hr };
 
 function nowRequestPayload() {
-  // Use noon of today (local time) to avoid midnight boundary issues in UTC CI.
-  // "+15 min from now" crosses midnight when CI runs at 23:45+ UTC → BadRequestException instead of ConflictException.
-  const d = new Date();
-  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  // Use noon of Cairo today via ISO string to avoid midnight boundary issues.
+  const now = serverNow();
+  const d = startOfEgyptAttendanceDay(now);
+  const start = new Date(d.getTime() + 12 * 60 * 60 * 1000);
+  const end = new Date(d.getTime() + 14 * 60 * 60 * 1000);
   return {
     requestedStartAt: start.toISOString(),
     requestedEndAt: end.toISOString(),
@@ -25,15 +29,15 @@ function nowRequestPayload() {
 }
 
 function makeRequest(overrides: Record<string, unknown> = {}) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = serverNow();
+  const today = startOfEgyptAttendanceDay(now);
   return {
     id: 'request-1',
     userId: employee.userId,
     attendanceRecordId: 'attendance-1',
     date: today,
-    requestedStartAt: new Date(),
-    requestedEndAt: new Date(Date.now() + 60 * 60 * 1000),
+    requestedStartAt: new Date(today.getTime() + 12 * 60 * 60 * 1000),
+    requestedEndAt: new Date(today.getTime() + 13 * 60 * 60 * 1000),
     requestedMinutes: 60,
     hoursRequested: 1,
     reason: 'Critical production support',
@@ -265,6 +269,37 @@ describe('OvertimeService (unit)', () => {
         }),
       }),
     );
+  });
+
+  it('stores overtime session start time from the backend clock', async () => {
+    const serverInstant = new Date('2026-08-15T18:30:00.000Z');
+    jest.useFakeTimers().setSystemTime(serverInstant);
+
+    try {
+      prisma.overtimeRequest.findUnique.mockResolvedValue(
+        makeRequest({ status: OvertimeStatus.approved }),
+      );
+      prisma.overtimeSession.create.mockResolvedValue({
+        id: 'session-1',
+        overtimeRequestId: 'request-1',
+        userId: employee.userId,
+        status: OvertimeSessionStatus.active,
+      });
+
+      await service.startSession('request-1', employee, {
+        lat: 24.7136,
+        lng: 46.6753,
+        accuracy: 10,
+      });
+
+      expect(prisma.overtimeSession.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ startedAt: serverInstant }),
+        }),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('ends the active session once and marks the request completed atomically', async () => {

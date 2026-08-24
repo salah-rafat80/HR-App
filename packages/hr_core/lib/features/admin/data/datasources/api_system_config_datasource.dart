@@ -9,7 +9,9 @@ class ApiSystemConfigDataSource {
   Future<List<OfficeBranch>> getBranches() async {
     try {
       final response = await dio.get('/company-settings/branches');
-      return (response.data as List).map((b) => OfficeBranch.fromJson(b)).toList();
+      return (response.data as List)
+          .map((b) => OfficeBranch.fromJson(b))
+          .toList();
     } catch (e) {
       throw Exception('Failed to get branches: $e');
     }
@@ -40,6 +42,46 @@ class ApiSystemConfigDataSource {
       await dio.delete('/company-settings/branches/$id');
     } catch (e) {
       throw Exception('Failed to delete branch: $e');
+    }
+  }
+
+  Future<List<BranchAssignedEmployee>> getUsersForBranchAssignment() async {
+    try {
+      final response = await dio.get('/company-settings/users');
+      return (response.data as List)
+          .map((user) => BranchAssignedEmployee.fromJson(user))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get employees for branch assignment: $e');
+    }
+  }
+
+  Future<void> assignUserBranch(String userId, String branchId) async {
+    try {
+      await dio.patch(
+        '/company-settings/users/$userId/branch',
+        data: {'branchId': branchId},
+      );
+    } catch (e) {
+      throw Exception('Failed to assign employee branch: $e');
+    }
+  }
+
+  Future<void> updateUserHierarchy(
+    String userId,
+    String? department,
+    String? managerId,
+  ) async {
+    try {
+      await dio.patch(
+        '/company-settings/users/$userId/hierarchy',
+        data: {
+          'department': department,
+          'managerId': managerId,
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to update employee hierarchy: $e');
     }
   }
 }

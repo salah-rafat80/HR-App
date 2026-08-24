@@ -1,4 +1,5 @@
 import { KpiService, TeamMember } from './kpi.service';
+import { CompanyTimeService } from '../common/time/company-time.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events/events.gateway';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -112,6 +113,7 @@ describe('KpiService', () => {
     service = new KpiService(
       prismaMock as unknown as PrismaService,
       eventsMock as unknown as EventsGateway,
+      new CompanyTimeService(),
     );
   });
 

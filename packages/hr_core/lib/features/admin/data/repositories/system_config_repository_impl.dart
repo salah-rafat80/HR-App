@@ -12,40 +12,51 @@ class SystemConfigRepositoryImpl implements SystemConfigRepository {
   SystemConfigRepositoryImpl(this._fakeDataSource, this._apiDataSource);
 
   @override
-  Future<void> addDepartment(String name) => _fakeDataSource.addDepartment(name);
+  Future<void> addDepartment(String name) =>
+      _fakeDataSource.addDepartment(name);
 
   @override
-  Future<void> addHoliday(String name, DateTime date) => _fakeDataSource.addHoliday(name, date);
+  Future<void> addHoliday(String name, DateTime date) =>
+      _fakeDataSource.addHoliday(name, date);
 
   @override
-  Future<List<DepartmentConfig>> getDepartments() => _fakeDataSource.getDepartments();
+  Future<List<DepartmentConfig>> getDepartments() =>
+      _fakeDataSource.getDepartments();
 
   @override
   Future<List<Holiday>> getHolidays() => _fakeDataSource.getHolidays();
 
   @override
-  Future<List<LeaveTypeConfig>> getLeaveTypeConfigs() => _fakeDataSource.getLeaveTypeConfigs();
+  Future<List<LeaveTypeConfig>> getLeaveTypeConfigs() =>
+      _fakeDataSource.getLeaveTypeConfigs();
 
   @override
-  Future<void> updateLeaveTypeConfig(LeaveType type, int days) => _fakeDataSource.updateLeaveTypeConfig(type, days);
+  Future<void> updateLeaveTypeConfig(LeaveType type, int days) =>
+      _fakeDataSource.updateLeaveTypeConfig(type, days);
 
   @override
-  Future<List<RolePermission>> getRolePermissions() => _fakeDataSource.getRolePermissions();
+  Future<List<RolePermission>> getRolePermissions() =>
+      _fakeDataSource.getRolePermissions();
 
   @override
-  Future<void> toggleRolePermission(UserRole role, String featureKey) => _fakeDataSource.toggleRolePermission(role, featureKey);
+  Future<void> toggleRolePermission(UserRole role, String featureKey) =>
+      _fakeDataSource.toggleRolePermission(role, featureKey);
 
   @override
-  Future<CompanySettings> getCompanySettings() => _fakeDataSource.getCompanySettings();
+  Future<CompanySettings> getCompanySettings() =>
+      _fakeDataSource.getCompanySettings();
 
   @override
-  Future<void> updateCompanySettings(CompanySettings draft) => _fakeDataSource.updateCompanySettings(draft);
+  Future<void> updateCompanySettings(CompanySettings draft) =>
+      _fakeDataSource.updateCompanySettings(draft);
 
   @override
-  Future<List<IntegrationToggle>> getIntegrations() => _fakeDataSource.getIntegrations();
+  Future<List<IntegrationToggle>> getIntegrations() =>
+      _fakeDataSource.getIntegrations();
 
   @override
-  Future<void> toggleIntegration(String name) => _fakeDataSource.toggleIntegration(name);
+  Future<void> toggleIntegration(String name) =>
+      _fakeDataSource.toggleIntegration(name);
 
   @override
   Future<List<OfficeBranch>> getBranches() async {
@@ -66,5 +77,23 @@ class SystemConfigRepositoryImpl implements SystemConfigRepository {
   Future<void> deleteBranch(String id) async {
     await _apiDataSource.deleteBranch(id);
   }
-}
 
+  @override
+  Future<List<BranchAssignedEmployee>> getUsersForBranchAssignment() async {
+    return _apiDataSource.getUsersForBranchAssignment();
+  }
+
+  @override
+  Future<void> assignUserBranch(String userId, String branchId) async {
+    await _apiDataSource.assignUserBranch(userId, branchId);
+  }
+
+  @override
+  Future<void> updateUserHierarchy(
+    String userId,
+    String? department,
+    String? managerId,
+  ) async {
+    await _apiDataSource.updateUserHierarchy(userId, department, managerId);
+  }
+}

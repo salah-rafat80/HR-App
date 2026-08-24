@@ -22,7 +22,7 @@ class ApiConfigErrorScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF242832),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -30,7 +30,8 @@ class ApiConfigErrorScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: const [
-                      Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 32),
+                      Icon(Icons.warning_amber_rounded,
+                          color: Colors.redAccent, size: 32),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(

@@ -44,10 +44,12 @@ class RolePermission extends Equatable {
   final String featureKey;
   final bool allowed;
 
-  const RolePermission({required this.role, required this.featureKey, required this.allowed});
+  const RolePermission(
+      {required this.role, required this.featureKey, required this.allowed});
 
   RolePermission copyWith({bool? allowed}) {
-    return RolePermission(role: role, featureKey: featureKey, allowed: allowed ?? this.allowed);
+    return RolePermission(
+        role: role, featureKey: featureKey, allowed: allowed ?? this.allowed);
   }
 
   @override
@@ -82,6 +84,83 @@ class CompanySettings extends Equatable {
         companyName,
         workWeekDays,
         timezoneLabel,
+      ];
+}
+
+class BranchAssignedEmployee extends Equatable {
+  final String id;
+  final String employeeCode;
+  final String name;
+  final String? department;
+  final String role;
+  final String? branchId;
+  final String? branchName;
+  final String? managerId;
+  final String? managerName;
+
+  const BranchAssignedEmployee({
+    required this.id,
+    required this.employeeCode,
+    required this.name,
+    required this.department,
+    required this.role,
+    required this.branchId,
+    required this.branchName,
+    this.managerId,
+    this.managerName,
+  });
+
+  factory BranchAssignedEmployee.fromJson(Map<String, dynamic> json) {
+    final branch = json['branch'] as Map<String, dynamic>?;
+    final manager = json['manager'] as Map<String, dynamic>?;
+    return BranchAssignedEmployee(
+      id: json['id'] as String,
+      employeeCode: json['employeeCode'] as String? ?? '',
+      name: json['name'] as String,
+      department: json['department'] as String?,
+      role: json['role'] as String,
+      branchId: json['branchId'] as String?,
+      branchName: branch?['name'] as String?,
+      managerId: json['managerId'] as String?,
+      managerName: manager?['name'] as String?,
+    );
+  }
+
+  BranchAssignedEmployee copyWith({
+    String? id,
+    String? employeeCode,
+    String? name,
+    String? department,
+    String? role,
+    String? branchId,
+    String? branchName,
+    String? managerId,
+    String? managerName,
+  }) {
+    return BranchAssignedEmployee(
+      id: id ?? this.id,
+      employeeCode: employeeCode ?? this.employeeCode,
+      name: name ?? this.name,
+      department: department ?? this.department,
+      role: role ?? this.role,
+      branchId: branchId ?? this.branchId,
+      branchName: branchName ?? this.branchName,
+      managerId: managerId ?? this.managerId,
+      managerName: managerName ?? this.managerName,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        employeeCode,
+        name,
+        department,
+        role,
+        branchId,
+        branchName,
+        managerId,
+        managerName,
       ];
 }
 

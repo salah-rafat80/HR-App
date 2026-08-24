@@ -54,39 +54,37 @@ class Sidebar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (role != UserRole.cLevel) ...[
+                  NavItem(
+                    icon: Iconsax.home_2,
+                    activeIcon: Iconsax.home_2_copy,
+                    label: 'Dashboard',
+                    route: AppRoutes.dashboard,
+                    isWide: isWide,
+                  ),
+                  NavItem(
+                    icon: Iconsax.tick_circle,
+                    activeIcon: Iconsax.tick_circle_copy,
+                    label: 'Approvals',
+                    route: AppRoutes.approvals,
+                    isWide: isWide,
+                  ),
+                  if (role == UserRole.teamLead ||
+                      role == UserRole.hrAdmin ||
+                      role == UserRole.superAdmin)
                     NavItem(
-                      icon: Iconsax.home_2,
-                      activeIcon: Iconsax.home_2_copy,
-                      label: 'Dashboard',
-                      route: AppRoutes.dashboard,
+                      icon: Icons.timer_outlined,
+                      activeIcon: Icons.timer,
+                      label: 'Overtime',
+                      route: AppRoutes.overtimeApprovals,
                       isWide: isWide,
                     ),
-                    NavItem(
-                      icon: Iconsax.tick_circle,
-                      activeIcon: Iconsax.tick_circle_copy,
-                      label: 'Approvals',
-                      route: AppRoutes.approvals,
-                      isWide: isWide,
-                    ),
-                    if (role == UserRole.teamLead ||
-                        role == UserRole.hrAdmin ||
-                        role == UserRole.superAdmin)
-                      NavItem(
-                        icon: Icons.timer_outlined,
-                        activeIcon: Icons.timer,
-                        label: 'Overtime',
-                        route: AppRoutes.overtimeApprovals,
-                        isWide: isWide,
-                      ),
-                    NavItem(
-                      icon: Iconsax.chart_2,
-                      activeIcon: Iconsax.chart_2_copy,
-                      label: 'KPI Overview',
-                      route: AppRoutes.teamKpi,
-                      isWide: isWide,
-                    ),
-                  ],
+                  NavItem(
+                    icon: Iconsax.chart_2,
+                    activeIcon: Iconsax.chart_2_copy,
+                    label: 'KPI Overview',
+                    route: AppRoutes.teamKpi,
+                    isWide: isWide,
+                  ),
                   if (role == UserRole.manager ||
                       role == UserRole.hrAdmin ||
                       role == UserRole.superAdmin) ...[
@@ -111,7 +109,8 @@ class Sidebar extends StatelessWidget {
                       isWide: isWide,
                     ),
                   ],
-                  if (role == UserRole.hrAdmin ||
+                  if (role == UserRole.hr ||
+                      role == UserRole.hrAdmin ||
                       role == UserRole.superAdmin) ...[
                     const SizedBox(height: 16),
                     if (isWide)
@@ -168,13 +167,11 @@ class Sidebar extends StatelessWidget {
                       route: AppRoutes.systemConfig,
                       isWide: isWide,
                     ),
-                  ],
-                  if (role == UserRole.cLevel) ...[
                     NavItem(
-                      icon: Iconsax.chart_square,
-                      activeIcon: Iconsax.chart_square_copy,
-                      label: 'Executive',
-                      route: AppRoutes.executiveDashboard,
+                      icon: Icons.calendar_month_outlined,
+                      activeIcon: Icons.calendar_month,
+                      label: 'Leave Management',
+                      route: AppRoutes.leaveManagement,
                       isWide: isWide,
                     ),
                   ],
@@ -190,9 +187,11 @@ class Sidebar extends StatelessWidget {
               label: 'Logout',
               route: AppRoutes.login,
               isWide: isWide,
-              onTap: () {
-                context.read<SessionCubit>().logout();
-                context.go(AppRoutes.login);
+              onTap: () async {
+                await context.read<SessionCubit>().logout();
+                if (context.mounted) {
+                  context.go(AppRoutes.login);
+                }
               },
             ),
           ),

@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsBoolean, IsOptional, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsBoolean,
+  IsOptional,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOfficeBranchDto {
@@ -57,4 +64,3 @@ export class UpdateOfficeBranchDto {
   @IsBoolean()
   isActive?: boolean;
 }
-
