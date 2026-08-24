@@ -37,7 +37,7 @@ jobs:
       - name: Build Web App
         run: |
           cd apps/web
-          flutter build web --release --base-href /HR-App/ --no-tree-shake-icons --dart-define=API_BASE_URL=https://hr-crm-backend.up.railway.app
+          flutter build web --release --base-href /HR-App/ --no-tree-shake-icons --dart-define=API_BASE_URL=https://hr-app-lswi.onrender.com
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
