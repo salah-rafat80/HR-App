@@ -27,6 +27,11 @@ import 'package:hr_core/features/training/data/datasources/fake_training_datasou
 import 'package:hr_core/features/training/data/repositories/training_repository_impl.dart';
 import 'package:hr_core/features/training/domain/repositories/training_repository.dart';
 import '../../features/training/presentation/bloc/training_cubit.dart';
+import 'package:hr_core/features/communication/domain/repositories/announcement_repository.dart';
+import 'package:hr_core/features/communication/data/datasources/announcement_datasource.dart';
+import 'package:hr_core/features/communication/data/datasources/api_announcement_datasource.dart';
+import 'package:hr_core/features/communication/data/repositories/announcement_repository_impl.dart';
+import 'package:hr_core/features/communication/data/datasources/communication_datasource.dart';
 import 'package:hr_core/features/communication/data/datasources/fake_communication_datasource.dart';
 import 'package:hr_core/features/communication/data/datasources/fake_it_request_datasource.dart';
 import 'package:hr_core/features/communication/data/repositories/communication_repository_impl.dart';
@@ -116,7 +121,6 @@ Future<void> initDI({String? overrideBaseUrl}) async {
   // Data Sources (Singletons for state sync)
   getIt.registerLazySingleton(() => FakeHomeDataSource());
   getIt.registerLazySingleton(() => FakeTrainingDataSource());
-  getIt.registerLazySingleton(() => FakeCommunicationDataSource());
   getIt.registerLazySingleton(() => FakeItRequestDataSource());
   getIt.registerLazySingleton(() => FakeSystemConfigDataSource());
   getIt.registerLazySingleton(() => ApiSystemConfigDataSource(dio: getIt<Dio>()));
@@ -137,14 +141,30 @@ Future<void> initDI({String? overrideBaseUrl}) async {
       () => ApiAppraisalRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<PayrollRepository>(
       () => ApiPayrollRepositoryImpl(dio: getIt<Dio>()));
-  getIt.registerLazySingleton<TrainingRepository>(
-      () => TrainingRepositoryImpl(getIt<FakeTrainingDataSource>()));
+
+  // Announcements
+  getIt.registerLazySingleton<AnnouncementDataSource>(
+    () => ApiAnnouncementDataSource(dio: getIt<Dio>()),
+  );
+
+  getIt.registerLazySingleton<AnnouncementRepository>(
+    () => AnnouncementRepositoryImpl(dataSource: getIt<AnnouncementDataSource>()),
+  );
+
+  getIt.registerLazySingleton<CommunicationDataSource>(
+    () => FakeCommunicationDataSource(),
+  );
+
   getIt.registerLazySingleton<CommunicationRepository>(
-      () => CommunicationRepositoryImpl(getIt<FakeCommunicationDataSource>()));
+    () => CommunicationRepositoryImpl(getIt<CommunicationDataSource>()),
+  );
+
   getIt.registerLazySingleton<ItRequestRepository>(
       () => ItRequestRepositoryImpl(getIt<FakeItRequestDataSource>()));
   getIt.registerLazySingleton<SystemConfigRepository>(
       () => SystemConfigRepositoryImpl(getIt<FakeSystemConfigDataSource>(), getIt<ApiSystemConfigDataSource>()));
+  getIt.registerLazySingleton<TrainingRepository>(
+      () => TrainingRepositoryImpl(getIt<FakeTrainingDataSource>()));
 
   // Cubits
   getIt.registerLazySingleton(() => AttendanceCubit(getIt<AttendanceRepository>(), getIt<io.Socket>()));
@@ -155,7 +175,7 @@ Future<void> initDI({String? overrideBaseUrl}) async {
   getIt.registerFactory(() => AppraisalCubit(getIt<AppraisalRepository>(), getIt<KpiRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => PayrollCubit(getIt<PayrollRepository>(), getIt<io.Socket>()));
   getIt.registerFactory(() => TrainingCubit(getIt<TrainingRepository>()));
-  getIt.registerFactory(() => CommunicationCubit(getIt<CommunicationRepository>(), getIt<ItRequestRepository>()));
+  getIt.registerFactory(() => CommunicationCubit(getIt<CommunicationRepository>(), getIt<AnnouncementRepository>(), getIt<ItRequestRepository>()));
 
 
   // Phase 14: Engagement

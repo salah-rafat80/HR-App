@@ -33,9 +33,14 @@ import 'package:hr_core/features/executive/data/repositories/executive_repositor
 import 'package:hr_core/features/executive/domain/repositories/executive_repository.dart';
 import 'package:hr_core/features/engagement/data/repositories/engagement_repository_impl.dart';
 import 'package:hr_core/features/engagement/domain/repositories/engagement_repository.dart';
+import 'package:hr_core/features/communication/domain/repositories/announcement_repository.dart';
+import 'package:hr_core/features/communication/data/datasources/announcement_datasource.dart';
+import 'package:hr_core/features/communication/data/datasources/api_announcement_datasource.dart';
 import 'package:hr_core/features/communication/data/datasources/fake_communication_datasource.dart';
-import 'package:hr_core/features/communication/data/repositories/communication_repository_impl.dart';
+import 'package:hr_core/features/communication/data/repositories/announcement_repository_impl.dart';
 import 'package:hr_core/features/communication/domain/repositories/communication_repository.dart';
+import 'package:hr_core/features/communication/data/datasources/communication_datasource.dart';
+import 'package:hr_core/features/communication/data/repositories/communication_repository_impl.dart';
 import 'package:hr_core/features/admin/domain/repositories/hr_report_repository.dart';
 import 'package:hr_core/features/admin/data/repositories/hr_report_repository_impl.dart';
 
@@ -102,11 +107,26 @@ Future<void> initDI({String? overrideBaseUrl}) async {
   getIt.registerLazySingleton(() => FakeOffboardingDataSource());
   getIt.registerLazySingleton(() => FakeExecutiveDataSource());
   getIt.registerLazySingleton(() => FakeEngagementDataSource());
-  getIt.registerLazySingleton(() => FakeCommunicationDataSource());
+
+  // Announcements
+  getIt.registerLazySingleton<AnnouncementDataSource>(
+    () => ApiAnnouncementDataSource(dio: getIt<Dio>()),
+  );
+
+  getIt.registerLazySingleton<AnnouncementRepository>(
+    () => AnnouncementRepositoryImpl(dataSource: getIt<AnnouncementDataSource>()),
+  );
+
+  getIt.registerLazySingleton<CommunicationDataSource>(
+    () => FakeCommunicationDataSource(),
+  );
+
+  getIt.registerLazySingleton<CommunicationRepository>(
+    () => CommunicationRepositoryImpl(getIt<CommunicationDataSource>()),
+  );
 
   // Repositories
   getIt.registerLazySingleton<LeaveRepository>(() => ApiLeaveRepositoryImpl(dio: getIt<Dio>()));
-  getIt.registerLazySingleton<CommunicationRepository>(() => CommunicationRepositoryImpl(getIt<FakeCommunicationDataSource>()));
   getIt.registerLazySingleton<AttendanceRepository>(() => ApiAttendanceRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<KpiRepository>(() => ApiKpiRepositoryImpl(dio: getIt<Dio>()));
   getIt.registerLazySingleton<AppraisalRepository>(() => ApiAppraisalRepositoryImpl(dio: getIt<Dio>()));

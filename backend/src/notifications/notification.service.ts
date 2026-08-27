@@ -189,10 +189,12 @@ export class NotificationService implements OnModuleInit {
     title: string,
     body: string,
     id?: string,
-  ) {
-    if (!this.isReady || !this.app || !tokens.length) return;
+  ): Promise<{ successCount: number; failureCount: number }> {
+    if (!this.isReady || !this.app || !tokens.length) {
+      return { successCount: 0, failureCount: tokens.length };
+    }
     try {
-      await getMessaging(this.app).sendEachForMulticast({
+      const response = await getMessaging(this.app).sendEachForMulticast({
         tokens,
         notification: {
           title: `📢 إعلان جديد: ${title}`,
@@ -208,11 +210,13 @@ export class NotificationService implements OnModuleInit {
           },
         },
       });
-      this.logger.log(
-        `Broadcast announcement push sent: "${title}" to ${tokens.length} devices`,
-      );
+      return {
+        successCount: response.successCount,
+        failureCount: response.failureCount,
+      };
     } catch (err) {
       this.logger.error(`Broadcast push failed: ${err}`);
+      return { successCount: 0, failureCount: tokens.length };
     }
   }
 }

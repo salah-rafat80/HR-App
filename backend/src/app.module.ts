@@ -15,6 +15,7 @@ import { PayrollModule } from './payroll/payroll.module';
 import { OvertimeModule } from './overtime/overtime.module';
 import { HrReportsModule } from './hr-reports/hr-reports.module';
 import { CompanyTimeModule } from './common/time/company-time.module';
+import { CommunicationModule } from './communication/communication.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { CompanyTimeModule } from './common/time/company-time.module';
     PayrollModule,
     OvertimeModule,
     HrReportsModule,
+    CommunicationModule,
   ],
   controllers: [AppController],
   providers: [

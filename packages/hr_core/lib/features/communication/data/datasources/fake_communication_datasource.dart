@@ -1,13 +1,7 @@
 import '../../domain/entities/communication_entities.dart';
+import 'communication_datasource.dart';
 
-class FakeCommunicationDataSource {
-  final List<Announcement> _announcements = [
-    Announcement(id: 'a1', title: 'Q3 Townhall Meeting', body: 'Join us for the upcoming Q3 Townhall where the CEO will share our progress and vision.', date: DateTime.now().subtract(const Duration(days: 1))),
-    Announcement(id: 'a2', title: 'New Leave Policy', body: 'Please review the updated leave policy handbook for 2026.', date: DateTime.now().subtract(const Duration(days: 3))),
-    Announcement(id: 'a3', title: 'Engineering All-Hands', body: 'Engineering team, don\'t forget our all-hands meeting this Friday.', date: DateTime.now().subtract(const Duration(days: 4)), department: 'Engineering'),
-    Announcement(id: 'a4', title: 'Office Renovation Updates', body: 'The 3rd-floor renovation is complete. Feel free to use the new collaboration spaces.', date: DateTime.now().subtract(const Duration(days: 10))),
-  ];
-
+class FakeCommunicationDataSource implements CommunicationDataSource {
   final List<ChatMessage> _messages = [
     ChatMessage(sender: ChatSender.hr, text: 'Hello! How can we assist you today?', timestamp: DateTime.now().subtract(const Duration(hours: 24))),
     ChatMessage(sender: ChatSender.me, text: 'I have a question about my health insurance coverage.', timestamp: DateTime.now().subtract(const Duration(hours: 23))),
@@ -42,24 +36,6 @@ class FakeCommunicationDataSource {
     const HandbookSection(id: 'h3', title: 'Remote Work Guidelines', content: 'Eligible employees may work remotely up to 2 days a week. Core hours are 10 AM to 3 PM.'),
     const HandbookSection(id: 'h4', title: 'Benefits Overview', content: 'We offer comprehensive health insurance, retirement matching, and a yearly wellness stipend.'),
   ];
-
-  Future<List<Announcement>> getAnnouncements() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _announcements;
-  }
-
-  Future<Announcement> addAnnouncement(String title, String body, {String? department}) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final item = Announcement(
-      id: 'a_${DateTime.now().millisecondsSinceEpoch}',
-      title: title,
-      body: body,
-      date: DateTime.now(),
-      department: (department != null && department.trim().isNotEmpty) ? department.trim() : null,
-    );
-    _announcements.insert(0, item);
-    return item;
-  }
 
   Future<List<ChatMessage>> getChatMessages() async {
     await Future.delayed(const Duration(milliseconds: 200));

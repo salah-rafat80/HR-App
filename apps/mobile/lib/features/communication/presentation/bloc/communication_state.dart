@@ -30,7 +30,12 @@ class CommunicationLoaded extends CommunicationState {
     this.isSendingMessage = false,
     this.isVoting = false,
     this.isSubmittingItRequest = false,
+    this.isLoadingAnnouncements = false,
+    this.announcementsError,
   });
+
+  final bool isLoadingAnnouncements;
+  final String? announcementsError;
 
   CommunicationLoaded copyWith({
     List<Announcement>? announcements,
@@ -41,6 +46,8 @@ class CommunicationLoaded extends CommunicationState {
     bool? isSendingMessage,
     bool? isVoting,
     bool? isSubmittingItRequest,
+    bool? isLoadingAnnouncements,
+    String? announcementsError,
   }) {
     return CommunicationLoaded(
       announcements: announcements ?? this.announcements,
@@ -51,6 +58,8 @@ class CommunicationLoaded extends CommunicationState {
       isSendingMessage: isSendingMessage ?? this.isSendingMessage,
       isVoting: isVoting ?? this.isVoting,
       isSubmittingItRequest: isSubmittingItRequest ?? this.isSubmittingItRequest,
+      isLoadingAnnouncements: isLoadingAnnouncements ?? this.isLoadingAnnouncements,
+      announcementsError: announcementsError,
     );
   }
 
@@ -64,6 +73,8 @@ class CommunicationLoaded extends CommunicationState {
         isSendingMessage,
         isVoting,
         isSubmittingItRequest,
+        isLoadingAnnouncements,
+        announcementsError,
       ];
 }
 

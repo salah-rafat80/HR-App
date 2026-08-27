@@ -266,5 +266,13 @@
   "error": "Error",
   "refresh": "Refresh",
   "view_all": "View All",
-  "to": "to"
+  "to": "to",
+  "error_bad_request": "Invalid request submitted.",
+  "error_network": "Network connection error. Please try again.",
+  "error_invalid_response": "Received an invalid response from the server.",
+  "error_unauthorized": "You are not authorized. Please log in again.",
+  "error_forbidden": "You do not have permission to perform this action.",
+  "error_not_found": "The requested resource was not found.",
+  "error_server": "An internal server error occurred.",
+  "error_communication_failed": "Failed to communicate with the server."
 }

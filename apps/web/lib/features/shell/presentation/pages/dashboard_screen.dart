@@ -5,12 +5,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:hr_core/core/enums/role_enums.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_enums.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
-import 'package:hr_core/features/communication/domain/repositories/communication_repository.dart';
+import 'package:hr_core/features/communication/domain/repositories/announcement_repository.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import '../../../../core/bloc/session_cubit.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/app_routes.dart';
 import '../bloc/dashboard_cubit.dart';
+import 'package:hr_core/features/communication/domain/errors/announcement_exception.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -23,7 +24,7 @@ class DashboardScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => DashboardCubit(
         getIt<LeaveRepository>(),
-        getIt<CommunicationRepository>(),
+        getIt<AnnouncementRepository>(),
       )..loadDashboard(role),
       child: _DashboardView(role: role),
     );
@@ -52,7 +53,6 @@ class _DashboardView extends StatelessWidget {
   ) {
     final titleController = TextEditingController();
     final bodyController = TextEditingController();
-    String? selectedDept;
     final formKey = GlobalKey<FormState>();
     bool isSubmitting = false;
 
@@ -111,42 +111,8 @@ class _DashboardView extends StatelessWidget {
                             : null,
                       ),
                       const SizedBox(height: 16),
-                      DropdownButtonFormField<String?>(
-                        value: selectedDept,
-                        decoration: InputDecoration(
-                          labelText: 'الجمهور المستهدف',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: null,
-                            child: Text('عام لكافة الموظفين'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Engineering',
-                            child: Text('قسم الهندسية'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'HR',
-                            child: Text('قسم الموارد البشرية'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Finance',
-                            child: Text('قسم المالية'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Sales',
-                            child: Text('قسم المبيعات'),
-                          ),
-                        ],
-                        onChanged: (v) {
-                          setDialogState(() {
-                            selectedDept = v;
-                          });
-                        },
-                      ),
+                      // Target audience / Department dropdown is hidden because there is no API for it yet.
+                      // Global announcement is enforced for now.
                     ],
                   ),
                 ),
@@ -164,19 +130,40 @@ class _DashboardView extends StatelessWidget {
                           setDialogState(() {
                             isSubmitting = true;
                           });
-                          await cubit.createAnnouncement(
-                            titleController.text.trim(),
-                            bodyController.text.trim(),
-                            department: selectedDept,
-                          );
-                          if (dialogCtx.mounted) {
-                            Navigator.pop(dialogCtx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('تم نشر الإعلان بنجاح'),
-                                backgroundColor: Colors.green,
-                              ),
+                          try {
+                            await cubit.createAnnouncement(
+                              titleController.text.trim(),
+                              bodyController.text.trim(),
                             );
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تم نشر الإعلان بنجاح'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } on AnnouncementException catch (e) {
+                            if (dialogCtx.mounted) {
+                              setDialogState(() => isSubmitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.messageKey.tr()),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (dialogCtx.mounted) {
+                              setDialogState(() => isSubmitting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('error_communication_failed'.tr()),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
                         },
                   style: ElevatedButton.styleFrom(
@@ -359,7 +346,33 @@ class _DashboardView extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        if (state.announcements.isEmpty)
+                        if (state.announcementsError != null)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Iconsax.warning_2, color: Colors.red),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    state.announcementsError!.tr(),
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => context.read<DashboardCubit>().loadAnnouncementsOnly(),
+                                  child: Text('retry'.tr(), style: const TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (state.announcements.isEmpty && state.announcementsError == null)
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 16),
                             child: Text(
@@ -367,7 +380,7 @@ class _DashboardView extends StatelessWidget {
                               style: TextStyle(color: Colors.grey),
                             ),
                           )
-                        else
+                        else if (state.announcements.isNotEmpty)
                           ListView.separated(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),

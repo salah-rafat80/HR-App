@@ -5,7 +5,7 @@ import 'package:hr_core/features/leave/domain/entities/leave_balance.dart';
 import 'package:hr_core/features/leave/domain/entities/leave_request.dart';
 import 'package:hr_core/features/leave/domain/repositories/leave_repository.dart';
 import 'package:hr_core/features/communication/domain/entities/communication_entities.dart';
-import 'package:hr_core/features/communication/domain/repositories/communication_repository.dart';
+import 'package:hr_core/features/communication/domain/repositories/announcement_repository.dart';
 import 'package:hr_core/core/utils/leave_error_mapper.dart';
 
 class DashboardState extends Equatable {
@@ -15,6 +15,7 @@ class DashboardState extends Equatable {
   final List<LeaveRequest> pendingApprovals;
   final List<Announcement> announcements;
   final String? errorMessage;
+  final String? announcementsError;
 
   const DashboardState({
     required this.isLoading,
@@ -23,6 +24,7 @@ class DashboardState extends Equatable {
     required this.pendingApprovals,
     required this.announcements,
     this.errorMessage,
+    this.announcementsError,
   });
 
   factory DashboardState.initial() {
@@ -33,6 +35,7 @@ class DashboardState extends Equatable {
       pendingApprovals: [],
       announcements: [],
       errorMessage: null,
+      announcementsError: null,
     );
   }
 
@@ -43,6 +46,7 @@ class DashboardState extends Equatable {
     List<LeaveRequest>? pendingApprovals,
     List<Announcement>? announcements,
     String? errorMessage,
+    String? announcementsError,
   }) {
     return DashboardState(
       isLoading: isLoading ?? this.isLoading,
@@ -51,6 +55,7 @@ class DashboardState extends Equatable {
       pendingApprovals: pendingApprovals ?? this.pendingApprovals,
       announcements: announcements ?? this.announcements,
       errorMessage: errorMessage,
+      announcementsError: announcementsError,
     );
   }
 
@@ -62,14 +67,15 @@ class DashboardState extends Equatable {
         pendingApprovals,
         announcements,
         errorMessage,
+        announcementsError,
       ];
 }
 
 class DashboardCubit extends Cubit<DashboardState> {
   final LeaveRepository _leaveRepo;
-  final CommunicationRepository _commRepo;
+  final AnnouncementRepository _announcementRepo;
 
-  DashboardCubit(this._leaveRepo, this._commRepo)
+  DashboardCubit(this._leaveRepo, this._announcementRepo)
       : super(DashboardState.initial());
 
   Future<void> loadDashboard(UserRole role) async {
@@ -78,11 +84,14 @@ class DashboardCubit extends Cubit<DashboardState> {
       List<LeaveBalance> balances = [];
       List<LeaveRequest> myRequests = [];
       List<LeaveRequest> pendingApprovals = [];
-      List<Announcement> announcements = [];
+      List<Announcement> announcements = state.announcements;
+      String? announcementsError;
 
       try {
-        announcements = await _commRepo.getAnnouncements();
-      } catch (_) {}
+        announcements = await _announcementRepo.getAnnouncements();
+      } catch (e) {
+        announcementsError = 'error_communication_failed';
+      }
 
       if (role == UserRole.employee) {
         balances = await _leaveRepo.getBalances();
@@ -105,6 +114,7 @@ class DashboardCubit extends Cubit<DashboardState> {
           pendingApprovals: pendingApprovals,
           announcements: announcements,
           errorMessage: null,
+          announcementsError: announcementsError,
         ),
       );
     } catch (e) {
@@ -117,17 +127,30 @@ class DashboardCubit extends Cubit<DashboardState> {
     }
   }
 
+  Future<void> loadAnnouncementsOnly() async {
+    try {
+      final announcements = await _announcementRepo.getAnnouncements();
+      emit(state.copyWith(announcements: announcements, announcementsError: null));
+    } catch (e) {
+      emit(state.copyWith(announcementsError: 'error_communication_failed'));
+    }
+  }
+
   Future<void> createAnnouncement(
     String title,
-    String body, {
-    String? department,
-  }) async {
+    String body,
+  ) async {
     try {
-      await _commRepo.createAnnouncement(title, body, department: department);
-      final announcements = await _commRepo.getAnnouncements();
-      emit(state.copyWith(announcements: announcements));
+      final newAnnouncement = await _announcementRepo.createAnnouncement(title, body);
+      emit(state.copyWith(
+        announcements: [newAnnouncement, ...state.announcements],
+      ));
+
+      try {
+        await loadAnnouncementsOnly();
+      } catch (_) {}
     } catch (e) {
-      emit(state.copyWith(errorMessage: e.toString()));
+      rethrow;
     }
   }
 }

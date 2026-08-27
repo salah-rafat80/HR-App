@@ -1,18 +1,11 @@
 import '../../domain/entities/communication_entities.dart';
 import '../../domain/repositories/communication_repository.dart';
-import '../datasources/fake_communication_datasource.dart';
+import '../datasources/communication_datasource.dart';
 
 class CommunicationRepositoryImpl implements CommunicationRepository {
-  final FakeCommunicationDataSource _dataSource;
+  final CommunicationDataSource _dataSource;
 
   CommunicationRepositoryImpl(this._dataSource);
-
-  @override
-  Future<List<Announcement>> getAnnouncements() => _dataSource.getAnnouncements();
-
-  @override
-  Future<Announcement> createAnnouncement(String title, String body, {String? department}) =>
-      _dataSource.addAnnouncement(title, body, department: department);
 
   @override
   Future<List<ChatMessage>> getChatMessages() => _dataSource.getChatMessages();

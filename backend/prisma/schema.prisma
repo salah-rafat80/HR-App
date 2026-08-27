@@ -111,6 +111,8 @@ model User {
   createdAt         DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime       @updatedAt @db.Timestamptz(3)
 
+  announcements     Announcement[] @relation("AnnouncementAuthor")
+
   @@index([employeeCode])
   @@index([managerId])
   @@index([branchId])
@@ -550,4 +552,17 @@ model CompanyLeaveApprovalConfiguration {
   finalHrApprover   User?    @relation("FinalHrApprover", fields: [finalHrApproverId], references: [id], onDelete: SetNull)
   createdAt         DateTime @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  department  String?
+  authorId    String
+  author      User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([createdAt(sort: Desc)])
 }

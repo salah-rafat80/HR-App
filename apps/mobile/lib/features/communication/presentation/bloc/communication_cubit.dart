@@ -2,77 +2,100 @@ import 'package:hr_app_demo/core/utils/safe_cubit.dart';
 import 'communication_state.dart';
 import 'package:hr_core/features/communication/domain/entities/communication_entities.dart';
 import 'package:hr_core/features/communication/domain/entities/it_request_entities.dart';
+import 'package:hr_core/features/communication/domain/repositories/announcement_repository.dart';
 import 'package:hr_core/features/communication/domain/repositories/communication_repository.dart';
 import 'package:hr_core/features/communication/domain/repositories/it_request_repository.dart';
 
 import '../../../../core/di/injection.dart';
-import '../../../home/presentation/bloc/home_cubit.dart';
 
 class CommunicationCubit extends SafeCubit<CommunicationState> {
-  final CommunicationRepository _commRepo;
+  final CommunicationRepository _repository;
+  final AnnouncementRepository _announcementRepository;
   final ItRequestRepository _itRepo;
 
-  CommunicationCubit(this._commRepo, this._itRepo) : super(CommunicationInitial());
+  CommunicationCubit(this._repository, this._announcementRepository, this._itRepo) : super(CommunicationInitial());
 
   Future<void> loadData() async {
     if (!isClosed) { emit(CommunicationLoading()); }
     try {
       final results = await Future.wait([
-        _commRepo.getAnnouncements(),
-        _commRepo.getChatMessages(),
-        _commRepo.getPolls(),
-        _commRepo.getHandbookSections(),
+        _repository.getChatMessages(),
+        _repository.getPolls(),
+        _repository.getHandbookSections(),
         _itRepo.getMyItRequests(),
       ]);
 
       if (!isClosed) { emit(CommunicationLoaded(
-        announcements: results[0] as List<Announcement>,
-        chatMessages: results[1] as List<ChatMessage>,
-        polls: results[2] as List<Poll>,
-        handbook: results[3] as List<HandbookSection>,
-        itRequests: results[4] as List<ItRequest>,
+        announcements: const [],
+        isLoadingAnnouncements: true,
+        chatMessages: results[0] as List<ChatMessage>,
+        polls: results[1] as List<Poll>,
+        handbook: results[2] as List<HandbookSection>,
+        itRequests: results[3] as List<ItRequest>,
       )); }
+
+      await loadAnnouncements();
     } catch (e) {
       if (!isClosed) { emit(CommunicationError(e.toString())); }
     }
   }
 
-  Future<void> createAnnouncement(String title, String body, {String? department}) async {
+  Future<void> loadAnnouncements() async {
     if (state is! CommunicationLoaded) return;
     final currentState = state as CommunicationLoaded;
+    emit(currentState.copyWith(isLoadingAnnouncements: true, announcementsError: null));
     try {
-      await _commRepo.createAnnouncement(title, body, department: department);
-      final announcements = await _commRepo.getAnnouncements();
+      final announcements = await _announcementRepository.getAnnouncements();
       if (!isClosed) {
-        emit(currentState.copyWith(announcements: announcements));
+        emit((state as CommunicationLoaded).copyWith(
+          isLoadingAnnouncements: false,
+          announcements: announcements,
+          announcementsError: null,
+        ));
       }
-      try {
-        if (getIt.isRegistered<HomeCubit>()) {
-          getIt<HomeCubit>().loadDashboard();
-        }
-      } catch (_) {}
     } catch (e) {
       if (!isClosed) {
-        emit(CommunicationError(e.toString()));
+        emit((state as CommunicationLoaded).copyWith(
+          isLoadingAnnouncements: false,
+          announcementsError: 'error_communication_failed',
+        ));
       }
+    }
+  }
+
+  Future<void> createAnnouncement(String title, String body) async {
+    try {
+      final newAnnouncement = await _announcementRepository.createAnnouncement(title, body);
+      if (state is CommunicationLoaded && !isClosed) {
+        final currentState = state as CommunicationLoaded;
+        emit(currentState.copyWith(
+          announcements: [newAnnouncement, ...currentState.announcements],
+        ));
+      }
+
+      try {
+        await loadAnnouncements(); // refresh to ensure consistency
+      } catch (_) {}
+    } catch (e) {
+      rethrow;
     }
   }
 
   Future<void> sendChatMessage(String text) async {
     if (state is! CommunicationLoaded) return;
     final currentState = state as CommunicationLoaded;
-    
+
     if (!isClosed) { emit(currentState.copyWith(isSendingMessage: true)); }
     try {
-      await _commRepo.sendChatMessage(text);
-      final messages = await _commRepo.getChatMessages();
+      await _repository.sendChatMessage(text);
+      final messages = await _repository.getChatMessages();
       if (!isClosed) { emit(currentState.copyWith(isSendingMessage: false, chatMessages: messages)); }
-      
+
       // The FakeDataSource simulates an auto-reply asynchronously.
       // We will refresh messages again after a delay to pick it up.
       Future.delayed(const Duration(seconds: 3), () async {
         if (state is CommunicationLoaded) {
-          final newMsgs = await _commRepo.getChatMessages();
+          final newMsgs = await _repository.getChatMessages();
           if (!isClosed) { emit((state as CommunicationLoaded).copyWith(chatMessages: newMsgs)); }
         }
       });
@@ -86,8 +109,8 @@ class CommunicationCubit extends SafeCubit<CommunicationState> {
     final currentState = state as CommunicationLoaded;
     if (!isClosed) { emit(currentState.copyWith(isVoting: true)); }
     try {
-      await _commRepo.voteInPoll(pollId, optionId);
-      final polls = await _commRepo.getPolls();
+      await _repository.voteInPoll(pollId, optionId);
+      final polls = await _repository.getPolls();
       if (!isClosed) { emit(currentState.copyWith(isVoting: false, polls: polls)); }
     } catch (e) {
       if (!isClosed) { emit(currentState.copyWith(isVoting: false)); }

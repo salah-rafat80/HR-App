@@ -214,5 +214,13 @@
   "refresh_profile": "تحديث البيانات",
   "confirm_logout": "تأكيد الخروج",
   "confirm_logout_msg": "هل أنت أثق من رغبتك في تسجيل الخروج؟",
-  "employee": "موظف"
+  "employee": "موظف",
+  "error_bad_request": "الطلب المقدم غير صالح.",
+  "error_network": "خطأ في الاتصال بالشبكة. يرجى المحاولة مرة أخرى.",
+  "error_invalid_response": "تم استلام استجابة غير صالحة من الخادم.",
+  "error_unauthorized": "غير مصرح لك. يرجى تسجيل الدخول مرة أخرى.",
+  "error_forbidden": "ليس لديك الصلاحية للقيام بهذا الإجراء.",
+  "error_not_found": "لم يتم العثور على المورد المطلوب.",
+  "error_server": "حدث خطأ داخلي في الخادم.",
+  "error_communication_failed": "فشل الاتصال بالخادم."
 }

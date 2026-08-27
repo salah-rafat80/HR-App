@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_loader.dart';
 import '../bloc/communication_cubit.dart';
+import 'package:hr_core/features/communication/domain/errors/announcement_exception.dart';
 
 class NewAnnouncementModal extends StatefulWidget {
   const NewAnnouncementModal({super.key});
@@ -17,17 +18,8 @@ class _NewAnnouncementModalState extends State<NewAnnouncementModal> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
-  String? _selectedDepartment;
-  bool _isSubmitting = false;
 
-  final List<String> _departments = [
-    'Engineering',
-    'HR',
-    'Finance',
-    'Sales',
-    'Marketing',
-    'Operations',
-  ];
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -47,7 +39,6 @@ class _NewAnnouncementModalState extends State<NewAnnouncementModal> {
       await context.read<CommunicationCubit>().createAnnouncement(
             _titleController.text.trim(),
             _bodyController.text.trim(),
-            department: _selectedDepartment,
           );
 
       if (mounted) {
@@ -59,14 +50,22 @@ class _NewAnnouncementModalState extends State<NewAnnouncementModal> {
         );
         Navigator.pop(context);
       }
-    } catch (e) {
+    } on AnnouncementException catch (e) {
       if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
+        setState(() => _isSubmitting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('حدث خطأ أثناء نشر الإعلان: $e'),
+            content: Text(e.messageKey.tr()),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('error_communication_failed'.tr()),
             backgroundColor: AppColors.error,
           ),
         );
@@ -153,44 +152,9 @@ class _NewAnnouncementModalState extends State<NewAnnouncementModal> {
                   return null;
                 },
               ),
+              // Target audience / Department dropdown is hidden because there is no API for it yet.
+              // Global announcement is enforced for now.
               SizedBox(height: 16.h),
-
-              // Target audience / Department dropdown
-              DropdownButtonFormField<String?>(
-                value: _selectedDepartment,
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp),
-                dropdownColor: Theme.of(context).cardColor,
-                decoration: InputDecoration(
-                  labelText: 'الجمهور المستهدف',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                ),
-                items: [
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(
-                      'عام لكافة الموظفين',
-                      style: TextStyle(color: AppColors.textPrimary),
-                    ),
-                  ),
-                  ..._departments.map(
-                    (d) => DropdownMenuItem<String?>(
-                      value: d,
-                      child: Text(
-                        'قسم $d',
-                        style: TextStyle(color: AppColors.textPrimary),
-                      ),
-                    ),
-                  ),
-                ],
-                onChanged: (val) {
-                  setState(() {
-                    _selectedDepartment = val;
-                  });
-                },
-              ),
-              SizedBox(height: 24.h),
 
               // Submit Button
               ElevatedButton.icon(
