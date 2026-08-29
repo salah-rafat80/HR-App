@@ -16,9 +16,12 @@ import { OvertimeModule } from './overtime/overtime.module';
 import { HrReportsModule } from './hr-reports/hr-reports.module';
 import { CompanyTimeModule } from './common/time/company-time.module';
 import { CommunicationModule } from './communication/communication.module';
+import { NotificationModule } from './notifications/notification.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     CompanyTimeModule,
     ThrottlerModule.forRoot([
       {
@@ -38,6 +41,7 @@ import { CommunicationModule } from './communication/communication.module';
     OvertimeModule,
     HrReportsModule,
     CommunicationModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
