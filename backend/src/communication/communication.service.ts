@@ -31,15 +31,17 @@ export class CommunicationService {
           ? { department: createAnnouncementDto.department }
           : {}),
       },
-      select: { fcmToken: true },
+      select: { id: true, fcmToken: true },
     });
 
     const tokens = users.map((u) => u.fcmToken).filter(Boolean) as string[];
+    const userIds = users.filter((u) => u.fcmToken).map((u) => u.id);
 
     // Fire the push notification to all matched users (chunked into 500)
     if (tokens.length > 0) {
       // Async without awaiting to prevent blocking the response or rolling back on error
       this.sendNotificationsChunked(
+        userIds,
         tokens,
         announcement.title,
         announcement.content,
@@ -56,6 +58,7 @@ export class CommunicationService {
   }
 
   private async sendNotificationsChunked(
+    userIds: string[],
     tokens: string[],
     title: string,
     content: string,
@@ -66,10 +69,12 @@ export class CommunicationService {
     let failureCount = 0;
 
     for (let i = 0; i < tokens.length; i += chunkSize) {
-      const chunk = tokens.slice(i, i + chunkSize);
+      const chunkTokens = tokens.slice(i, i + chunkSize);
+      const chunkUserIds = userIds.slice(i, i + chunkSize);
       try {
         const result = await this.notificationService.notifyNewAnnouncement(
-          chunk,
+          chunkUserIds,
+          chunkTokens,
           title,
           content,
           announcementId,
@@ -77,7 +82,7 @@ export class CommunicationService {
         successCount += result.successCount;
         failureCount += result.failureCount;
       } catch (error) {
-        failureCount += chunk.length;
+        failureCount += chunkTokens.length;
         this.logger.error(`Failed to send chunk starting at index ${i}`, error);
       }
     }

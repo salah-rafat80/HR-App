@@ -4,7 +4,10 @@ import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import * as path from 'path';
 
+import { PrismaService } from '../prisma/prisma.service';
+
 export interface PushPayload {
+  userId?: string;
   token: string;
   title: string;
   body: string;
@@ -16,6 +19,8 @@ export class NotificationService implements OnModuleInit {
   private readonly logger = new Logger(NotificationService.name);
   private isReady = false;
   private app: App | null = null;
+
+  constructor(private readonly prisma: PrismaService) {}
 
   onModuleInit() {
     if (getApps().length) {
@@ -90,6 +95,22 @@ export class NotificationService implements OnModuleInit {
   // ── Send to single device ────────────────────────────────────────────────────
 
   async sendToDevice(payload: PushPayload): Promise<void> {
+    if (payload.userId) {
+      try {
+        await this.prisma.notification.create({
+          data: {
+            userId: payload.userId,
+            title: payload.title,
+            body: payload.body,
+            type: payload.data?.type || 'general',
+            data: payload.data || {},
+          },
+        });
+      } catch (err) {
+        this.logger.error(`Failed to save notification to DB: ${err}`);
+      }
+    }
+
     if (!this.isReady || !this.app) {
       this.logger.warn('Push skipped — Firebase Admin not ready');
       return;
@@ -122,8 +143,9 @@ export class NotificationService implements OnModuleInit {
 
   // ── Convenience helpers ──────────────────────────────────────────────────────
 
-  async notifyLeaveApproved(token: string, employeeName: string, id: string) {
+  async notifyLeaveApproved(userId: string, token: string, employeeName: string, id: string) {
     return this.sendToDevice({
+      userId,
       token,
       title: '✅ تم اعتماد إجازتك',
       body: `مرحباً ${employeeName}، تمت الموافقة على طلب إجازتك`,
@@ -132,11 +154,13 @@ export class NotificationService implements OnModuleInit {
   }
 
   async notifyLeaveStepApproved(
+    userId: string,
     token: string,
     employeeName: string,
     id: string,
   ) {
     return this.sendToDevice({
+      userId,
       token,
       title: '⏳ جاري مراجعة طلبك',
       body: `مرحباً ${employeeName}، تمت الموافقة على خطوة وطلبك في انتظار الموافقة التالية`,
@@ -144,8 +168,9 @@ export class NotificationService implements OnModuleInit {
     });
   }
 
-  async notifyLeaveRejected(token: string, employeeName: string, id: string) {
+  async notifyLeaveRejected(userId: string, token: string, employeeName: string, id: string) {
     return this.sendToDevice({
+      userId,
       token,
       title: '❌ تم رفض طلب الإجازة',
       body: `مرحباً ${employeeName}، تم رفض طلب إجازتك`,
@@ -153,8 +178,9 @@ export class NotificationService implements OnModuleInit {
     });
   }
 
-  async notifyNewLeaveRequest(token: string, employeeName: string, id: string) {
+  async notifyNewLeaveRequest(userId: string, token: string, employeeName: string, id: string) {
     return this.sendToDevice({
+      userId,
       token,
       title: '📋 طلب إجازة جديد',
       body: `${employeeName} قدّم طلب إجازة يحتاج مراجعتك`,
@@ -163,11 +189,13 @@ export class NotificationService implements OnModuleInit {
   }
 
   async notifyOvertimeApproved(
+    userId: string,
     token: string,
     employeeName: string,
     id?: string,
   ) {
     return this.sendToDevice({
+      userId,
       token,
       title: '✅ تم اعتماد الأوفرتايم',
       body: `مرحباً ${employeeName}، تمت الموافقة على طلب الأوفرتايم`,
@@ -175,8 +203,9 @@ export class NotificationService implements OnModuleInit {
     });
   }
 
-  async notifyKpiUpdated(token: string, kpiTitle: string, id?: string) {
+  async notifyKpiUpdated(userId: string, token: string, kpiTitle: string, id?: string) {
     return this.sendToDevice({
+      userId,
       token,
       title: '🎯 تم تحديث KPI',
       body: `تم تحديث مؤشر "${kpiTitle}" الخاص بك`,
@@ -185,11 +214,26 @@ export class NotificationService implements OnModuleInit {
   }
 
   async notifyNewAnnouncement(
+    userIds: string[],
     tokens: string[],
     title: string,
     body: string,
     id?: string,
   ): Promise<{ successCount: number; failureCount: number }> {
+    if (userIds.length > 0) {
+      try {
+        const data = userIds.map((uid) => ({
+          userId: uid,
+          title: `📢 إعلان جديد: ${title}`,
+          body,
+          type: 'new_announcement',
+          data: id ? { id } : {},
+        }));
+        await this.prisma.notification.createMany({ data });
+      } catch (err) {
+        this.logger.error(`Failed to bulk save announcements to DB: ${err}`);
+      }
+    }
     if (!this.isReady || !this.app || !tokens.length) {
       return { successCount: 0, failureCount: tokens.length };
     }
