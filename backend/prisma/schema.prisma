@@ -107,6 +107,7 @@ model User {
   payslips                 Payslip[]
   bonusNotices             BonusNotice[]
   auditLogs                AuditLog[]                @relation("AuditActor")
+  notifications            Notification[]
 
   createdAt         DateTime       @default(now()) @db.Timestamptz(3)
   updatedAt         DateTime       @updatedAt @db.Timestamptz(3)
@@ -116,6 +117,23 @@ model User {
   @@index([employeeCode])
   @@index([managerId])
   @@index([branchId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  type      String   // e.g. "leave_approved", "kpi_updated", "overtime_rejected"
+  isRead    Boolean  @default(false)
+  data      Json?    // to store any extra payload like target IDs
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([isRead])
 }
 
 model AuditLog {
