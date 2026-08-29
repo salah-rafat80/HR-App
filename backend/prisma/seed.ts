@@ -28,6 +28,8 @@ async function main() {
     { employeeCode: 'TEST-EMP-005', name: 'مريم هاني', role: 'employee', department: 'الحسابات', title: 'Accounts Payable Accountant', passwordRaw: 'HrTest!2026-K5' },
     { employeeCode: 'TEST-EMP-006', name: 'ريم أحمد', role: 'employee', department: 'HR', title: 'HR Coordinator', passwordRaw: 'HrTest!2026-L6' },
     { employeeCode: 'TEST-EMP-007', name: 'خالد سعد', role: 'employee', department: 'HR', title: 'Talent Acquisition Specialist', passwordRaw: 'HrTest!2026-M7' },
+    { employeeCode: 'TEST-MGR-002', name: 'أحمد جمال', role: 'manager', department: 'IT', title: 'IT Manager', passwordRaw: 'HrTest!2026-N8' },
+    { employeeCode: 'TEST-TL-003', name: 'سارة منصور', role: 'team_lead', department: 'HR', title: 'HR Team Lead', passwordRaw: 'HrTest!2026-O9' },
   ];
 
   for (const u of requiredUsers) {
@@ -54,6 +56,30 @@ async function main() {
       },
     });
   }
+
+  // Link managers
+  console.log('Linking TEST users hierarchy...');
+  const allUsers = await prisma.user.findMany({ where: { employeeCode: { startsWith: 'TEST-' } } });
+  const userMap = {} as Record<string, string>;
+  for (const u of allUsers) {
+    if (u.employeeCode) userMap[u.employeeCode] = u.id;
+  }
+
+  // IT Hierarchy
+  if (userMap['TEST-EMP-001']) await prisma.user.update({ where: { id: userMap['TEST-EMP-001'] }, data: { managerId: userMap['TEST-TL-001'] } });
+  if (userMap['TEST-EMP-002']) await prisma.user.update({ where: { id: userMap['TEST-EMP-002'] }, data: { managerId: userMap['TEST-TL-001'] } });
+  if (userMap['TEST-EMP-003']) await prisma.user.update({ where: { id: userMap['TEST-EMP-003'] }, data: { managerId: userMap['TEST-TL-001'] } });
+  if (userMap['TEST-TL-001']) await prisma.user.update({ where: { id: userMap['TEST-TL-001'] }, data: { managerId: userMap['TEST-MGR-002'] } });
+
+  // Finance Hierarchy
+  if (userMap['TEST-EMP-004']) await prisma.user.update({ where: { id: userMap['TEST-EMP-004'] }, data: { managerId: userMap['TEST-TL-002'] } });
+  if (userMap['TEST-EMP-005']) await prisma.user.update({ where: { id: userMap['TEST-EMP-005'] }, data: { managerId: userMap['TEST-TL-002'] } });
+  if (userMap['TEST-TL-002']) await prisma.user.update({ where: { id: userMap['TEST-TL-002'] }, data: { managerId: userMap['TEST-MGR-001'] } });
+
+  // HR Hierarchy
+  if (userMap['TEST-EMP-006']) await prisma.user.update({ where: { id: userMap['TEST-EMP-006'] }, data: { managerId: userMap['TEST-TL-003'] } });
+  if (userMap['TEST-EMP-007']) await prisma.user.update({ where: { id: userMap['TEST-EMP-007'] }, data: { managerId: userMap['TEST-TL-003'] } });
+  if (userMap['TEST-TL-003']) await prisma.user.update({ where: { id: userMap['TEST-TL-003'] }, data: { managerId: userMap['TEST-HRA-001'] } });
 
   // 1. Create Users
   const hrAdmin = await prisma.user.upsert({
