@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class LeaveErrorMapper {
   static String map(dynamic error) {
@@ -31,73 +32,94 @@ class LeaveErrorMapper {
     final clean = errorString.toUpperCase();
 
     if (clean.contains('POLICY_NOT_FOUND_OR_INACTIVE')) {
-      return 'سياسة الإجازة غير موجودة أو غير نشطة حالياً.';
+      return 'error_policy_not_found'.tr();
     }
     if (clean.contains('START_DATE_BEFORE_TODAY')) {
-      return 'تاريخ بدء الإجازة لا يمكن أن يكون في الماضي.';
+      return 'error_start_date_past'.tr();
     }
     if (clean.contains('MINIMUM_NOTICE_NOT_MET')) {
-      return 'لم يتم استيفاء الحد الأدنى لأيام الإشعار المسبق المطلوبة لهذه الإجازة.';
+      return 'error_minimum_notice'.tr();
     }
     if (clean.contains('REASON_REQUIRED')) {
-      return 'سبب الإجازة مطلوب ولا يمكن تركه فارغاً.';
+      return 'error_reason_required'.tr();
     }
     if (clean.contains('HALFDAY_NOT_ALLOWED')) {
-      return 'إجازة نصف اليوم غير مسموح بها لهذا النوع من الإجازات.';
+      return 'error_halfday_not_allowed'.tr();
     }
     if (clean.contains('HALFDAY_MUST_SPAN_ONE_DAY')) {
-      return 'طلب نصف يوم يجب أن يبدأ وينتهي في نفس التاريخ.';
+      return 'error_halfday_must_span_one_day'.tr();
     }
     if (clean.contains('HALFDAY_PERIOD_REQUIRED')) {
-      return 'يرجى تحديد الفترة المطلوبة لنصف اليوم (صباحية/مسائية).';
+      return 'error_halfday_period_required'.tr();
     }
     if (clean.contains('NO_WORKING_DAYS_IN_RANGE')) {
-      return 'النطاق المحدد يحتوي على عطلات رسمية أو أسبوعية فقط.';
+      return 'error_no_working_days'.tr();
     }
     if (clean.contains('LEAVE_OVERLAP')) {
-      return 'توجد إجازة أخرى معلقة أو معتمدة متداخلة مع هذه التواريخ.';
+      return 'error_leave_overlap'.tr();
     }
     if (clean.contains('ATTENDANCE_CONFLICT')) {
-      return 'يوجد سجل حضور مسجل بالفعل في أحد أيام العمل المحددة.';
+      return 'error_attendance_conflict'.tr();
     }
     if (clean.contains('LEAVE_BALANCE_NOT_FOUND')) {
-      return 'لا يوجد رصيد إجازات مهيأ لهذا المستخدم لهذا العام.';
+      return 'error_leave_balance_not_found'.tr();
     }
     if (clean.contains('INSUFFICIENT_LEAVE_BALANCE')) {
-      return 'رصيد الإجازات المتاح غير كافٍ لإتمام الطلب.';
+      return 'error_insufficient_leave_balance'.tr();
     }
     if (clean.contains('MISSING_TEAM_LEAD_APPROVER')) {
-      return 'سلسلة الموافقات غير مكتملة: لم يتم تعيين قائد الفريق (Team Lead) الخاص بك.';
+      return 'error_missing_team_lead_approver'.tr();
     }
     if (clean.contains('MISSING_MANAGER_APPROVER')) {
-      return 'سلسلة الموافقات غير مكتملة: لم يتم تعيين المدير المباشر (Manager) الخاص بك.';
+      return 'error_missing_manager_approver'.tr();
     }
     if (clean.contains('MISSING_FINAL_HR_APPROVER')) {
-      return 'سلسلة الموافقات غير مكتملة: لم يتم تحديد مسؤول الموارد البشرية النهائي (Final HR) للشركة.';
+      return 'error_missing_final_hr_approver'.tr();
     }
     if (clean.contains('LEAVE_APPROVAL_CHAIN_NOT_CONFIGURED')) {
-      return 'سلسلة الموافقات غير مهيأة (يرجى التأكد من تعيين المدير المباشر، مدير الإدارة، وتعيين مسؤول HR المعتمد للشركة).';
+      return 'error_leave_approval_chain_not_configured'.tr();
     }
     if (clean.contains('APPROVED_LEAVE_ACTIVE')) {
-      return 'لا يمكنك تسجيل الحضور اليوم نظراً لوجود إجازة معتمدة ونشطة.';
+      return 'error_approved_leave_active'.tr();
     }
     if (clean.contains('REJECTION_REASON_REQUIRED')) {
-      return 'سبب الرفض مطلوب وإلزامي لإتمام العملية.';
+      return 'error_rejection_reason_required'.tr();
+    }
+    if (clean.contains('USER_NOT_FOUND')) {
+      return 'error_user_not_found'.tr();
+    }
+    if (clean.contains('USER_ALREADY_EXISTS')) {
+      return 'error_user_already_exists'.tr();
+    }
+    if (clean.contains('UNAUTHORIZED')) {
+      return 'error_unauthorized'.tr();
+    }
+    if (clean.contains('FORBIDDEN')) {
+      return 'error_forbidden'.tr();
+    }
+    if (clean.contains('BAD_REQUEST')) {
+      return 'error_bad_request'.tr();
+    }
+    if (clean.contains('INTERNAL_SERVER_ERROR')) {
+      return 'error_internal_server'.tr();
+    }
+    if (clean.contains('SOCKET') || clean.contains('NETWORK') || clean.contains('CONNECTION')) {
+      return 'error_network_connection'.tr();
     }
     if (clean.contains('INVALID_BALANCE_STATE') ||
         clean.contains('INVALID_BALANCE')) {
-      return 'فشلت العملية: ستؤدي إلى حالة رصيد غير صالحة أو رصيد سالب.';
+      return 'error_invalid_balance'.tr();
     }
 
     if (clean.contains('THROTTLEREXCEPTION') ||
         clean.contains('TOO MANY REQUESTS') ||
         errorString.contains('429')) {
-      return 'تم إرسال طلبات كثيرة جداً خلال فترة قصيرة. يرجى الانتظار بضع ثوانٍ والإعادة.';
+      return 'error_too_many_requests'.tr();
     }
 
     if (errorString.contains('DioException') ||
         errorString.contains('status code of 400')) {
-      return 'تعذر تنفيذ المعاينة: يرجى التأكد من اختيار نوع إجازة متاح وتاريخ جديد بدون تداخل.';
+      return 'error_bad_request'.tr();
     }
 
     return errorString;
