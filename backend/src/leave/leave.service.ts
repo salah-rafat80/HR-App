@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 import {
   Injectable,
   NotFoundException,
@@ -726,7 +726,11 @@ export class LeaveService {
 
     if (requester.role === 'employee') {
       const tl = requester.manager;
-      if (!tl || tl.role !== 'team_lead' || tl.department !== requester.department) {
+      if (
+        !tl ||
+        tl.role !== 'team_lead' ||
+        tl.department !== requester.department
+      ) {
         throw new BadRequestException('MISSING_TEAM_LEAD_APPROVER');
       }
 
@@ -998,7 +1002,7 @@ export class LeaveService {
       });
       if (approver?.fcmToken) {
         void this.notifications
-          .notifyNewLeaveRequest(approver.fcmToken, requesterName, result.id)
+          .notifyNewLeaveRequest(nextApproverId, approver.fcmToken, requesterName, result.id)
           .catch(() => undefined);
       }
     }
@@ -1583,11 +1587,11 @@ export class LeaveService {
     if (empToken) {
       if (isFinal) {
         void this.notifications
-          .notifyLeaveApproved(empToken, empName, result.id)
+          .notifyLeaveApproved(ownerId, empToken, empName, result.id)
           .catch(() => undefined);
       } else {
         void this.notifications
-          .notifyLeaveStepApproved(empToken, empName, result.id)
+          .notifyLeaveStepApproved(ownerId, empToken, empName, result.id)
           .catch(() => undefined);
       }
     }
@@ -1600,7 +1604,7 @@ export class LeaveService {
       });
       if (nextApprover?.fcmToken) {
         void this.notifications
-          .notifyNewLeaveRequest(nextApprover.fcmToken, empName, result.id)
+          .notifyNewLeaveRequest(nextApproverId, nextApprover.fcmToken, empName, result.id)
           .catch(() => undefined);
       }
     }
@@ -1803,7 +1807,7 @@ export class LeaveService {
 
     if (empToken) {
       void this.notifications
-        .notifyLeaveRejected(empToken, empName, result.id)
+        .notifyLeaveRejected(ownerId, empToken, empName, result.id)
         .catch(() => undefined);
     }
 
